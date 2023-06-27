@@ -306,6 +306,7 @@ def dataset_type(train_percentage, dev_percentage):
 
 class IntentExample:
     def __init__(self, quadruple):
+        self.type = "intent"
         self.source = quadruple[0]
         self.label = quadruple[1]
         self.utterance = quadruple[2]
@@ -364,7 +365,7 @@ class IntentExampleGenerator:
                             else:
                                 pair = [intent, "1", expression_corpus[i],idx2expression[j].exampler]
 
-                            entire_positive_sample.append("\t".join(pair))
+                            entire_positive_sample.append(json.dumps(IntentExample(pair)))
                     else:
                         if FLAGS.random_generate == 'True': 
                             equal_sent=self.intent_template_dict[idx2expression[i].intent].generate_equal_sample(idx2expression[i])

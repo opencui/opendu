@@ -2,15 +2,6 @@
 
 ###  Data process from SGD to intent 
 
-1.Set up environment
-
-The environment info has been included in the environment.yaml,  you need to change the "name" and  "prefix" item in it to match your machine .Run it as follows:
-
-```
-conda env create -f environment.yaml
-conda activte environment_name
-```
-
 2.Create intent examples
 
 There're some parameters for generating the intent examples.You need indicate the data path of the sgd data,such as ./train/ where the schema.json and dialogue info are included. you could also indicate the output path for the intent data. For generating the negative samples  we need to find the similar utterances in different intents. Here we use the faiss to  speed up this process.So we need to indicate the topk num that we 'd like to find for each utterance.The pos_num and neg_num illustrates seperately  the num of positive sample and negative sample for each intent. we could create the intent examples as follows:
