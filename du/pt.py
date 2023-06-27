@@ -124,9 +124,9 @@ class Optimizer:
                 loss = outputs.loss
                 total_loss += loss.detach().float()
                 loss.backward()
-                optimizer.step()
+                self.optimizer.step()
                 self.lr_scheduler.step()
-                optimizer.zero_grad()
+                self.optimizer.zero_grad()
 
             model.eval()
             eval_loss = 0
