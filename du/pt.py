@@ -57,13 +57,20 @@ class PromptTuner:
             num_virtual_tokens=8,
         )
 
-    @gin.configurable
-    def preprocess_function(self, examples):
+@gin.configurable
+class RaftPreprocessor:
+    def __init__(self, tokenizer, text_column, label_column, max_length):
+        self.tokenizer = tokenizer
+        self.text_column = text_column
+        self.label_column = label_column
+        self.max_length = max_length
+
+    def __call__(self, examples):
         batch_size = len(examples[self.text_column])
         inputs = [f"{self.text_column} : {x} Label : " for x in examples[self.text_column]]
         targets = [str(x) for x in examples[self.label_column]]
-        model_inputs = tuner.tokenizer(inputs)
-        labels = tuner.tokenizer(targets)
+        model_inputs = self.tokenizer(inputs)
+        labels = self.tokenizer(targets)
         for i in range(batch_size):
             sample_input_ids = model_inputs["input_ids"][i]
             label_input_ids = labels["input_ids"][i] + [tuner.tokenizer.pad_token_id]
@@ -87,7 +94,6 @@ class PromptTuner:
             labels["input_ids"][i] = torch.tensor(labels["input_ids"][i][:self.max_length])
         model_inputs["labels"] = labels["input_ids"]
         return model_inputs
-
 
 @gin.configurable
 class Optimizer:
@@ -153,12 +159,14 @@ if __name__ == "__main__":
     gin.parse_config_file(sys.argv[1])
     tuner = PromptTuner()
 
+    preprocess_function = RaftPreprocessor(tuner.tokenizer)
+
     processed_datasets = tuner.dataset.map(
-        tuner.preprocess_function,
-        batched=True,
-        num_proc=1,
-        remove_columns=tuner.dataset["train"].column_names,
-        load_from_cache_file=False,
+        preprocess_function,
+        batched = True,
+        num_proc = 1,
+        remove_columns = tuner.dataset["train"].column_names,
+        load_from_cache_file = False,
         desc="Running tokenizer on dataset",
     )
 
