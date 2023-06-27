@@ -30,7 +30,7 @@ from string import Template
 
 @gin.configurable
 class PromptTuner:
-    def __init__(self, model_name_or_path, dataset_format, dataset_name, text_column, label_column, max_length):
+    def __init__(self, model_name_or_path, dataset_format, dataset_name):
         self.model_name_or_path = model_name_or_path
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         if self.tokenizer.pad_token_id is None:
@@ -46,10 +46,6 @@ class PromptTuner:
             num_proc=1,
         )
         self.target_max_length = max([len(self.tokenizer(class_label)["input_ids"]) for class_label in classes])
-        self.text_column = text_column
-        self.label_column = label_column
-        self.max_length = max_length
-
 
         self.config = PromptTuningConfig(
             task_type=TaskType.CAUSAL_LM,
