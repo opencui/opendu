@@ -69,7 +69,7 @@ class RaftPreprocessor:
         labels = self.tokenizer(targets)
         for i in range(batch_size):
             sample_input_ids = model_inputs["input_ids"][i]
-            label_input_ids = labels["input_ids"][i] + [tuner.tokenizer.pad_token_id]
+            label_input_ids = labels["input_ids"][i] + [self.tokenizer.pad_token_id]
             # print(i, sample_input_ids, label_input_ids)
             model_inputs["input_ids"][i] = sample_input_ids + label_input_ids
             labels["input_ids"][i] = [-100] * len(sample_input_ids) + label_input_ids
@@ -78,7 +78,7 @@ class RaftPreprocessor:
         for i in range(batch_size):
             sample_input_ids = model_inputs["input_ids"][i]
             label_input_ids = labels["input_ids"][i]
-            model_inputs["input_ids"][i] = [tuner.tokenizer.pad_token_id] * (
+            model_inputs["input_ids"][i] = [self.tokenizer.pad_token_id] * (
                 self.max_length - len(sample_input_ids)
             ) + sample_input_ids
             model_inputs["attention_mask"][i] = [0] * (self.max_length - len(sample_input_ids)) + model_inputs[
