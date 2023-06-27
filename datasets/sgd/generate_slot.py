@@ -71,6 +71,7 @@ word_set=set(_1toone.values())
 NUMBER_SET=set( _1toone.keys()) | set(_1toone.values()) 
 # print("arbic_set ",arbic_set,"word_set ",word_set)
 # print(f'NUMBER_SET :{NUMBER_SET}')
+
 def dataset_type(train_percentage, dev_percentage):
     val = random.random()
     if val < train_percentage:
@@ -408,6 +409,16 @@ def load_add_slot_value(base_path,SLOTS):
     return expressions,intent_template_dict
 
 
+class SlotExample:
+    def __init__(self, quintuple):
+        self.type = "slot"
+        self.intent = quintuple[0]
+        self.sentence = quintuple[1]
+        self.slot = quintuple[2]
+        self.flag = quintuple[3]
+        self.span = quintuple[4]
+
+
 class SlotExampleGenerator:
     """
     generate examples
@@ -420,9 +431,6 @@ class SlotExampleGenerator:
         self.seed = seed
         self.all_sample=[]
         self.used_template=set()
-
-
-        
          
     def __call__(self, expressions, slots_dict,intent_template_dict):
         examples = defaultdict(list)
@@ -448,25 +456,25 @@ class SlotExampleGenerator:
                     for slot_val,span in expression.slots[slot].items():
                         pos_count += 2
                         equal_sent,(new_start,new_end)=intent_template_dict[expression.intent].generate_equal_sample_fixed(expression,slot,slot_val)
-                        examp = [service_intent,equal_sent.lower(), " ".join(slot.split('_'))+" ?", "1", str(new_start)+", "+str(new_end)]
+                        examp = [service_intent,equal_sent.lower(), " ".join(slot.split('_')), "1", str(new_start)+", "+str(new_end)]
                         partition = dataset_type(FLAGS.training_percentage, FLAGS.dev_percentage)
-                        examples[partition].append("\t".join(examp))
+                        examples[partition].append(json.dumps(SlotExample(examp)))
                         mask_len=random.randint(intent_template_dict[intent].val_len_range[slot][0],intent_template_dict[intent].val_len_range[slot][1])
                         assert   mask_len != 0 
                         equal_sent,(new_start,new_end)=intent_template_dict[expression.intent].generate_equal_sample_fixed(expression,slot,slot_val,mask_len)
                         equal_sent=equal_sent.lower()
                         equal_sent=equal_sent.replace('[mask]','[MASK]')
-                        examp = [service_intent, equal_sent, " ".join(slot.split('_'))+" ?", "1", str(new_start) + ", " + str(new_end)]
+                        examp = [service_intent, equal_sent, " ".join(slot.split('_')), "1", str(new_start) + ", " + str(new_end)]
                         partition = dataset_type(FLAGS.training_percentage, FLAGS.dev_percentage)
-                        examples[partition].append("\t".join(examp))                       
+                        examples[partition].append(json.dumps(SlotExample(examp)))
 
             neg_count=0
             for slot in slots_dict[intent]:
                 if slot not in expression.slots  and slot not in vague_slot_names:
                     equal_sent=intent_template_dict[expression.intent].generate_equal_sample(expression)
-                    examp = [service_intent,equal_sent.lower(), " ".join(slot.split('_'))+" ?", "0", str((0, 0))[1:-1]]
+                    examp = [service_intent, equal_sent.lower(), " ".join(slot.split('_')), "0", str((0, 0))[1:-1]]
                     partition = dataset_type(FLAGS.training_percentage, FLAGS.dev_percentage)
-                    examples[partition].append("\t".join(examp))
+                    examples[partition].append(json.dumps(SlotExample(examp)))
                     neg_count+=1
             total_pos_cnt+=pos_count
             total_neg_cnt+=neg_count
@@ -488,15 +496,14 @@ def save(slot_examples, path):
     return
 
 def main(_):
-
     SLOTS = generate_slotindex(FLAGS.base_path)
 
-    slot_expressions,intent_template_dicgt = load_add_slot_value(FLAGS.base_path,SLOTS)
+    slot_expressions,intent_template_dict = load_add_slot_value(FLAGS.base_path,SLOTS)
     build_slot_examples = SlotExampleGenerator(FLAGS.training_percentage, FLAGS.negative_proportions)
     if FLAGS.fix_random_seed:
         build_slot_examples.seed = 202006171752
 
-    slot_examples = build_slot_examples(slot_expressions, SLOTS,intent_template_dict)
+    slot_examples = build_slot_examples(slot_expressions, SLOTS, intent_template_dict)
     save(slot_examples, FLAGS.output)
 
 if __name__ == '__main__':
