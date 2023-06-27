@@ -173,7 +173,7 @@ if __name__ == "__main__":
     model = get_peft_model(model, tuner.config)
     print(model.print_trainable_parameters())
 
-    optimizer = Optimizer()
+    optimizer = Optimizer(train_dataset, eval_dataset)
     optimizer.tune(model, tuner.tokenizer)
 
     # Figure out how to push model to huggingface.
