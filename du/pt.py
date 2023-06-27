@@ -2,18 +2,12 @@ import gin
 from transformers import AutoModelForCausalLM
 from peft import get_peft_config, get_peft_model, PromptTuningInit, PromptTuningConfig, TaskType, PeftType
 import torch
-from datasets import load_dataset
-import os
 import sys
 from transformers import AutoTokenizer
-from transformers import LlamaTokenizer, LlamaForCausalLM
 from torch.utils.data import DataLoader
 from transformers import default_data_collator, get_linear_schedule_with_warmup
 from tqdm import tqdm
 from datasets import load_dataset
-from peft import PeftModel, PeftConfig
-
-from string import Template
 
 
 # this is dependency
@@ -21,18 +15,15 @@ from string import Template
 # pip install -U sentencepiece tokenizers (need to update to 0.13.3)
 
 
-
 # We need to define all the options in gin.
 # This is the prompt tuning, the goal it to make it easy to serve multiple task with one base model.
-
-# parse the config so that
 
 
 @gin.configurable
 class PromptTuner:
     def __init__(self, model_name_or_path, dataset_format, dataset_name):
         self.model_name_or_path = model_name_or_path
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, add_eos_token=True)
         if self.tokenizer.pad_token_id is None:
             self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
 
@@ -53,6 +44,7 @@ class PromptTuner:
             num_virtual_tokens=8,
         )
 
+
 @gin.configurable
 class RaftPreprocessor:
     def __init__(self, tokenizer, text_column, label_column, max_length):
@@ -62,6 +54,12 @@ class RaftPreprocessor:
         self.max_length = max_length
 
     def __call__(self, examples):
+        # Tokenize the input text and labels.
+        # For each example in a batch, pad the labels with the tokenizers pad_token_id.
+        # Concatenate the input text and labels into the model_inputs.
+        # Create a separate attention mask for labels and model_inputs.
+        # Loop through each example in the batch again to pad the input ids, labels, and attention
+        #    mask to the max_length and convert them to PyTorch tensors.
         batch_size = len(examples[self.text_column])
         inputs = [f"{self.text_column} : {x} Label : " for x in examples[self.text_column]]
         targets = [str(x) for x in examples[self.label_column]]
@@ -124,9 +122,9 @@ class Optimizer:
                 loss = outputs.loss
                 total_loss += loss.detach().float()
                 loss.backward()
-                optimizer.step()
+                self.optimizer.step()
                 self.lr_scheduler.step()
-                optimizer.zero_grad()
+                self.optimizer.zero_grad()
 
             model.eval()
             eval_loss = 0
