@@ -30,7 +30,7 @@ from string import Template
 
 @gin.configurable
 class PromptTuner:
-    def __init__(self, model_name_or_path, dataset_format, dataset_name, text_column, label_column, max_length):
+    def __init__(self, model_name_or_path, dataset_format, dataset_name):
         self.model_name_or_path = model_name_or_path
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         if self.tokenizer.pad_token_id is None:
@@ -46,10 +46,6 @@ class PromptTuner:
             num_proc=1,
         )
         self.target_max_length = max([len(self.tokenizer(class_label)["input_ids"]) for class_label in classes])
-        self.text_column = text_column
-        self.label_column = label_column
-        self.max_length = max_length
-
 
         self.config = PromptTuningConfig(
             task_type=TaskType.CAUSAL_LM,
@@ -57,16 +53,23 @@ class PromptTuner:
             num_virtual_tokens=8,
         )
 
-    @gin.configurable
-    def preprocess_function(self, examples):
+@gin.configurable
+class RaftPreprocessor:
+    def __init__(self, tokenizer, text_column, label_column, max_length):
+        self.tokenizer = tokenizer
+        self.text_column = text_column
+        self.label_column = label_column
+        self.max_length = max_length
+
+    def __call__(self, examples):
         batch_size = len(examples[self.text_column])
         inputs = [f"{self.text_column} : {x} Label : " for x in examples[self.text_column]]
         targets = [str(x) for x in examples[self.label_column]]
-        model_inputs = tuner.tokenizer(inputs)
-        labels = tuner.tokenizer(targets)
+        model_inputs = self.tokenizer(inputs)
+        labels = self.tokenizer(targets)
         for i in range(batch_size):
             sample_input_ids = model_inputs["input_ids"][i]
-            label_input_ids = labels["input_ids"][i] + [tuner.tokenizer.pad_token_id]
+            label_input_ids = labels["input_ids"][i] + [self.tokenizer.pad_token_id]
             # print(i, sample_input_ids, label_input_ids)
             model_inputs["input_ids"][i] = sample_input_ids + label_input_ids
             labels["input_ids"][i] = [-100] * len(sample_input_ids) + label_input_ids
@@ -75,7 +78,7 @@ class PromptTuner:
         for i in range(batch_size):
             sample_input_ids = model_inputs["input_ids"][i]
             label_input_ids = labels["input_ids"][i]
-            model_inputs["input_ids"][i] = [tuner.tokenizer.pad_token_id] * (
+            model_inputs["input_ids"][i] = [self.tokenizer.pad_token_id] * (
                 self.max_length - len(sample_input_ids)
             ) + sample_input_ids
             model_inputs["attention_mask"][i] = [0] * (self.max_length - len(sample_input_ids)) + model_inputs[
@@ -87,7 +90,6 @@ class PromptTuner:
             labels["input_ids"][i] = torch.tensor(labels["input_ids"][i][:self.max_length])
         model_inputs["labels"] = labels["input_ids"]
         return model_inputs
-
 
 @gin.configurable
 class Optimizer:
@@ -153,12 +155,14 @@ if __name__ == "__main__":
     gin.parse_config_file(sys.argv[1])
     tuner = PromptTuner()
 
+    preprocess_function = RaftPreprocessor(tuner.tokenizer)
+
     processed_datasets = tuner.dataset.map(
-        tuner.preprocess_function,
-        batched=True,
-        num_proc=1,
-        remove_columns=tuner.dataset["train"].column_names,
-        load_from_cache_file=False,
+        preprocess_function,
+        batched = True,
+        num_proc = 1,
+        remove_columns = tuner.dataset["train"].column_names,
+        load_from_cache_file = False,
         desc="Running tokenizer on dataset",
     )
 

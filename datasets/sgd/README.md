@@ -208,7 +208,7 @@ intent data consists of positive parts and negative parts, For each intent ,we n
 
 For example .if the pre utterance of the "USER" has the intent "ReserveHotel", while the current  utterance has the intent  "ReserveHotel" and "SearchRoundtripFlights", then we think this utterance  if focused on the "SearchRoundtripFlights",  or we can say we just find the "rising edge" of the intent in the intent dataset  because the label of intent just indicates the state of which intent the utterance is contained .Here we ignored all "NONE" intent type.
 
-The format of positive sample :
+The format of positive sample (need to be updated once figure out how to push to hugging face) :
 
 ```
 SearchRoundtripFlights        1        I will be visiting a friend and I need to find a round trip flight. Find something to San Fran on today. Make the return flight on the 13th of March.        I am looking for an economy round trip flight from < origin city > to < destination city >. 
