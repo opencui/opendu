@@ -34,6 +34,22 @@ class PromptTuner:
         )
 
 
+class Raft:
+    def __init__(self, dataset_format, dataset_name):
+        self.dataset_format = dataset_format
+        self.dataset_name = dataset_name
+
+    def __call__(self):
+        # Prepare for the basic dataset.
+        dataset = load_dataset(self.dataset_format, self.dataset_name)
+        classes = [k.replace("_", " ") for k in dataset["train"].features["Label"].names]
+        print(classes)
+        return dataset.map(
+            lambda x: {"text_label": [classes[label] for label in x["Label"]]},
+            batched=True,
+            num_proc=1,
+        )
+
 @gin.configurable
 class RaftPreprocessor:
     def __init__(self, tokenizer, text_column, label_column, max_length, dataset_format, dataset_name):
@@ -155,7 +171,9 @@ if __name__ == "__main__":
     gin.parse_config_file(sys.argv[1])
     tuner = PromptTuner()
 
-    dataset = RaftPreprocessor.build_dataset()
+    # prepare the dataset.
+    build_dataset = Raft()
+    dataset = build_dataset()
     preprocess_function = RaftPreprocessor(tuner.tokenizer)
 
     processed_datasets = dataset.map(
