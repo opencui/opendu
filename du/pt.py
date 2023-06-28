@@ -21,22 +21,11 @@ from datasets import load_dataset
 
 @gin.configurable
 class PromptTuner:
-    def __init__(self, model_name_or_path, dataset_format, dataset_name):
+    def __init__(self, model_name_or_path):
         self.model_name_or_path = model_name_or_path
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, add_eos_token=True)
         if self.tokenizer.pad_token_id is None:
             self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
-
-        # Prepare for the basic dataset.
-        dataset = load_dataset(dataset_format, dataset_name)
-        classes = [k.replace("_", " ") for k in dataset["train"].features["Label"].names]
-        print(classes)
-        self.dataset = dataset.map(
-            lambda x: {"text_label": [classes[label] for label in x["Label"]]},
-            batched=True,
-            num_proc=1,
-        )
-        self.target_max_length = max([len(self.tokenizer(class_label)["input_ids"]) for class_label in classes])
 
         self.config = PromptTuningConfig(
             task_type=TaskType.CAUSAL_LM,
@@ -47,11 +36,24 @@ class PromptTuner:
 
 @gin.configurable
 class RaftPreprocessor:
-    def __init__(self, tokenizer, text_column, label_column, max_length):
+    def __init__(self, tokenizer, text_column, label_column, max_length, dataset_format, dataset_name):
         self.tokenizer = tokenizer
         self.text_column = text_column
         self.label_column = label_column
         self.max_length = max_length
+
+    @gin.configurable
+    @classmethod
+    def build_dataset(cls, dataset_format, dataset_name):
+        # Prepare for the basic dataset.
+        dataset = load_dataset(dataset_format, dataset_name)
+        classes = [k.replace("_", " ") for k in dataset["train"].features["Label"].names]
+        print(classes)
+        return dataset.map(
+            lambda x: {"text_label": [classes[label] for label in x["Label"]]},
+            batched=True,
+            num_proc=1,
+        )
 
     def __call__(self, examples):
         # Tokenize the input text and labels.
@@ -108,7 +110,7 @@ class Optimizer:
             num_warmup_steps=0,
             num_training_steps=(len(self.train_dataloader) * num_epochs),
         )
-        self.device = "cpu"
+        self.device = "cuda"
 
     def tune(self, rmodel, tokenizer):
         model = rmodel.to(self.device)
@@ -153,13 +155,14 @@ if __name__ == "__main__":
     gin.parse_config_file(sys.argv[1])
     tuner = PromptTuner()
 
+    dataset = RaftPreprocessor.build_dataset()
     preprocess_function = RaftPreprocessor(tuner.tokenizer)
 
-    processed_datasets = tuner.dataset.map(
+    processed_datasets = dataset.map(
         preprocess_function,
         batched = True,
         num_proc = 1,
-        remove_columns = tuner.dataset["train"].column_names,
+        remove_columns = dataset["train"].column_names,
         load_from_cache_file = False,
         desc="Running tokenizer on dataset",
     )
