@@ -1,12 +1,14 @@
 
-PromptTuner.dataset_name = "twitter_complaints"
-PromptTuner.dataset_format = "ought/raft"
-PromptTuner.model_name_or_path =  "openlm-research/open_llama_3b"
 
 
+PromptTuner.model_name_or_path =  "togethercomputer/RedPajama-INCITE-Instruct-3B-v1"
+
+RaftPreprocessor.build_dataset.dataset_name = "twitter_complaints"
+RaftPreprocessor.dataset_format = "ought/raft"
 RaftPreprocessor.text_column = "Tweet text"
 RaftPreprocessor.label_column = "text_label"
 RaftPreprocessor.max_length = 64
+
 
 Optimizer.lr = 3e-2
 Optimizer.num_epochs = 50
