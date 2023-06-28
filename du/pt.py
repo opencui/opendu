@@ -34,6 +34,7 @@ class PromptTuner:
         )
 
 
+@gin.configurable
 class Raft:
     def __init__(self, dataset_format, dataset_name):
         self.dataset_format = dataset_format
@@ -50,9 +51,10 @@ class Raft:
             num_proc=1,
         )
 
+
 @gin.configurable
 class RaftPreprocessor:
-    def __init__(self, tokenizer, text_column, label_column, max_length, dataset_format, dataset_name):
+    def __init__(self, tokenizer, text_column, label_column, max_length):
         self.tokenizer = tokenizer
         self.text_column = text_column
         self.label_column = label_column
