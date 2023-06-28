@@ -1,6 +1,6 @@
 import gin
 from transformers import AutoModelForCausalLM
-from peft import get_peft_config, get_peft_model, PromptTuningInit, PromptTuningConfig, TaskType, PeftType
+from peft import get_peft_model, PromptTuningInit, PromptTuningConfig, TaskType
 import torch
 import sys
 from transformers import AutoTokenizer
@@ -109,6 +109,7 @@ class RaftPreprocessor:
         model_inputs["labels"] = labels["input_ids"]
         return model_inputs
 
+
 @gin.configurable
 class Optimizer:
     def __init__(self, train_dataset, eval_dataset, lr, num_epochs, batch_size):
@@ -164,8 +165,6 @@ class Optimizer:
             train_epoch_loss = total_loss / len(self.train_dataloader)
             train_ppl = torch.exp(train_epoch_loss)
             print(f"{epoch=}: {train_ppl=} {train_epoch_loss=} {eval_ppl=} {eval_epoch_loss=}")
-
-
 
 
 # Substitute value of x in above template
