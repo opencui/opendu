@@ -205,14 +205,14 @@ class Optimizer:
 
 @gin.configurable
 class Trainer:
-    def __init__(self):
+    def __init__(self, build_dataset):
         self.tuner = PromptTuner()
-        self. model = AutoModelForCausalLM.from_pretrained(self.tuner.model_name_or_path)
+        self.model = AutoModelForCausalLM.from_pretrained(self.tuner.model_name_or_path)
+        self.build_dataset = build_dataset
 
     def train(self):
         # prepare the dataset.
-        build_dataset = Raft()
-        dataset = build_dataset()
+        dataset = self.build_dataset()
         preprocess_function = T2TPreprocessor(self.tuner.tokenizer)
 
         processed_datasets = dataset.map(
