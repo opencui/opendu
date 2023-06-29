@@ -5,8 +5,7 @@ PromptTuner.model_name_or_path =  "togethercomputer/RedPajama-INCITE-Instruct-3B
 
 Raft.dataset_name = "twitter_complaints"
 Raft.dataset_format = "ought/raft"
-RaftPreprocessor.text_column = "Tweet text"
-RaftPreprocessor.label_column = "text_label"
+
 RaftPreprocessor.max_length = 64
 
 
