@@ -117,7 +117,7 @@ class T2TPreprocessor:
 
 @gin.configurable
 class Optimizer:
-    def __init__(self, train_dataset, eval_dataset, lr, num_epochs, batch_size):
+    def __init__(self, model, train_dataset, eval_dataset, lr, num_epochs, batch_size):
         self.lr = lr
         self.num_epochs = num_epochs
         self.batch_size = batch_size
@@ -135,9 +135,10 @@ class Optimizer:
             num_training_steps=(len(self.train_dataloader) * num_epochs),
         )
         self.device = "cuda"
+        self.model = model
 
-    def tune(self, rmodel, tokenizer):
-        model = rmodel.to(self.device)
+    def tune(self, tokenizer):
+        model = self.model.to(self.device)
 
         for epoch in range(self.num_epochs):
             model.train()
@@ -176,6 +177,7 @@ class Optimizer:
 class Trainer:
     def __init__(self):
         self.tuner = PromptTuner()
+        self. model = AutoModelForCausalLM.from_pretrained(self.tuner.model_name_or_path)
 
     def train(self):
         # prepare the dataset.
@@ -195,21 +197,20 @@ class Trainer:
         train_dataset = processed_datasets["train"]
         eval_dataset = processed_datasets["train"]
 
-        model = AutoModelForCausalLM.from_pretrained(self.tuner.model_name_or_path)
-        model = get_peft_model(model, self.tuner.config)
-        print(model.print_trainable_parameters())
+        self.model = get_peft_model(self.model, self.tuner.config)
+        print(self.model.print_trainable_parameters())
 
-        optimizer = Optimizer(train_dataset, eval_dataset)
-        optimizer.tune(model, self.tuner.tokenizer)
+        optimizer = Optimizer(self.model, train_dataset, eval_dataset)
+        optimizer.tune(self.tuner.tokenizer)
 
 # Substitute value of x in above template
 if __name__ == "__main__":
     gin.parse_config_file(sys.argv[1])
 
-    trainer = Trainer
+    trainer = Trainer()
     trainer.train()
 
     # Figure out how to push model to huggingface.
     peft_model_id = "opencui/test_PROMPT_TUNING_CAUSAL_LM"
-    trainer.tuner.model.push_to_hub("opencui/test_PROMPT_TUNING_CAUSAL_LM", use_auth_token=True)
+    trainer.model.push_to_hub("opencui/test_PROMPT_TUNING_CAUSAL_LM", use_auth_token=True)
 
