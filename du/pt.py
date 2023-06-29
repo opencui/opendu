@@ -177,7 +177,7 @@ class Optimizer:
 class Trainer:
     def __init__(self):
         self.tuner = PromptTuner()
-        self. model = AutoModelForCausalLM.from_pretrained(self.tuner.model_name_or_path)
+        self.model = AutoModelForCausalLM.from_pretrained(self.tuner.model_name_or_path)
 
     def train(self):
         # prepare the dataset.
@@ -202,6 +202,7 @@ class Trainer:
 
         optimizer = Optimizer(self.model, train_dataset, eval_dataset)
         optimizer.tune(self.tuner.tokenizer)
+
 
 # Substitute value of x in above template
 if __name__ == "__main__":
