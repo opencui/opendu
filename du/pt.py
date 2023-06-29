@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from transformers import default_data_collator, get_linear_schedule_with_warmup
 from tqdm import tqdm
 from datasets import load_dataset
-
+from string import Template
 
 # this is dependency
 # pip install -q peft transformers datasets gin-config
@@ -36,17 +36,47 @@ class PromptTuner:
 
 @gin.configurable
 class OpencuiIntent:
-    def __init__(self, dataset_format, dataset_name):
-        self.dataset_format = dataset_format
-        self.dataset_name = dataset_name
+    def __init__(self, lang, path):
+        self.path = path
+        self.lang = lang
+        self.templates = {
+            "en" : Template("Does $x imply $y? true of false."),
+        }
+        self.labels = {
+            "0" : "false",
+            "1" : "true"
+        }
 
     def __call__(self):
         # Prepare for the basic dataset.
+        template = self.templates[self.lang]
         rdataset = load_dataset(self.dataset_format, self.dataset_name)
-        classes = [k.replace("_", " ") for k in rdataset["train"].features["Label"].names]
-        print(classes)
         return rdataset.map(
-            lambda x: {"text_label": [classes[label] for label in x["Label"]], "text": [f"{'Tweet '} : {y} Label : " for y in x["Tweet text"]]},
+            lambda x: {"output": [self.labels[x.label]], "input": [template.substitute({'x' : x.utterance, 'y' : x.exemplar})]},
+            batched=True,
+            num_proc=1,
+        )
+
+
+@gin.configurable
+class OpencuiSlot:
+    def __init__(self, lang, path):
+        self.path = path
+        self.lang = lang
+        self.templates = {
+            "en" : Template("Find value for $slot in $utterance"),
+        }
+
+    def computeOutput(self, example):
+        sspan = example.span
+        ispan = map(int, sspan.split(","))
+        return example.utterance[ispan[0]:ispan[1]]
+
+    def __call__(self):
+        template = self.templates[self.lang]
+        rdataset = load_dataset(self.dataset_format, self.dataset_name)
+        return rdataset.map(
+            lambda x: {"output": [self.computeOutput(x)], "input": [template.substitute({'slot' : x.slot, 'utterance' : x.utterance})]},
             batched=True,
             num_proc=1,
         )
@@ -175,14 +205,14 @@ class Optimizer:
 
 @gin.configurable
 class Trainer:
-    def __init__(self):
+    def __init__(self, build_dataset):
         self.tuner = PromptTuner()
         self.model = AutoModelForCausalLM.from_pretrained(self.tuner.model_name_or_path)
+        self.build_dataset = build_dataset
 
     def train(self):
         # prepare the dataset.
-        build_dataset = Raft()
-        dataset = build_dataset()
+        dataset = self.build_dataset()
         preprocess_function = T2TPreprocessor(self.tuner.tokenizer)
 
         processed_datasets = dataset.map(

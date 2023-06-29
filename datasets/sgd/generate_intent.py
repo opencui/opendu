@@ -195,13 +195,13 @@ class Expression:
         self.exampler=None
 
 
-def cover_realtion(expression_A,expression_B):
+def cover_reaction(expression_A, expression_B):
     '''
     check if the slot of A could cover all of slot of B
     '''
     return set(expression_B.slots.keys()).issubset(set(expression_A.slots.keys())) 
 
-def slot_val_To_slot_name(slot_dict, utterance):
+def slot_val_to_slot_name(slot_dict, utterance):
     '''
     replacing the slot val with the slot name,to avoid match the short slot val which may be inclued in other long slot val,we need sort by the length of the slot val
     '''
@@ -295,7 +295,6 @@ class SearchSimilarExpressions:
 
 
 
-
 def dataset_type(train_percentage, dev_percentage):
     val = random.random()
     if val < train_percentage:
@@ -317,7 +316,6 @@ class IntentExampleGenerator:
     """
     generate examples
     """
-
     def __init__(self, training_percentage, neg_percentage, intent_template_dict,seed=None):
         if training_percentage < 0.0 or training_percentage > 1.0:
             raise ValueError("training_percentage is out of range")
@@ -357,7 +355,7 @@ class IntentExampleGenerator:
                 for j in range(range_[0], range_[1]):
                     # if i != j:#is add equal sent,we need to delete it
                     if FLAGS.cover_filter == "True":
-                        if cover_realtion(idx2expression[i],idx2expression[j]):
+                        if cover_reaction(idx2expression[i], idx2expression[j]):
                             if FLAGS.random_generate == 'True': 
                                 equal_sent=self.intent_template_dict[idx2expression[i].intent].generate_equal_sample(idx2expression[i])
                                 pair = [intent, "1", equal_sent,idx2expression[j].exampler]
@@ -373,12 +371,10 @@ class IntentExampleGenerator:
 
                         else:
                             pair = [intent, "1", expression_corpus[i],idx2expression[j].exampler]
-
-                            
                         entire_positive_sample.append(json.dumps(IntentExample(pair)))
             entire_positive_sample=list(set(entire_positive_sample))
 
-            if (len(entire_positive_sample) < FLAGS.pos_num or FLAGS.pos_num == -1):
+            if len(entire_positive_sample) < FLAGS.pos_num or FLAGS.pos_num == -1:
                 subsample_pos = entire_positive_sample
             else:
                 subsample_pos = random.sample(entire_positive_sample, FLAGS.pos_num)
@@ -410,7 +406,7 @@ class IntentExampleGenerator:
                     entire_negative_sample.append(json.dumps(IntentExample(pair)))
 
             entire_negative_sample=list(set(entire_negative_sample))
-            if (len(entire_negative_sample) < FLAGS.neg_num  or  FLAGS.neg_num == -1):
+            if len(entire_negative_sample) < FLAGS.neg_num  or  FLAGS.neg_num == -1:
                 subsample_neg = entire_negative_sample
             else:
                 subsample_neg = random.sample(entire_negative_sample, FLAGS.neg_num)
