@@ -35,6 +35,24 @@ class PromptTuner:
 
 
 @gin.configurable
+class OpenCUIIntent:
+    def __init__(self, dataset_format, dataset_name):
+        self.dataset_format = dataset_format
+        self.dataset_name = dataset_name
+
+    def __call__(self):
+        # Prepare for the basic dataset.
+        rdataset = load_dataset(self.dataset_format, self.dataset_name)
+        classes = [k.replace("_", " ") for k in rdataset["train"].features["Label"].names]
+        print(classes)
+        rdataset = rdataset.map(
+            lambda x: {"text_label": [classes[label] for label in x["Label"]], "text": [f"{'Tweet '} : {y} Label : " for y in x["Tweet text"]]},
+            batched=True,
+            num_proc=1,
+        )
+
+
+@gin.configurable
 class Raft:
     def __init__(self, dataset_format, dataset_name):
         self.dataset_format = dataset_format
@@ -42,36 +60,23 @@ class Raft:
 
     def __call__(self):
         # Prepare for the basic dataset.
-        dataset = load_dataset(self.dataset_format, self.dataset_name)
+        raw_dataset = load_dataset(self.dataset_format, self.dataset_name)
         classes = [k.replace("_", " ") for k in dataset["train"].features["Label"].names]
         print(classes)
-        return dataset.map(
-            lambda x: {"text_label": [classes[label] for label in x["Label"]]},
+        return raw_dataset.map(
+            lambda x: {"output": [classes[label] for label in x["Label"]], "input": [f"{'Tweet '} : {y} Label : " for y in x["Tweet text"]]},
             batched=True,
             num_proc=1,
         )
 
 
 @gin.configurable
-class RaftPreprocessor:
-    def __init__(self, tokenizer, text_column, label_column, max_length):
+class T2TPreprocessor:
+    def __init__(self, tokenizer, max_length):
         self.tokenizer = tokenizer
-        self.text_column = text_column
-        self.label_column = label_column
+        self.text_column = "input"
+        self.label_column = "output"
         self.max_length = max_length
-
-    @gin.configurable
-    @classmethod
-    def build_dataset(cls, dataset_format, dataset_name):
-        # Prepare for the basic dataset.
-        dataset = load_dataset(dataset_format, dataset_name)
-        classes = [k.replace("_", " ") for k in dataset["train"].features["Label"].names]
-        print(classes)
-        return dataset.map(
-            lambda x: {"text_label": [classes[label] for label in x["Label"]]},
-            batched=True,
-            num_proc=1,
-        )
 
     def __call__(self, examples):
         # Tokenize the input text and labels.
@@ -81,7 +86,7 @@ class RaftPreprocessor:
         # Loop through each example in the batch again to pad the input ids, labels, and attention
         #    mask to the max_length and convert them to PyTorch tensors.
         batch_size = len(examples[self.text_column])
-        inputs = [f"{self.text_column} : {x} Label : " for x in examples[self.text_column]]
+        inputs = examples[self.text_column]
         targets = [str(x) for x in examples[self.label_column]]
         model_inputs = self.tokenizer(inputs)
         labels = self.tokenizer(targets)
@@ -175,7 +180,7 @@ if __name__ == "__main__":
     # prepare the dataset.
     build_dataset = Raft()
     dataset = build_dataset()
-    preprocess_function = RaftPreprocessor(tuner.tokenizer)
+    preprocess_function = T2TPreprocessor(tuner.tokenizer)
 
     processed_datasets = dataset.map(
         preprocess_function,
