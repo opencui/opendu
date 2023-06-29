@@ -35,7 +35,7 @@ class PromptTuner:
 
 
 @gin.configurable
-class OpenCUIIntent:
+class OpencuiIntent:
     def __init__(self, dataset_format, dataset_name):
         self.dataset_format = dataset_format
         self.dataset_name = dataset_name
@@ -45,7 +45,7 @@ class OpenCUIIntent:
         rdataset = load_dataset(self.dataset_format, self.dataset_name)
         classes = [k.replace("_", " ") for k in rdataset["train"].features["Label"].names]
         print(classes)
-        rdataset = rdataset.map(
+        return rdataset.map(
             lambda x: {"text_label": [classes[label] for label in x["Label"]], "text": [f"{'Tweet '} : {y} Label : " for y in x["Tweet text"]]},
             batched=True,
             num_proc=1,
@@ -61,7 +61,7 @@ class Raft:
     def __call__(self):
         # Prepare for the basic dataset.
         raw_dataset = load_dataset(self.dataset_format, self.dataset_name)
-        classes = [k.replace("_", " ") for k in dataset["train"].features["Label"].names]
+        classes = [k.replace("_", " ") for k in raw_dataset["train"].features["Label"].names]
         print(classes)
         return raw_dataset.map(
             lambda x: {"output": [classes[label] for label in x["Label"]], "input": [f"{'Tweet '} : {y} Label : " for y in x["Tweet text"]]},
@@ -172,36 +172,44 @@ class Optimizer:
             print(f"{epoch=}: {train_ppl=} {train_epoch_loss=} {eval_ppl=} {eval_epoch_loss=}")
 
 
+@gin.configurable
+class Trainer:
+    def __init__(self):
+        self.tuner = PromptTuner()
+
+    def train(self):
+        # prepare the dataset.
+        build_dataset = Raft()
+        dataset = build_dataset()
+        preprocess_function = T2TPreprocessor(self.tuner.tokenizer)
+
+        processed_datasets = dataset.map(
+            preprocess_function,
+            batched=True,
+            num_proc=1,
+            remove_columns=dataset["train"].column_names,
+            load_from_cache_file=False,
+            desc="Running tokenizer on dataset",
+        )
+
+        train_dataset = processed_datasets["train"]
+        eval_dataset = processed_datasets["train"]
+
+        model = AutoModelForCausalLM.from_pretrained(self.tuner.model_name_or_path)
+        model = get_peft_model(model, self.tuner.config)
+        print(model.print_trainable_parameters())
+
+        optimizer = Optimizer(train_dataset, eval_dataset)
+        optimizer.tune(model, self.tuner.tokenizer)
+
 # Substitute value of x in above template
 if __name__ == "__main__":
     gin.parse_config_file(sys.argv[1])
-    tuner = PromptTuner()
 
-    # prepare the dataset.
-    build_dataset = Raft()
-    dataset = build_dataset()
-    preprocess_function = T2TPreprocessor(tuner.tokenizer)
-
-    processed_datasets = dataset.map(
-        preprocess_function,
-        batched = True,
-        num_proc = 1,
-        remove_columns = dataset["train"].column_names,
-        load_from_cache_file = False,
-        desc="Running tokenizer on dataset",
-    )
-
-    train_dataset = processed_datasets["train"]
-    eval_dataset = processed_datasets["train"]
-
-    model = AutoModelForCausalLM.from_pretrained(tuner.model_name_or_path)
-    model = get_peft_model(model, tuner.config)
-    print(model.print_trainable_parameters())
-
-    optimizer = Optimizer(train_dataset, eval_dataset)
-    optimizer.tune(model, tuner.tokenizer)
+    trainer = Trainer
+    trainer.train()
 
     # Figure out how to push model to huggingface.
     peft_model_id = "opencui/test_PROMPT_TUNING_CAUSAL_LM"
-    model.push_to_hub("opencui/test_PROMPT_TUNING_CAUSAL_LM", use_auth_token=True)
+    trainer.tuner.model.push_to_hub("opencui/test_PROMPT_TUNING_CAUSAL_LM", use_auth_token=True)
 
