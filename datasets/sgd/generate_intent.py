@@ -19,7 +19,7 @@ import torch
 import pandas as pd
 import faiss.contrib.torch_utils
 
-# pip install -U faiss-cpu, scikit-learn, sentence-transformers
+# pip install -U gin-config faiss-cpu scikit-learn sentence-transformers
 # python3 generate_intent.py --input=/home/sean/src/dstc8-schema-guided-dialogue/train/ --output=./res/train
 
 
@@ -553,7 +553,7 @@ if __name__ == '__main__':
         templates[key].finalize()
 
     # now we can create intent examples.
-    
+
 
 
 
