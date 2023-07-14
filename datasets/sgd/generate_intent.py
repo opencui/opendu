@@ -208,6 +208,8 @@ class Expression:
         self.idx = None
         self.string_list = string_list
         self.exemplar = None
+        self.service = None
+        self.vague_slot_names = None
 
     def tokenize_label(self):
         no_underscore_utterance = self.exemplar
