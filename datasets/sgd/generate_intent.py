@@ -157,24 +157,20 @@ class IntentMeta:
     """
 
     def __init__(self):
-        self.exemplars = set()
+        self.exemplars = dict()
         self.slot_dict = defaultdict(set)
         self.dataset = None
-        self.expressions = []
 
     def add_sample(self, expression):
         expression_template = generate_expression_template(expression.slots, expression.utterance, expression.string_list)
         if expression_template in self.exemplars:
             return
 
-        self.exemplars.add(expression_template)
         expression.exemplar = expression_template
-
         for slot_name, slot_val_list in expression.slots.items():
             for slot_val in slot_val_list:
                 self.slot_dict[slot_name].add(slot_val)
-
-        self.expressions.append(expression)
+        self.exemplars[expression_template] = expression
 
     def generate_utterance(self, expression):
         expression_template = generate_expression_template(expression.slots, expression.utterance, expression.string_list)
@@ -186,14 +182,11 @@ class IntentMeta:
     def finalize(self):
         source = []
         exemplars_list = []
+        for exemplar, expression in self.exemplars.items():
+            source.append(exemplar)
+            exemplars_list.append(expression.tokenize_label())
 
-        for key in templates.keys():
-            exemplars = templates[key]
-            for exemplar in exemplars.exemplars:
-                source.append(key)
-                exemplars_list.append(exemplar)
-
-        results = pd.DataFrame({"source": source, "text": exemplars_list})
+        results = pd.DataFrame({"exemplar": source, "text": exemplars_list})
         results = Dataset.from_pandas(results)
         results = results.map(
             lambda x: {"embeddings": torch.nn.functional.normalize(encoder.convert([x["text"]])).detach().cpu().numpy()[0]}
@@ -201,10 +194,6 @@ class IntentMeta:
 
         results.add_faiss_index(column="embeddings")
         self.dataset = results
-
-    def show(self):
-        print(self.exemplars)
-        print(self.slot_dict)
 
 
 class Expression:
@@ -219,8 +208,10 @@ class Expression:
         self.idx = None
         self.string_list = string_list
         self.exemplar = None
+        self.service = None
+        self.vague_slot_names = None
 
-    def replace_label(self):
+    def tokenize_label(self):
         no_underscore_utterance = self.exemplar
         for key, values in self.slots.items():
             no_underscore_utterance = no_underscore_utterance.replace(key, ' '.join(key.split('_')))
@@ -335,158 +326,31 @@ class SearchSimilarExpressions:
         self.tfidf_matrix = idf_vectorizer.fit_transform(self.expression_corpus).toarray()
         self.sentence_embeddings = model.encode(self.expression_corpus)
 
-
-def dataset_type(train_percentage, dev_percentage):
-    val = random.random()
-    if val < train_percentage:
-        return TRAIN
-    elif val < (train_percentage + dev_percentage):
-        return DEV
-    return TEST
-
-
 class IntentExample:
-    def __init__(self, quadruple, exemplar=True):
+    def __init__(self, src, label, utterance, tokenized, exemplar=True):
         self.type = "intent"
         self.kind = "exemplar" if exemplar else "description"
-        self.source = quadruple[0]
-        self.label = quadruple[1]
-        self.utterance = quadruple[2]
-        self.exemplar = quadruple[3]
+        self.source = src
+        self.label = label
+        self.utterance = utterance
+        self.exemplar = tokenized
 
     def toJSON(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
 
 
-class IntentExampleGenerator:
-    """
-    generate examples
-    """
-
-    def __init__(self, training_percentage, neg_percentage, intent_template_dict, seed=None):
-        if training_percentage < 0.0 or training_percentage > 1.0:
-            raise ValueError("training_percentage is out of range")
-        self.neg_percentage = neg_percentage
-        self.training_percentage = training_percentage
-        self.seed = seed
-        self.intent_template_dict = intent_template_dict
-
-    def __call__(self, expressions):
-
-        examples = defaultdict(list)
-        random.seed(self.seed)
-        starttime = time.time()
-        SSE = SearchSimilarExpressions(expressions)
-        expression_corpus = SSE.expression_corpus
-        intent_range = SSE.intent_range
-        idx2expression = SSE.idx2expression
-
-        if FLAGS.decode_method == 'tfidf':
-            embed_matrix = SSE.tfidf_matrix.astype('float32')
-        else:
-            embed_matrix = SSE.sentence_embeddings.astype('float32')
-        embed_dim = embed_matrix.shape[1]
-        dim, measure = embed_dim, faiss.METRIC_INNER_PRODUCT
-        param = 'Flat'
-        index = faiss.index_factory(dim, param, measure)
-
-        index.add(embed_matrix)
-
-        total_positive_cnt = 0
-        total_negative_cnt = 0
-        for intent, range_ in tqdm(intent_range.items()):
-            intent_sample = []
-            entire_positive_sample = []
-
-            for i in tqdm(range(range_[0], range_[1])):
-                for j in range(range_[0], range_[1]):
-                    # if i != j:#is add equal sent,we need to delete it
-                    if FLAGS.cover_filter == "True":
-                        if cover_reaction(idx2expression[i], idx2expression[j]):
-                            if FLAGS.random_generate == 'True':
-                                equal_sent = self.intent_template_dict[idx2expression[i].intent].generate_utterance(
-                                    idx2expression[i])
-                                pair = [intent, "1", equal_sent, idx2expression[j].exemplar]
-                            else:
-                                pair = [intent, "1", expression_corpus[i], idx2expression[j].exemplar]
-
-                            entire_positive_sample.append(json.dumps(IntentExample(pair)))
-                    else:
-                        if FLAGS.random_generate == 'True':
-                            equal_sent = self.intent_template_dict[idx2expression[i].intent].generate_utterance(
-                                idx2expression[i])
-                            pair = [intent, "1", equal_sent, idx2expression[j].exemplar]
-
-                        else:
-                            pair = [intent, "1", expression_corpus[i], idx2expression[j].exemplar]
-                        entire_positive_sample.append(json.dumps(IntentExample(pair).toJSON(), indent=4))
-            entire_positive_sample = list(set(entire_positive_sample))
-
-            if len(entire_positive_sample) < FLAGS.pos_num or FLAGS.pos_num == -1:
-                subsample_pos = entire_positive_sample
-            else:
-                subsample_pos = random.sample(entire_positive_sample, FLAGS.pos_num)
-            positive_cnt = len(subsample_pos)
-            for item in subsample_pos:
-                partition = dataset_type(FLAGS.training_percentage, FLAGS.dev_percentage)
-                examples[partition].append(item)
-                intent_sample.append(item)
-
-            entire_negative_sample = []
-            if FLAGS.cover_filter == "True":
-                k = int((range_[1] - range_[0]) * 1.3)
-            else:
-                k = int((range_[1] - range_[0]) * 1.7)
-            D, I = index.search(embed_matrix[range_[0]:range_[1]], k)
-            for i in tqdm(range(range_[0], range_[1])):
-                topkidx = I[i - range_[0]]
-                similar_neg_ex_idx = topkidx[((topkidx < range_[0]) | (topkidx >= range_[1])) & (topkidx != -1)]
-                for idx in similar_neg_ex_idx:
-                    neg_expression = idx2expression[idx]
-                    neg_expression_utterance = neg_expression.utterance
-                    neg_expression_intent = neg_expression.intent
-                    if FLAGS.random_generate == 'True':
-                        equal_sent = self.intent_template_dict[idx2expression[i].intent].generate_utterance(
-                            idx2expression[i])
-                        pair = [intent + "_" + neg_expression_intent, "0", equal_sent, neg_expression.exemplar]
-                    else:
-                        pair = [intent + "_" + neg_expression_intent, "0", expression_corpus[i],
-                                neg_expression.exemplar]
-                    entire_negative_sample.append(json.dumps(IntentExample(pair).toJSON(), indent=4))
-
-            entire_negative_sample = list(set(entire_negative_sample))
-            if len(entire_negative_sample) < FLAGS.neg_num or FLAGS.neg_num == -1:
-                subsample_neg = entire_negative_sample
-            else:
-                subsample_neg = random.sample(entire_negative_sample, FLAGS.neg_num)
-            negative_cnt = len(subsample_neg)
-            for item in subsample_neg:
-                partition = dataset_type(FLAGS.training_percentage, FLAGS.dev_percentage)
-                examples[partition].append(item)
-                intent_sample.append(item)
-
-            print(intent, "(pos:", positive_cnt, "neg:", negative_cnt, ")")
-            total_positive_cnt += positive_cnt
-            total_negative_cnt += negative_cnt
-        print(
-            f'total_positive_cnt :{total_positive_cnt} total_negative_cnt :{total_negative_cnt}  total:{total_positive_cnt + total_negative_cnt} ')
-        endtime = time.time()
-        print("total Time ", (endtime - starttime))
-        return examples
-
-
-def save(intent_examples, path, label):
+def save(examples, path, label):
     """
     save generated examples into tsv files
     :param intent_examples:  generated examples
     :param path: output path
     :return: None
     """
-    for key, examples in intent_examples.items():
+    for key, examples in examples.items():
         # we only generate one file for each folder
         with open(os.path.join(path, label), 'w', encoding='utf-8') as f:
             for example in examples:
-                f.write(example + "\n")
+                f.write(json.dumps(example.toJson(), indent=4) + "\n")
     return
 
 
@@ -508,34 +372,91 @@ def query(encoder, text, dataset, k=4):
     embedding = encoder.convert([text])[0].detach().cpu().numpy()
     scores, samples = dataset.get_nearest_examples("embeddings", embedding, k=k)
     samples_df = pd.DataFrame.from_dict(samples)
-    samples_df["scores"] = scores
-    samples_df.sort_values("scores", ascending=False, inplace=True)
+    samples_df["score"] = scores
+    samples_df.sort_values("score", ascending=False, inplace=True)
     return samples_df
 
 
-def get_exemplar_dataset(templates, encoder):
-    source = []
-    exemplars_list = []
+@gin.configurable
+class GenerateIntentExamples:
+    """
+    generate examples from templates.
+    """
+    def __init__(self, encoder, training_percentage, negative_percentage, seed=None):
+        if training_percentage < 0.0 or training_percentage > 1.0:
+            raise ValueError("training_percentage is out of range")
+        self.neg_percentage = negative_percentage
+        self.training_percentage = training_percentage
+        self.seed = seed
+        self.desc_k = 8
+        self.encoder = encoder
+        self.pos_num = 16
 
-    for key in templates.keys():
-        exemplars = templates[key]
-        for exemplar in exemplars.exemplars:
-            source.append(key)
-            exemplars_list.append(exemplar)
+    def __call__(self, templates, descriptions):
+        examples = []
+        random.seed(self.seed)
+        starttime = time.time()
 
-    results = pd.DataFrame({"source": source, "text": exemplars_list})
-    results = Dataset.from_pandas(results)
-    results = results.map(
-        lambda x: {"embeddings": torch.nn.functional.normalize(encoder.convert([x["text"]])).detach().cpu().numpy()[0]}
-    )
+        for intent, meta in templates.items():
+            # first create description related
+            print(f"Handling {intent}")
+            for exemplar, expression in meta.exemplars.items():
+                utterance = meta.generate_utterance(expression)
 
-    results.add_faiss_index(column="embeddings")
-    return results
+                # Sample from description
+                top_k_description = query(self.encoder, utterance, descriptions, k=8)
+                for _, row in top_k_description.iterrows():
+                    label = 1 if intent == row['source'] else 0
+                    desc = row['text']
+                    examples.append(IntentExample(intent, label, utterance, desc, False))
+
+                # Sample from positive example
+                pos_selection = random.sample(list(meta.exemplars.items()), self.pos_num)
+                for lexemplar, lexpression in pos_selection:
+                    if lexemplar == exemplar:
+                        continue
+                    tokenized = lexpression.tokenize_label()
+                    examples.append(IntentExample(intent, 1, utterance, tokenized, True))
+
+                # Sample from negative example:
+                neg_examples = []
+                for lintent, lmeta in templates.items():
+                    if lintent == intent:
+                        continue
+                    top_k_negatives = query(self.encoder, utterance, lmeta.dataset, k=8)
+                    for _, row in top_k_negatives.iterrows():
+                        score = row['score']
+                        tokenized = row["text"]
+                        neg_examples.append((lintent, tokenized, score))
+                neg_examples.sort(key=lambda x: x[2], reverse=True)
+                for example in neg_examples[0:self.pos_num]:
+                    examples.append(IntentExample(f"{intent}|{example[1]}", 0, utterance, example[1]))
+        return examples
 
 
-def printDF(results):
-    for _, row in results.iterrows():
-        print(f"{row['source']}:{row['text']}={row['score']}")
+def generate_slot_index(base_path):
+    slot_index = defaultdict(list)
+    with open(base_path + 'schema.json', encoding='utf-8') as f:
+        f = json.load(f)
+        for service in f:
+            # in the "overall"   generate mode,only pick <service>_1  if there are multiple  services for one intent
+            if service["service_name"][-1]!= '1':
+                continue
+
+            for intent in service['intents']:
+                slot_index[intent['name']] = []
+                for name in intent['required_slots']:
+                    for slot in service['slots']:
+                        if slot['name'] == name:
+                            slot_index[intent['name']].append(name)
+                for name in intent['optional_slots'].keys():
+                    for slot in service['slots']:
+                        if slot['name'] == name:
+                            slot_index[intent['name']].append(name)
+                slot_index[intent['name']] = list(set(slot_index[intent['name']]))
+    return slot_index
+
+
 
 
 if __name__ == '__main__':
@@ -553,14 +474,7 @@ if __name__ == '__main__':
         templates[key].finalize()
 
     # now we can create intent examples.
-
-
-
-
-    #build_intent_examples = IntentExampleGenerator(
-    #    FLAGS.training_percentage, FLAGS.negative_proportions, intent_template_dict)
-
-    #if FLAGS.fix_random_seed:
-    #    build_intent_examples.seed = 202006171752
-    #intent_examples = build_intent_examples(intent_expressions)
-    #save(intent_examples, FLAGS.output, FLAGS.label())
+    build_intent_examples = GenerateIntentExamples(encoder)
+    examples = build_intent_examples(templates, descriptions_dataset)
+    print(len(examples))
+    save(examples, FLAGS.output, FLAGS.label())

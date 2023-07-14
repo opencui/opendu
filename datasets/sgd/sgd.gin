@@ -13,3 +13,6 @@ SgdDataset.random_generate = False
 
 
 ModelEncoder.model_ckpt = "sentence-transformers/multi-qa-mpnet-base-dot-v1"
+
+GenerateIntentExamples.training_percentage = 1.0
+GenerateIntentExamples.negative_percentage = 1.0
