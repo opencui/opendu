@@ -2,23 +2,19 @@
 # coding: utf-8
 
 
-import string
 import json
 import os
 import random
 from collections import defaultdict
-import re
-from tracemalloc import start
 from absl import app
 from absl import flags
-import sys
-import time
+
 flags.DEFINE_bool(
     'fix_random_seed', True,
     'use fixed random seed(for debug)')
 
 flags.DEFINE_string(
-    'base_path', './train/',
+    'input', './train/',
     'path to input file (original dataset)'
     )
 
@@ -68,9 +64,8 @@ _oneto1={
 }
 arbic_set=set(_1toone.keys())
 word_set=set(_1toone.values())
-NUMBER_SET=set( _1toone.keys()) | set(_1toone.values()) 
-# print("arbic_set ",arbic_set,"word_set ",word_set)
-# print(f'NUMBER_SET :{NUMBER_SET}')
+NUMBER_SET=set( _1toone.keys()) | set(_1toone.values())
+
 
 def dataset_type(train_percentage, dev_percentage):
     val = random.random()
@@ -104,7 +99,7 @@ class IntentTemplate:
         self.slot_dict=defaultdict(set)
         self.service=service
         self.val_len_range=dict()
-    
+
     def generate_expression_template(self,slot_dict, utterance,string_list):
         '''
         replacing the slot val with the slot name,to avoid match the short slot val which may be inclued in other long slot val,we need sort by the length of the slot val
@@ -137,7 +132,7 @@ class IntentTemplate:
         for slot_name,slot_val_list  in expression.slots.items():
             for slot_val in slot_val_list:
                 self.slot_dict[slot_name].add(slot_val)
-    
+
     def slot_val_statics(self):
         for slot_name,slot_vals in self.slot_dict.items():
             min_len=100
@@ -155,8 +150,8 @@ class IntentTemplate:
 
                 expression_template=expression_template.replace('|||'+slot_name+'|||',list(slot_vals)[random.randint(0,len(slot_vals)-1)])
 
-        return expression_template    
-         
+        return expression_template
+
 
     def generate_equal_sample_fixed(self,expression,fixed_slot_name,fixed_slot_val,masked_len=0):
         '''
@@ -166,8 +161,8 @@ class IntentTemplate:
         for slot_name,slot_vals  in self.slot_dict.items():
             if '|||'+slot_name+'|||'   in  expression_template   and  expression_template.find('|||'+slot_name+'|||') != expression_template.find('|||'+fixed_slot_name+'|||'):
                 expression_template=expression_template.replace('|||'+slot_name+'|||',list(slot_vals)[random.randint(0,len(slot_vals)-1)])
-        new_start=expression_template.find('|||'+fixed_slot_name+'|||')  
-        if masked_len ==0:      
+        new_start=expression_template.find('|||'+fixed_slot_name+'|||')
+        if masked_len ==0:
             new_end=new_start+len(fixed_slot_val)
             expression_template=expression_template.replace('|||'+fixed_slot_name+'|||',fixed_slot_val)
         else:
@@ -177,32 +172,32 @@ class IntentTemplate:
                     mask_str+="[MASK]"
                 else:
                     mask_str+=" [MASK]"
-            new_end =len(mask_str) + new_start   
-            expression_template=expression_template.replace('|||'+fixed_slot_name+'|||',mask_str)    
-        return expression_template,(new_start,new_end)            
+            new_end =len(mask_str) + new_start
+            expression_template=expression_template.replace('|||'+fixed_slot_name+'|||',mask_str)
+        return expression_template,(new_start,new_end)
 
 def generate_slotindex(base_path):
     slot_index = defaultdict(list)
     with open(base_path + 'schema.json', encoding='utf-8') as f:
         f = json.load(f)
         for service in f:
-            if service["service_name"][-1]!= '1':# in the "overall"   generate mode,only pick <service>_1  if there are multiple  services for one intent
+            # in the "overall"   generate mode,only pick <service>_1  if there are multiple  services for one intent
+            if service["service_name"][-1]!= '1':
                 continue
-            for key, value in service.items():
-                if key == 'intents':
-                    for intent in value:
-                        slot_index[intent['name']] = []
-                        for name in intent['required_slots']:
-                            for slot in service['slots']:
-                                if slot['name'] == name:
-                                    if slot['type']  !=  'System.Boolean':#delete the slot which value type is  boolean
-                                        slot_index[intent['name']].append(name)
-                        for name in intent['optional_slots'].keys():
-                            for slot in service['slots']:
-                                if slot['name'] == name:
-                                    if slot['type']  !=  'System.Boolean':
-                                        slot_index[intent['name']].append(name)
-                        slot_index[intent['name']] = list(set(slot_index[intent['name']]))
+
+            for intent in service['intents']:
+                slot_index[intent['name']] = []
+                for name in intent['required_slots']:
+                    for slot in service['slots']:
+                        if slot['name'] == name:
+                            #if slot['type']  !=  'System.Boolean':#delete the slot which value type is  boolean
+                            slot_index[intent['name']].append(name)
+                for name in intent['optional_slots'].keys():
+                    for slot in service['slots']:
+                        if slot['name'] == name:
+                            #if slot['type']  !=  'System.Boolean':
+                            slot_index[intent['name']].append(name)
+                slot_index[intent['name']] = list(set(slot_index[intent['name']]))
 
     return slot_index
 
@@ -295,14 +290,14 @@ def load_add_slot_value(base_path,SLOTS):
                             for i,frame in enumerate(turn['frames']):
 
                                 if frame['service'][-1] == '1':
-                                    
+
                                     # all the text are lowercase
                                     turn['utterance']=turn['utterance'].lower()
                                     for slot_name,slot_val_list  in  frame['state']['slot_values'].items():
                                         for i in range(len(slot_val_list)):
                                             slot_val_list[i]=slot_val_list[i].lower()
 
-                                    
+
                                     cur_slot_name=set()
                                     string_list=[]
                                     slots = defaultdict(dict)
@@ -310,7 +305,7 @@ def load_add_slot_value(base_path,SLOTS):
                                     for _slot in frame['slots']:
                                         slots[_slot['slot']][turn['utterance'][_slot['start']:_slot['exclusive_end']]]=(_slot['start'],_slot['exclusive_end'])
                                         string_list.append((_slot['start'],_slot['exclusive_end']))
-                                    
+
                                     old_slots=slots.copy()
 
                                     vague_slot_names=set()
@@ -332,12 +327,12 @@ def load_add_slot_value(base_path,SLOTS):
                                                     if not  judge_legal_loc(utterance,pattern)  and judge_legal_loc(utterance,_oneto1[pattern]):
                                                         pattern=_oneto1[pattern]
                                             slot_val_list[i]=pattern
-                                    #the slot that would be used in the "slot_values"  is the new slot name ,or the slot values has been changed 
+                                    #the slot that would be used in the "slot_values"  is the new slot name ,or the slot values has been changed
                                     for slot_name,slot_val_list  in  frame['state']['slot_values'].items():
                                         if slot_name in cur_slot_name-pre_slot_name:
                                             for slot_val in slot_val_list:
                                                 new_slot_val2slot_name[slot_val].append(slot_name)
-                                    
+
                                     for slot_name,slot_val_list  in  frame['state']['slot_values'].items():
                                         if slot_name in cur_slot_name&pre_slot_name:
                                             for slot_val in slot_val_list:
@@ -348,10 +343,10 @@ def load_add_slot_value(base_path,SLOTS):
                                     for slot_name,slot_val_list  in  frame['state']['slot_values'].items():
                                         if slot_name in cur_slot_name-pre_slot_name:
                                             for slot_val in slot_val_list:
-                                                #if the slot val in the utterance locates more than 1 ,then  we could not judge which corresponds to it ,so we add it into the vague list 
+                                                #if the slot val in the utterance locates more than 1 ,then  we could not judge which corresponds to it ,so we add it into the vague list
                                                 if len(judge_single_word(turn['utterance'],slot_val))  >1 :
-                                                    vague_slot_names.add(slot_name)      
-                     
+                                                    vague_slot_names.add(slot_name)
+
                                     for slot_val,slot_name_list in new_slot_val2slot_name.items():
                                         #if in the new slot list exists one value corresponds to more than one slot name, we could not judge the which it belongs to ,so we  need to ignore it
                                         if len(slot_name_list) >1  :
@@ -371,9 +366,9 @@ def load_add_slot_value(base_path,SLOTS):
                                                     single_dict[value] = slot_name
 
                                     #replace the long slot value first to avoid the error
-                                    single_dict = sorted(single_dict.items(), key=lambda x: len(x[0]), reverse=True)   
+                                    single_dict = sorted(single_dict.items(), key=lambda x: len(x[0]), reverse=True)
 
-                                    
+
                                     for slot_val,slot_name  in single_dict:
                                         if  len(judge_single_word(turn['utterance'],slot_val)) ==1  and  (slot_name not in slots)  and  \
                                             ((slot_name in cur_slot_name-pre_slot_name  and slot_name  not in vague_slot_names)  or  \
@@ -389,7 +384,7 @@ def load_add_slot_value(base_path,SLOTS):
                                                     slots[slot_name][slot_val]=(start_position,end_position)
                                                     string_list.append((start_position,end_position))
 
-                                    vague_slot_names=vague_slot_names-set(old_slots.keys()) #the slot val that been flaged in the slots should be used                                         
+                                    vague_slot_names=vague_slot_names-set(old_slots.keys()) #the slot val that been flaged in the slots should be used
 
 
                                     all_frame_slot_name=all_frame_slot_name|cur_slot_name
@@ -418,6 +413,8 @@ class SlotExample:
         self.flag = quintuple[3]
         self.span = quintuple[4]
 
+    def toJSON(self):
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
 
 class SlotExampleGenerator:
     """
@@ -431,7 +428,7 @@ class SlotExampleGenerator:
         self.seed = seed
         self.all_sample=[]
         self.used_template=set()
-         
+
     def __call__(self, expressions, slots_dict,intent_template_dict):
         examples = defaultdict(list)
         random.seed(self.seed)
@@ -458,23 +455,23 @@ class SlotExampleGenerator:
                         equal_sent,(new_start,new_end)=intent_template_dict[expression.intent].generate_equal_sample_fixed(expression,slot,slot_val)
                         examp = [service_intent,equal_sent.lower(), " ".join(slot.split('_')), "1", str(new_start)+", "+str(new_end)]
                         partition = dataset_type(FLAGS.training_percentage, FLAGS.dev_percentage)
-                        examples[partition].append(json.dumps(SlotExample(examp)))
+                        examples[partition].append(json.dumps(SlotExample(examp).toJSON(), indent=4))
                         mask_len=random.randint(intent_template_dict[intent].val_len_range[slot][0],intent_template_dict[intent].val_len_range[slot][1])
-                        assert   mask_len != 0 
+                        assert   mask_len != 0
                         equal_sent,(new_start,new_end)=intent_template_dict[expression.intent].generate_equal_sample_fixed(expression,slot,slot_val,mask_len)
                         equal_sent=equal_sent.lower()
                         equal_sent=equal_sent.replace('[mask]','[MASK]')
                         examp = [service_intent, equal_sent, " ".join(slot.split('_')), "1", str(new_start) + ", " + str(new_end)]
                         partition = dataset_type(FLAGS.training_percentage, FLAGS.dev_percentage)
-                        examples[partition].append(json.dumps(SlotExample(examp)))
+                        examples[partition].append(json.dumps(SlotExample(examp).toJSON(), indent=4))
 
             neg_count=0
             for slot in slots_dict[intent]:
                 if slot not in expression.slots  and slot not in vague_slot_names:
-                    equal_sent=intent_template_dict[expression.intent].generate_equal_sample(expression)
+                    equal_sent=intent_template_dict[expression.intent].generate_utterance(expression)
                     examp = [service_intent, equal_sent.lower(), " ".join(slot.split('_')), "0", str((0, 0))[1:-1]]
                     partition = dataset_type(FLAGS.training_percentage, FLAGS.dev_percentage)
-                    examples[partition].append(json.dumps(SlotExample(examp)))
+                    examples[partition].append(json.dumps(SlotExample(examp).toJSON(), indent=4))
                     neg_count+=1
             total_pos_cnt+=pos_count
             total_neg_cnt+=neg_count
@@ -490,15 +487,15 @@ def save(slot_examples, path):
     """
     for key, examples in slot_examples.items():
         # key is train or test
-        with open(os.path.join(path, MODEL+'ADD_MASK_FRANE_CUT.'+FLAGS.base_path[2:-1]),'w') as f:
+        with open(os.path.join(path, MODEL+'ADD_MASK_FRANE_CUT.'+FLAGS.input[2:-1]),'w') as f:
             for example in examples:
                 f.write(example+"\n")
     return
 
 def main(_):
-    SLOTS = generate_slotindex(FLAGS.base_path)
+    SLOTS = generate_slotindex(FLAGS.input)
 
-    slot_expressions,intent_template_dict = load_add_slot_value(FLAGS.base_path,SLOTS)
+    slot_expressions,intent_template_dict = load_add_slot_value(FLAGS.input,SLOTS)
     build_slot_examples = SlotExampleGenerator(FLAGS.training_percentage, FLAGS.negative_proportions)
     if FLAGS.fix_random_seed:
         build_slot_examples.seed = 202006171752

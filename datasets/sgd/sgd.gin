@@ -1,0 +1,15 @@
+SgdDataset.input = "/home/sean/src/dstc8-schema-guided-dialogue/train/"
+SgdDataset.output = "/home/sean/src/nlu/res/sgd"
+SgdDataset.stop_word_path = "/home/sean/src/nlu/datasets/sgd/stop_words.txt"
+SgdDataset.fix_random_seed = True
+SgdDataset.pos_num = -1
+SgdDataset.neg_num = -1
+SgdDataset.training_percentage = 1.0
+SgdDataset.negative_proportions = 1.0
+SgdDataset.dev_percentage = 0
+SgdDataset.decode_method = 'transformer'
+SgdDataset.cover_filter = False
+SgdDataset.random_generate = False
+
+
+ModelEncoder.model_ckpt = "sentence-transformers/multi-qa-mpnet-base-dot-v1"
