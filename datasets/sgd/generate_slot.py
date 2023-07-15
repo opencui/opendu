@@ -107,7 +107,8 @@ class Expression:
 
 def generate_expression_template(slot_dict, utterance, string_list):
     """
-    replacing the slot val with the slot name,to avoid match the short slot val which may be inclued in other long slot val,we need sort by the length of the slot val
+    replacing the slot val with the slot name,to avoid match the short slot val which may be
+    included in other long slot val,we need sort by the length of the slot val
     """
     if not string_list:
         return utterance
@@ -120,7 +121,6 @@ def generate_expression_template(slot_dict, utterance, string_list):
     string_list = sorted(string_list, key=lambda x: x[0])
     res_utterance = utterance[:string_list[0][0]]
     for i, (cur_start, cur_end) in enumerate(string_list):
-
         res_utterance = res_utterance+'|||'+single_dict[utterance[cur_start:cur_end]]+'|||'
         if i == len(string_list)-1:
             res_utterance = res_utterance+utterance[cur_end:]
@@ -131,7 +131,8 @@ def generate_expression_template(slot_dict, utterance, string_list):
 
 class IntentTemplate:
     """
-    restore the all template of a certain intents, including the set of all possible examplers ,and the dict for all slot 
+    restore the all template of a certain intents, including the set of all possible exemplars,
+    and the dict for all slots
     """
     def __init__(self, service):
         self.exampler_set = set()

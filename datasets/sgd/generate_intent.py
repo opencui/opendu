@@ -326,6 +326,7 @@ class SearchSimilarExpressions:
         self.tfidf_matrix = idf_vectorizer.fit_transform(self.expression_corpus).toarray()
         self.sentence_embeddings = model.encode(self.expression_corpus)
 
+
 class IntentExample:
     def __init__(self, src, label, utterance, tokenized, exemplar=True):
         self.type = "intent"
@@ -455,8 +456,6 @@ def generate_slot_index(base_path):
                             slot_index[intent['name']].append(name)
                 slot_index[intent['name']] = list(set(slot_index[intent['name']]))
     return slot_index
-
-
 
 
 if __name__ == '__main__':

@@ -61,18 +61,10 @@ class SlotValue{
 fun getSlotRaw(utterance: String, intent: String, candidate: Map<String, List<SlotValue>>): Map<String, List<SlotValue>>
 ```
 
-The high level API that SDK should provide to user: (responsible by hui, do we really need llamaindex? We just need chroma, I think)
-```openapi
-typealias Kind description|exemplar
-typealias Prediction implies|means|none
-fun getIntent(utterance: String): List<Pair<Prediction, IntentLabel>>
 
-class SlotValue{
-    val label: String
-    val type: Entity (for now)
-    val operator: 
-    val start: Int
-    val end: Int
-    }
-fun getSlotRaw(utterance: String, intent: String, candidate: Mpa<String, List<SlotValue>>): Map<String, List<SlotValue>>
-```
+
+In long term, in no particular order:
+1. Figure out how to deal with multi intents in a single utterance. 
+2. Handle operators: not, or, and special value [don't care]. 
+3. Handle frame slot filling. 
+4. Carry out implicature calculation.
