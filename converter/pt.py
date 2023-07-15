@@ -59,7 +59,7 @@ class OpencuiIntent:
 
 
 @gin.configurable
-class OpencuiSlot:
+class OpencuiEntitySlot:
     def __init__(self, lang, path):
         self.path = path
         self.lang = lang
