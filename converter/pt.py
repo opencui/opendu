@@ -40,19 +40,17 @@ class OpencuiIntent:
         self.path = path
         self.lang = lang
         self.templates = {
-            "en" : Template("Does $x imply $y? true of false."),
+            "en": Template("What is the relation between $x $arrow $left $y? $right implies, mean or irrelevant")
         }
-        self.labels = {
-            "0" : "false",
-            "1" : "true"
-        }
+
+        self.labels = ["irrelevant", "means", "implies"]
 
     def __call__(self):
         # Prepare for the basic dataset.
         template = self.templates[self.lang]
         rdataset = load_dataset(self.dataset_format, self.dataset_name)
         return rdataset.map(
-            lambda x: {"output": [self.labels[x.label]], "input": [template.substitute({'x' : x.utterance, 'y' : x.exemplar})]},
+            lambda x: {"output": [self.labels[x.label]], "input": [template.substitute({'x' : x.utterance, 'y' : x.reference})]},
             batched=True,
             num_proc=1,
         )

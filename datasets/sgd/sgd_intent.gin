@@ -1,3 +1,4 @@
+
 SgdDataset.input = "/home/sean/src/dstc8-schema-guided-dialogue/train/"
 SgdDataset.output = "/home/sean/src/nlu/res/sgd"
 SgdDataset.stop_word_path = "/home/sean/src/nlu/datasets/sgd/stop_words.txt"
