@@ -123,12 +123,12 @@ def check_stop_words(slot_dict, utterance, string_list, stop_words_path):
     return False
 
 
-def generate_expression_template(slot_dict, utterance, string_list):
+def generate_expression_template(slot_dict, utterance, spans):
     '''
     replacing the slot val with the slot name,to avoid match the short slot val which may be included in other
     long slot val,we need sort by the length of the slot val
     '''
-    if string_list == []:
+    if spans == []:
         return utterance
     single_dict = dict()
 
@@ -136,16 +136,16 @@ def generate_expression_template(slot_dict, utterance, string_list):
         for value in values:
             single_dict[value] = key
 
-    string_list = sorted(string_list, key=lambda x: x[0])
-    res_utterance = utterance[:string_list[0][0]]
-    for i, (cur_start, cur_end) in enumerate(string_list):
+    spans = sorted(spans, key=lambda x: x[0])
+    res_utterance = utterance[:spans[0][0]]
+    for i, (cur_start, cur_end) in enumerate(spans):
         # if len(string_list) >=2:
         #     print("sub string",utterance[cur_start:cur_end])
         res_utterance = res_utterance + ' < ' + single_dict[utterance[cur_start:cur_end]] + ' > '
-        if i == len(string_list) - 1:
+        if i == len(spans) - 1:
             res_utterance = res_utterance + utterance[cur_end:]
         else:
-            res_utterance = res_utterance + utterance[cur_end:string_list[i + 1][0]]
+            res_utterance = res_utterance + utterance[cur_end:spans[i + 1][0]]
 
     return res_utterance
 
@@ -156,13 +156,14 @@ class IntentMeta:
     and the dict for all slot
     """
 
-    def __init__(self):
+    def __init__(self, service):
         self.exemplars = dict()
         self.slot_dict = defaultdict(set)
+        self.service = service
         self.dataset = None
 
     def add_sample(self, expression):
-        expression_template = generate_expression_template(expression.slots, expression.utterance, expression.string_list)
+        expression_template = generate_expression_template(expression.slots, expression.utterance, expression.spans)
         if expression_template in self.exemplars:
             return
 
@@ -173,7 +174,7 @@ class IntentMeta:
         self.exemplars[expression_template] = expression
 
     def generate_utterance(self, expression):
-        expression_template = generate_expression_template(expression.slots, expression.utterance, expression.string_list)
+        expression_template = generate_expression_template(expression.slots, expression.utterance, expression.spans)
         for slot_name, slot_vals in self.slot_dict.items():
             if '< ' + slot_name + ' >' in expression_template:
                 expression_template = expression_template.replace('< ' + slot_name + ' >', list(slot_vals)[random.randint(0, len(slot_vals) - 1)])
@@ -217,9 +218,10 @@ class Expression:
             no_underscore_utterance = no_underscore_utterance.replace(key, ' '.join(key.split('_')))
         return no_underscore_utterance
 
+
 def cover_reaction(expression_A, expression_B):
     '''
-    check if the slot of A could cover all of slot of B
+    check if the slot of A could cover all slot of B
     '''
     return set(expression_B.slots.keys()).issubset(set(expression_A.slots.keys()))
 

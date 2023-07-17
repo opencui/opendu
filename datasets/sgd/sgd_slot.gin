@@ -1,0 +1,6 @@
+
+
+GenerateSlotExamples.training_percentage = 1.0
+GenerateSlotExamples.neg_percentage = 1.0
+GenerateSlotExamples.input = "/home/sean/src/dstc8-schema-guided-dialogue/train/"
+GenerateSlotExamples.output = "/home/sean/datasets/opencui/sgd/train/"
