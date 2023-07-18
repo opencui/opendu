@@ -30,10 +30,10 @@ class SlotExample:
         self.slot_name = slot_name
         self.slot_description = None
         self.candidates = candidates  # this should include all the occurrences of the slot type.
-        self.spans = spans
+        self.targets = spans
 
     def toJSON(self):
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4).replace("\n", "")
 
 
 def build_matcher(slot_values):
@@ -215,11 +215,11 @@ class GenerateSlotExamples:
         :param path: output path
         :return: None
         """
-        for key, examples in slot_examples.items():
-            # key is train or test
-            with open(f"{self.output}/new_slot.json", 'w') as f:
+        with open(f"{self.output}/new_slot.json", 'w') as f:
+            for key, examples in slot_examples.items():
+                # key is train or test
                 for example in examples:
-                    f.write(json.dumps(example.toJSON(), indent=4) + "\n")
+                    f.write(example.toJSON() + "\n")
         return
 
 

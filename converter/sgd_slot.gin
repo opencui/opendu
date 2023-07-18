@@ -1,0 +1,18 @@
+
+PromptTuner.model_name_or_path =  "togethercomputer/RedPajama-INCITE-Instruct-3B-v1"
+
+OpenCUIEntitySlot.path = "/home/sean/datasets/opencui/sgd/train/new_slot.json"
+OpenCUIEntitySlot.lang = "en"
+OpenCUIEntitySlot.left_mark = "[["
+OpenCUIEntitySlot.right_mark = "]]"
+OpenCUIEntitySlot.separator = "||"
+
+
+
+T2TPreprocessor.max_length = 64
+
+Optimizer.lr = 3e-2
+Optimizer.num_epochs = 50
+Optimizer.batch_size = 8
+
+Trainer.build_dataset = @OpenCUIEntitySlot()

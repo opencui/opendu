@@ -163,7 +163,7 @@ class IntentMeta:
         self.dataset = None
 
     def add_sample(self, expression):
-        expression_template = generate_expression_template(expression.slots, expression.utterance, expression.spans)
+        expression_template = generate_expression_template(expression.slots, expression.utterance, expression.truth_spans)
         if expression_template in self.exemplars:
             return
 
@@ -174,7 +174,7 @@ class IntentMeta:
         self.exemplars[expression_template] = expression
 
     def generate_utterance(self, expression):
-        expression_template = generate_expression_template(expression.slots, expression.utterance, expression.spans)
+        expression_template = generate_expression_template(expression.slots, expression.utterance, expression.truth_spans)
         for slot_name, slot_vals in self.slot_dict.items():
             if '< ' + slot_name + ' >' in expression_template:
                 expression_template = expression_template.replace('< ' + slot_name + ' >', list(slot_vals)[random.randint(0, len(slot_vals) - 1)])
@@ -339,13 +339,13 @@ class IntentExample:
         self.exemplar = tokenized
 
     def toJSON(self):
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4).replace("\n", "")
 
 
 def save(examples, path, label):
     """
     save generated examples into tsv files
-    :param intent_examples:  generated examples
+    :param examples:  generated examples
     :param path: output path
     :return: None
     """
@@ -353,7 +353,7 @@ def save(examples, path, label):
         # we only generate one file for each folder
         with open(os.path.join(path, label), 'w', encoding='utf-8') as f:
             for example in examples:
-                f.write(json.dumps(example.toJson(), indent=4) + "\n")
+                f.write(example.toJson() + "\n")
     return
 
 
