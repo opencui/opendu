@@ -37,24 +37,41 @@ class PromptTuner:
 
 @gin.configurable
 class OpenCUIIntent:
+    """
+    We assume this data set has at least the following three columns: utterance, kind, reference, label (2, 1, 0)
+    """
     def __init__(self, lang, path):
         self.path = path
         self.lang = lang
         self.templates = {
-            "en": Template("What is the relation between $x $arrow $left $y? $right implies, mean or irrelevant")
+            "en": Template("Is '$reference' implied, meant or irrelevant from  $kind '$utterance'?")
         }
 
-        self.labels = ["irrelevant", "means", "implies"]
+        self.labels = {"en": ["irrelevant", "meant", "implied"]}
+
+    def build_examples(self, raw_examples):
+        """
+        When there are candidates, we will create two examples, the original example,
+        and then the one with candidate boundary marker.
+        """
+        inputs = []
+        outputs = []
+        batch_size = len(raw_examples["candidates"])
+        print(batch_size)
+        template = self.templates[self.lang]
+        for idx in range(batch_size):
+            target = raw_examples["target"][idx]
+            utterance = raw_examples["utterance"][idx]
+            reference = raw_examples["reference"][idx]
+            kind = raw_examples["kind"][idx]
+            outputs.append(target)
+            inputs.append(template.substitute({'reference': reference, 'utterance': utterance, "kind": kind}))
+        return {"output": outputs, "input": inputs}
 
     def __call__(self):
         # Prepare for the basic dataset.
-        template = self.templates[self.lang]
-        rdataset = load_dataset(self.dataset_format, self.dataset_name)
-        return rdataset.map(
-            lambda x: {"output": [self.labels[x.label]], "input": [template.substitute({'x' : x.utterance, 'y' : x.reference})]},
-            batched=True,
-            num_proc=1,
-        )
+        dataset = load_dataset("json",  data_files=self.path)
+        return dataset.map(self.build_examples, batched=True, remove_columns=dataset["train"].column_names, num_proc=1)
 
 
 def compute_label(targets, utterance):
@@ -82,6 +99,8 @@ class OpenCUIEntitySlot:
     """
     There are a couple steps for the slot filling: from entity to frame, from equals to other operators.
     We start with entity slot with equals semantics.
+    There should have at least the following columns: utterance, slot_name, description, candidates, targets.
+    Both candidates and targets are list of tuples (start, end).
     """
     def __init__(self, lang, path, left_mark, right_mark, separator):
         self.path = path
@@ -93,7 +112,7 @@ class OpenCUIEntitySlot:
             "en": Template("Find value for $slot in $utterance"),
         }
 
-    def build_slot_examples(self, raw_examples):
+    def build_examples(self, raw_examples):
         """
         When there are candidates, we will create two examples, the original example,
         and then the one with candidate boundary marker.
@@ -123,7 +142,7 @@ class OpenCUIEntitySlot:
         print("create dataset")
         dataset = load_dataset("json",  data_files=self.path)
         print(dataset["train"].column_names)
-        return dataset.map(self.build_slot_examples, batched=True, remove_columns=dataset["train"].column_names, num_proc=1)
+        return dataset.map(self.build_examples, batched=True, remove_columns=dataset["train"].column_names, num_proc=1)
 
 
 @gin.configurable
