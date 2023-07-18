@@ -2,6 +2,7 @@ import gin
 from transformers import AutoModelForCausalLM
 from peft import get_peft_model, PromptTuningInit, PromptTuningConfig, TaskType
 import torch
+import json
 import sys
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
@@ -35,7 +36,7 @@ class PromptTuner:
 
 
 @gin.configurable
-class OpencuiIntent:
+class OpenCUIIntent:
     def __init__(self, lang, path):
         self.path = path
         self.lang = lang
@@ -56,28 +57,73 @@ class OpencuiIntent:
         )
 
 
+def compute_label(targets, utterance):
+    return map(lambda x: utterance[x[0]:x[1]], targets)
+
+
+def add_mark(utterance, candidates, left_mark, right_mark, separator):
+    marks = []
+    for span in candidates:
+        marks.append((True, span[0]))
+        marks.append((False, span[1]))
+    marks.sort(key=lambda x: x[1])
+    index = 0
+    res = []
+    for mark in marks:
+        if index != mark[1]:
+            res.append(utterance[index:mark[1]])
+        res.append(left_mark if mark[0] else right_mark)
+        index = mark[1]
+    return separator.join(res)
+
+
 @gin.configurable
-class OpencuiEntitySlot:
-    def __init__(self, lang, path):
+class OpenCUIEntitySlot:
+    """
+    There are a couple steps for the slot filling: from entity to frame, from equals to other operators.
+    We start with entity slot with equals semantics.
+    """
+    def __init__(self, lang, path, left_mark, right_mark, separator):
         self.path = path
         self.lang = lang
+        self.left_mark = left_mark
+        self.right_mark = right_mark
+        self.separator = separator
         self.templates = {
-            "en" : Template("Find value for $slot in $utterance"),
+            "en": Template("Find value for $slot in $utterance"),
         }
 
-    def computeOutput(self, example):
-        sspan = example.span
-        ispan = map(int, sspan.split(","))
-        return example.utterance[ispan[0]:ispan[1]]
+    def build_slot_examples(self, raw_examples):
+        """
+        When there are candidates, we will create two examples, the original example,
+        and then the one with candidate boundary marker.
+        """
+        inputs = []
+        outputs = []
+        batch_size = len(raw_examples["candidates"])
+        print(batch_size)
+        template = self.templates[self.lang]
+        for idx in range(batch_size):
+            targets = raw_examples["targets"][idx]
+            utterance = raw_examples["utterance"][idx]
+            slot_name = raw_examples["slot_name"][idx]
+            candidates = raw_examples["candidates"][idx]
+
+            print(f"t-{targets}:u-{utterance}:s-{slot_name}:c-{candidates}\n")
+            outputs.append(self.separator.join(compute_label(targets, utterance)))
+            inputs.append(template.substitute({'slot': slot_name, 'utterance': utterance}))
+            if len(candidates) != 0:
+                new_utterance = add_mark(utterance, candidates, self.left_mark, self.right_mark, self.separator)
+                outputs.append(self.separator.join(compute_label(targets, utterance)))
+                inputs.append(template.substitute({'slot': slot_name, 'utterance': new_utterance}))
+
+        return {"output": outputs, "input": inputs}
 
     def __call__(self):
-        template = self.templates[self.lang]
-        rdataset = load_dataset(self.dataset_format, self.dataset_name)
-        return rdataset.map(
-            lambda x: {"output": [self.computeOutput(x)], "input": [template.substitute({'slot' : x.slot, 'utterance' : x.utterance})]},
-            batched=True,
-            num_proc=1,
-        )
+        print("create dataset")
+        dataset = load_dataset("json",  data_files=self.path)
+        print(dataset["train"].column_names)
+        return dataset.map(self.build_slot_examples, batched=True, remove_columns=dataset["train"].column_names, num_proc=1)
 
 
 @gin.configurable
@@ -151,7 +197,6 @@ class Optimizer:
         self.batch_size = batch_size
         self.optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
-
         self.train_dataloader = DataLoader(
             train_dataset, shuffle=True, collate_fn=default_data_collator, batch_size=self.batch_size, pin_memory=True)
         self.eval_dataloader = DataLoader(
@@ -211,6 +256,7 @@ class Trainer:
     def train(self):
         # prepare the dataset.
         dataset = self.build_dataset()
+        print(dataset)
         preprocess_function = T2TPreprocessor(self.tuner.tokenizer)
 
         processed_datasets = dataset.map(
