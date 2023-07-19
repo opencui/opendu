@@ -304,6 +304,5 @@ if __name__ == "__main__":
     trainer.train()
 
     # Figure out how to push model to huggingface.
-    peft_model_id = "opencui/test_PROMPT_TUNING_CAUSAL_LM"
-    trainer.model.push_to_hub("opencui/test_PROMPT_TUNING_CAUSAL_LM", use_auth_token=True)
+    trainer.model.push_to_hub("OpenCUI/test_PROMPT_TUNING_CAUSAL_LM", use_auth_token=True)
 
