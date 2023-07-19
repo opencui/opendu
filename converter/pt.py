@@ -2,7 +2,6 @@ import gin
 from transformers import AutoModelForCausalLM
 from peft import get_peft_model, PromptTuningInit, PromptTuningConfig, TaskType
 import torch
-import json
 import sys
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
@@ -22,7 +21,7 @@ from string import Template
 
 @gin.configurable
 class PromptTuner:
-    def __init__(self, model_name_or_path):
+    def __init__(self, model_name_or_path, num_of_virtual_tokens):
         self.model_name_or_path = model_name_or_path
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, add_eos_token=True)
         if self.tokenizer.pad_token_id is None:
@@ -31,7 +30,7 @@ class PromptTuner:
         self.config = PromptTuningConfig(
             task_type=TaskType.CAUSAL_LM,
             prompt_tuning_init=PromptTuningInit.RANDOM,
-            num_virtual_tokens=8,
+            num_virtual_tokens=num_of_virtual_tokens,
         )
 
 
@@ -128,7 +127,6 @@ class OpenCUIEntitySlot:
             slot_name = raw_examples["slot_name"][idx]
             candidates = raw_examples["candidates"][idx]
 
-            print(f"t-{targets}:u-{utterance}:s-{slot_name}:c-{candidates}\n")
             outputs.append(self.separator.join(compute_label(targets, utterance)))
             inputs.append(template.substitute({'slot': slot_name, 'utterance': utterance}))
             if len(candidates) != 0:
@@ -139,9 +137,7 @@ class OpenCUIEntitySlot:
         return {"output": outputs, "input": inputs}
 
     def __call__(self):
-        print("create dataset")
-        dataset = load_dataset("json",  data_files=self.path)
-        print(dataset["train"].column_names)
+        dataset = load_dataset("json",  data_files=self.path, split='train').train_test_split(test_size=0.99)
         return dataset.map(self.build_examples, batched=True, remove_columns=dataset["train"].column_names, num_proc=1)
 
 
@@ -219,7 +215,7 @@ class Optimizer:
         self.train_dataloader = DataLoader(
             train_dataset, shuffle=True, collate_fn=default_data_collator, batch_size=self.batch_size, pin_memory=True)
         self.eval_dataloader = DataLoader(
-            eval_dataset, collate_fn=default_data_collator, batch_size=self.batch_size, pin_memory=True)
+            eval_dataset, collate_fn=default_data_collator, batch_size=self.batch_size, pin_memory=False)
 
         self.lr_scheduler = get_linear_schedule_with_warmup(
             optimizer=self.optimizer,
@@ -275,7 +271,7 @@ class Trainer:
     def train(self):
         # prepare the dataset.
         dataset = self.build_dataset()
-        print(dataset)
+        print(f"dataset: {dataset}")
         preprocess_function = T2TPreprocessor(self.tuner.tokenizer)
 
         processed_datasets = dataset.map(
@@ -288,7 +284,10 @@ class Trainer:
         )
 
         train_dataset = processed_datasets["train"]
-        eval_dataset = processed_datasets["train"]
+        eval_dataset = processed_datasets["test"]
+        print(f"dataset: {eval_dataset}")
+        eval_dataset = eval_dataset.select(range(80))
+        print(f"dataset: {eval_dataset}")
 
         self.model = get_peft_model(self.model, self.tuner.config)
         print(self.model.print_trainable_parameters())
