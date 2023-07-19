@@ -13,7 +13,7 @@ OpenCUIEntitySlot.separator = "||"
 T2TPreprocessor.max_length = 64
 
 Optimizer.lr = 3e-2
-Optimizer.num_epochs = 2
+Optimizer.num_epochs = 1
 Optimizer.batch_size = 8
 
 Trainer.build_dataset = @OpenCUIEntitySlot()

@@ -9,7 +9,6 @@ from transformers import default_data_collator, get_linear_schedule_with_warmup
 from tqdm import tqdm
 from datasets import load_dataset
 from string import Template
-from huggingface_hub import notebook_login
 
 # this is dependency
 # pip install -q peft transformers datasets gin-config
@@ -287,7 +286,7 @@ class Trainer:
         train_dataset = processed_datasets["train"]
         eval_dataset = processed_datasets["test"]
         print(f"dataset: {eval_dataset}")
-        eval_dataset = eval_dataset.select(range(800))
+        eval_dataset = eval_dataset.select(range(80))
         print(f"dataset: {eval_dataset}")
 
         self.model = get_peft_model(self.model, self.tuner.config)
@@ -304,7 +303,6 @@ if __name__ == "__main__":
     trainer = Trainer()
     trainer.train()
 
-    notebook_login()
     # Figure out how to push model to huggingface.
     peft_model_id = "opencui/test_PROMPT_TUNING_CAUSAL_LM"
     trainer.model.push_to_hub("opencui/test_PROMPT_TUNING_CAUSAL_LM", use_auth_token=True)

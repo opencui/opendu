@@ -1,6 +1,7 @@
 import torch
 from peft import PeftModel, PeftConfig
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from string import Template
 
 
 class SlotMeta:
@@ -14,17 +15,6 @@ class SlotMeta:
         self.prompt = prompt
 
 
-class FunctionId:
-    """
-    If the function is templated, then function should be template, so that we can specialize it.
-    For example: f"slot_update{slot_type}"
-    """
-    def __init__(self, service, function, type_parameters=[]):
-        self.service = service
-        self.function = function
-        self.type_parameters = type_parameters
-
-
 class Reference:
     def __init__(self, kind, reference):
         """
@@ -32,16 +22,6 @@ class Reference:
         """
         self.kind = kind
         self.reference = reference
-
-class Services:
-    def list_functions(self, utterance):
-        """
-        Return the list of function.
-        """
-        return None
-
-    def list_slot_metas(self, function):
-        return None
 
 
 class Decoder:
