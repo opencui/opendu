@@ -265,7 +265,10 @@ class Optimizer:
 class Trainer:
     def __init__(self, build_dataset):
         self.tuner = PromptTuner()
-        self.model = AutoModelForCausalLM.from_pretrained(self.tuner.model_name_or_path)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            self.tuner.model_name_or_path,
+            torch_dtype=torch.float16,
+            device_map='auto')
         self.build_dataset = build_dataset
 
     def train(self):
