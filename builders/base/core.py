@@ -13,6 +13,7 @@ import random
 import time
 import pandas as pd
 
+
 @gin.configurable
 class PerplexityCalculator:
     def __init__(self, model_id='gpt2'):
