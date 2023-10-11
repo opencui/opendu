@@ -22,6 +22,7 @@ from transformers import (
 from datasets import Dataset, concatenate_datasets
 from builders.viggo import Viggo
 from builders.commons import DatasetCreator, SimplePrompt
+from pybars import Compiler
 
 if torch.cuda.is_available():
     torch.backends.cuda.matmul.allow_tf32 = True
@@ -180,10 +181,10 @@ def get_accelerate_model(args, pconverters):
         special_tokens_dict = dict(pad_token=DEFAULT_PAD_TOKEN)
 
     extra_special_tokens = set()
-    for _, pprompt in converters:
-        extra_special_tokens.add_all(pprompt.extra_tokens())
+    for converter in converters:
+        extra_special_tokens.update(converter.prompt.extra_tokens())
 
-    special_tokens_dict.update(additional_special_tokens=extra_special_tokens)
+    special_tokens_dict.update(additional_special_tokens=list(extra_special_tokens))
 
     smart_tokenizer_and_embedding_resize(
         special_tokens_dict=special_tokens_dict,
@@ -310,10 +311,9 @@ def extract_unnatural_instructions_data(examples, extract_reformulations=False):
 
 def get_dataset(creators, split: str) -> Dataset:
     datasets = []
-    for creator, pprompt in creators:
+    for creator in creators:
         dataset = creator.build(split)
         if dataset is not None:
-            dataset = dataset.map(pprompt)
             datasets.append(dataset)
     return concatenate_datasets(datasets)
 
@@ -455,8 +455,11 @@ def train(converters):
             fout.write(json.dumps(all_metrics))
 
 
-if __name__ == "__main__":
-    prompt = SimplePrompt("Convert the input to structured representation. Input: {{utterance}} \n Output: {{output}}")
-    converters = [(Viggo(), prompt)]
+def println(x):
+    print(x)
+    print("\n")
 
+if __name__ == "__main__":
+    prompt = SimplePrompt("Convert the input to structured representation. Input: {{utterance}} Output:")
+    converters = [Viggo(prompt)]
     train(converters)

@@ -37,16 +37,20 @@ class SimplePrompt(Prompt, ABC):
     def __init__(self, source):
         self.template = Prompt.compiler.compile(source)
 
-    def __call__(self, utterance: str, output: str = ""):
-        return self.template({"utterance": utterance, "output": output})
+    # Assume the item has ["utterance", "output"], and "utterance" is used to create input.
+    def __call__(self, item):
+        return self.template(item)
 
 
 #
 # This is need to create the different dataset based on prompt templating.
 #
-class DatasetCreator:
+class DatasetCreator(ABC):
     __metaclass__ = abc.ABCMeta
-    templates = dict[str, ]
+    prompt: Prompt
+
+    def get_prompt(self) -> Prompt:
+        return self.prompt
 
     @abc.abstractmethod
     def get_meta(self) -> Domain:

@@ -40,20 +40,27 @@ domain = Domain(
 )
 
 
-class Viggo(DatasetCreator, ABC):
+class Viggo(DatasetCreator):
+    def __init__(self, prompt):
+        self.prompt = prompt
+
     def get_meta(self) -> Domain:
         return domain
 
     def build(self, split: str) -> Dataset:
         datasets = load_dataset("GEM/viggo")
+        if split == "eval":
+            split = "validation"
         dataset = datasets[split]
         dataset = dataset.rename_column("target", "utterance")
         dataset = dataset.rename_column("meaning_representation", "output")
         dataset = dataset.remove_columns("references")
+        dataset = dataset.map(lambda x: {"input": self.prompt(x)})
         return dataset
 
 
 if __name__ == "__main__":
-    viggo = Viggo()
+    prompt = SimplePrompt("Convert the input to structured representation. Input: {{utterance}} Output:")
+    viggo = Viggo(prompt)
     print(viggo.build("train"))
 
