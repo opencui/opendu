@@ -456,10 +456,6 @@ def train(converters):
             fout.write(json.dumps(all_metrics))
 
 
-def println(x):
-    print(x)
-    print("\n")
-
 if __name__ == "__main__":
     prompt = SimplePrompt("Convert the input to structured representation. Input: {{utterance}} Output:")
     converters = [Viggo(prompt)]
