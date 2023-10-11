@@ -24,7 +24,7 @@ python3 ftconverter/finetune.py \
     --warmup_ratio 0.05 \
     --lr_scheduler_type constant \
     --source_max_len 16 \
-    --target_max_len 512 \
+    --target_max_len 256 \
     --per_device_train_batch_size 4 \
     --max_steps 0 \
     --num_train_epochs 5 \

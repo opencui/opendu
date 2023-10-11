@@ -166,6 +166,7 @@ def get_accelerate_model(args, pconverters):
         args.model_name_or_path,
         device_map=device_map,
         trust_remote_code=args.trust_remote_code,
+        torch_dtype=torch.bfloat16
     )
 
     # Tokenizer
