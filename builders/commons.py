@@ -49,9 +49,6 @@ class DatasetCreator(ABC):
     __metaclass__ = abc.ABCMeta
     prompt: Prompt
 
-    def get_prompt(self) -> Prompt:
-        return self.prompt
-
     @abc.abstractmethod
     def get_meta(self) -> Domain:
         """This return the domain meta needed."""
