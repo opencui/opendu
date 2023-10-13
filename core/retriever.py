@@ -12,8 +12,8 @@ from llama_index import ServiceContext, StorageContext, load_index_from_storage
 from llama_index import VectorStoreIndex,  SimpleKeywordTableIndex
 from llama_index.schema import TextNode, NodeWithScore
 from llama_index import QueryBundle
-from embedding import get_embedding
-from builders.viggo import  Viggo
+from builders.viggo import Viggo
+from core.embedding import InstructedEmbeddings
 
 # Retrievers
 from llama_index.retrievers import (
@@ -26,11 +26,15 @@ from llama_index.retrievers import (
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
+embedding_model_name = "BAAI/bge-small-en"
+embedding_instruction = "Represent this sentence for searching relevant passages:"
+
 
 # This is used to create the retriever so that we can get dynamic exemplars into understanding.
+
 def create_index(path: str, datasets: dict[str, Dataset]):
     nodes = []
-    for name, dataset in datasets:
+    for name, dataset in datasets.items():
         for item in dataset:
             utterance = item['utterance']
             output = item['output']
@@ -46,7 +50,7 @@ def create_index(path: str, datasets: dict[str, Dataset]):
     service_context = ServiceContext.from_defaults(
         llm=None,
         llm_predictor=None,
-        embed_model=get_embedding(),
+        embed_model=InstructedEmbeddings(embedding_model_name, embedding_instruction),
     )
 
     storage_context = StorageContext.from_defaults()
@@ -75,12 +79,13 @@ def create_index(path: str, datasets: dict[str, Dataset]):
 class HybridRetriever(BaseRetriever):
     """Custom retriever that performs both semantic search and hybrid search."""
 
-    def __init__(self, path: str, topk: int = 8, mode: str = "AND") -> None:
+    def __init__(self, path: str, topk: int = 8, mode: str = "OR") -> None:
         """Init params."""
+        embedding = InstructedEmbeddings(embedding_model_name, embedding_instruction)
         service_context = ServiceContext.from_defaults(
             llm=None,
             llm_predictor=None,
-            embed_model=get_embedding())
+            embed_model=embedding)
         storage_context = StorageContext.from_defaults(persist_dir=path)
         embedding_index = load_index_from_storage(
             storage_context,
@@ -124,3 +129,10 @@ if __name__ == "__main__":
     ds = Viggo().build("train")
     output = "./index/"
     create_index(output, {"viggo": ds})
+
+    retriever = HybridRetriever(output)
+    utterance = "Are you into third person PC games like Little Big Adventure?"
+    results = retriever.retrieve(utterance)
+    for result in results:
+        print(result)
+        print("\n")

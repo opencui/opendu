@@ -2,7 +2,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import transformers
 import torch
 
-from builders.commons import SimplePrompt
+from core.commons import SimplePrompt
 
 
 #

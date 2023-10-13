@@ -31,8 +31,3 @@ class InstructedEmbeddings(BaseEmbedding):
     def _get_text_embeddings(self, texts: List[str]) -> List[List[float]]:
         embeddings = self._model.encode(texts)
         return embeddings.tolist()
-
-
-@gin.configurable
-def get_embedding(model_name: str, instruction: str):
-    return InstructedEmbeddings(model_name=model_name, instruction=instruction)

@@ -21,8 +21,7 @@ from transformers import (
 )
 from datasets import Dataset, concatenate_datasets
 from builders.viggo import Viggo
-from builders.commons import DatasetWrapper, SimplePrompt
-from pybars import Compiler
+from core.commons import DatasetWrapper, SimplePrompt
 
 if torch.cuda.is_available():
     torch.backends.cuda.matmul.allow_tf32 = True

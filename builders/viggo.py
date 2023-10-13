@@ -1,6 +1,5 @@
-from abc import ABC
 from datasets import load_dataset, Dataset
-from builders.commons import Domain, DatasetCreator, SimplePrompt
+from core.commons import Domain, DatasetCreator
 
 # Each raw dataset should be responsible for a couple of things:
 # 1. Whether there are new special token need to be added.
