@@ -41,8 +41,8 @@ domain = Domain(
 
 
 class Viggo(DatasetCreator):
-    def __init__(self, prompt):
-        self.prompt = prompt
+    def __init__(self, mode: str = "full"):
+        self.mode = mode
 
     def get_meta(self) -> Domain:
         return domain
@@ -53,14 +53,18 @@ class Viggo(DatasetCreator):
             split = "validation"
         dataset = datasets[split]
         dataset = dataset.rename_column("target", "utterance")
-        dataset = dataset.rename_column("meaning_representation", "output")
+        dataset = dataset.rename_column("gem_id", "id")
         dataset = dataset.remove_columns("references")
-        dataset = dataset.map(lambda x: {"input": self.prompt(x)})
+        if self.mode == "intent_only":
+            dataset = dataset.map(lambda x: {"output": x["meaning_representation"].split("(")[0]})
+        if self.mode == "full":
+            dataset = dataset.map(lambda x: {"output": x["meaning_representation"]})
         return dataset
 
 
 if __name__ == "__main__":
-    prompt = SimplePrompt("Convert the input to structured representation. Input: {{utterance}} Output:")
-    viggo = Viggo(prompt)
-    print(viggo.build("train"))
+    items = Viggo().build("train").select(range(2))
+    for item in items:
+        print(item)
+        print("\n")
 

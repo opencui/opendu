@@ -5,7 +5,7 @@
 
 python3 ftconverter/finetune.py \
     --model_name_or_path PY007/TinyLlama-1.1B-intermediate-step-480k-1T \
-    --output_dir ./output/503B_FT_lr1e-5_ep5_top1_2023-08-25 \
+    --output_dir ./output/503B_FT_lr1e-5_ep5_top1_2023-09-25 \
     --logging_steps 10 \
     --save_strategy epoch \
     --data_seed 42 \
@@ -20,12 +20,12 @@ python3 ftconverter/finetune.py \
     --logging_strategy steps \
     --remove_unused_columns False \
     --do_train \
-    --do_eval=False \
+    --do_eval \
     --warmup_ratio 0.05 \
     --lr_scheduler_type constant \
-    --source_max_len 16 \
-    --target_max_len 256 \
-    --per_device_train_batch_size 4 \
+    --source_max_len 256 \
+    --target_max_len 128 \
+    --per_device_train_batch_size 32 \
     --max_steps 0 \
     --num_train_epochs 5 \
     --learning_rate 1e-5 \
