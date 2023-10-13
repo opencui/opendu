@@ -47,7 +47,6 @@ class SimplePrompt(Prompt, ABC):
 #
 class DatasetCreator(ABC):
     __metaclass__ = abc.ABCMeta
-    prompt: Prompt
 
     @abc.abstractmethod
     def get_meta(self) -> Domain:
@@ -58,3 +57,16 @@ class DatasetCreator(ABC):
     def build(self, split: str) -> Dataset:
         """This return the domain meta needed."""
         return
+
+
+class DatasetWrapper(DatasetCreator, ABC):
+    def __init__(self, creator: DatasetCreator, prompt: Prompt):
+        self.creator = creator
+        self.prompt = prompt
+
+    def get_meta(self) -> Domain:
+        return self.creator.get_meta()
+
+    def build(self, split: str) -> Dataset:
+        dataset = self.creator.build(split)
+        return dataset.map(lambda x: {"input": self.prompt(x)})

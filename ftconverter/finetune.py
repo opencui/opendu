@@ -21,7 +21,7 @@ from transformers import (
 )
 from datasets import Dataset, concatenate_datasets
 from builders.viggo import Viggo
-from builders.commons import DatasetCreator, SimplePrompt
+from builders.commons import DatasetWrapper, SimplePrompt
 from pybars import Compiler
 
 if torch.cuda.is_available():
@@ -245,7 +245,7 @@ class DataCollatorForCausalLM(object):
 
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
         # Extract elements
-        sources = [f"{self.tokenizer.bos_token}{example['input']}" for example in instances]
+        sources = [f"{example['input']}{self.tokenizer.bos_token}" for example in instances]
         targets = [f"{example['output']}{self.tokenizer.eos_token}" for example in instances]
 
         # Tokenize
@@ -457,6 +457,7 @@ def train(converters):
 
 
 if __name__ == "__main__":
-    prompt = SimplePrompt("Convert the input to structured representation. Input: {{utterance}} Output:")
-    converters = [Viggo(prompt)]
+    prompt = SimplePrompt("Convert the input text to structured representation. ### Input: {{utterance}} ### Output:")
+    prompt = SimplePrompt("What is the meaning of the following input text, pick one from [ 'inform', 'request', 'give_opinion', 'confirm', 'verify_attribute', 'suggest', 'request_explanation','recommend', 'request_attribute' ] Input: {{utterance}} Output:")
+    converters = [DatasetWrapper(Viggo(), prompt)]
     train(converters)
