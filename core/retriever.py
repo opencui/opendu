@@ -2,14 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import sys
-import gin
 import shutil
 import logging
 from datasets import Dataset
-
-
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
-from llama_index import VectorStoreIndex,  SimpleKeywordTableIndex
+from llama_index import VectorStoreIndex, SimpleKeywordTableIndex
 from llama_index.schema import TextNode, NodeWithScore
 from llama_index import QueryBundle
 from builders.viggo import Viggo
@@ -21,7 +18,6 @@ from llama_index.retrievers import (
     VectorIndexRetriever,
     KeywordTableSimpleRetriever,
 )
-
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
@@ -76,11 +72,17 @@ def create_index(path: str, datasets: dict[str, Dataset]):
         shutil.rmtree(path, ignore_errors=True)
 
 
+#
+# There are four kinds of mode: embedding, keyword, AND and OR.
+#
 class HybridRetriever(BaseRetriever):
     """Custom retriever that performs both semantic search and hybrid search."""
 
-    def __init__(self, path: str, topk: int = 8, mode: str = "OR") -> None:
+    def __init__(self, path: str, topk: int = 8, mode: str = "embedding") -> None:
         """Init params."""
+        if mode not in ("embedding", "keyword", "AND", "OR"):
+            raise ValueError("Invalid mode.")
+
         embedding = InstructedEmbeddings(embedding_model_name, embedding_instruction)
         service_context = ServiceContext.from_defaults(
             llm=None,
@@ -100,8 +102,6 @@ class HybridRetriever(BaseRetriever):
             index=embedding_index,
             similarity_top_k=topk)
         self._keyword_retriever = KeywordTableSimpleRetriever(index=keyword_index)
-        if mode not in ("AND", "OR"):
-            raise ValueError("Invalid mode.")
         self._mode = mode
 
     def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
@@ -116,7 +116,11 @@ class HybridRetriever(BaseRetriever):
         combined_dict = {n.node.node_id: n for n in vector_nodes}
         combined_dict.update({n.node.node_id: n for n in keyword_nodes})
 
-        if self._mode == "AND":
+        if self._mode == "embedding":
+            retrieve_ids = vector_ids
+        elif self._mode == "keyword":
+            retrieve_ids = keyword_ids
+        elif self._mode == "AND":
             retrieve_ids = vector_ids.intersection(keyword_ids)
         else:
             retrieve_ids = vector_ids.union(keyword_ids)
@@ -126,8 +130,8 @@ class HybridRetriever(BaseRetriever):
 
 
 if __name__ == "__main__":
-    ds = Viggo().build("train")
-    output = "./index/"
+    ds = Viggo("intent_only").build("train")
+    output = "./index/viggo/"
     create_index(output, {"viggo": ds})
 
     retriever = HybridRetriever(output)

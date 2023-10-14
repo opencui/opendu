@@ -8,7 +8,7 @@ import json
 from datasets import Dataset
 from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModel
+from transformers import AutoTokenizer, AutoModel
 import random
 import time
 import pandas as pd

@@ -7,11 +7,23 @@ from datasets import Dataset
 
 
 @dataclass
+class SlotInfo:
+    name: str
+    description: str = None
+    type: str = None
+
+
+@dataclass
+class SkillInfo:
+    name: str
+    description: str = None
+    slots: list[SlotInfo] = field(default_factory=list)
+
+
+@dataclass
 class Domain:
-    skills: list[str] = field(metadata={"help": "a list of function names."})
-    skill_descriptions: dict[str, str] = field(metadata={"help": "functions and their descriptions."})
-    slots: list[str] = field(metadata={"help": "a list of slot names."})
-    slot_descriptions: dict[str, str] = field(metadata={"help": "functions and their descriptions."})
+    skills: list[SkillInfo] = field(metadata={"help": "a list of function names."})
+    slots: list[SlotInfo] = field(metadata={"help": "a list of slot names."})
 
 
 #
@@ -31,15 +43,6 @@ class Prompt:
     def __call__(self, utterance: str, output: str):
         """Method documentation"""
         return
-
-
-class SimplePrompt(Prompt, ABC):
-    def __init__(self, source):
-        self.template = Prompt.compiler.compile(source)
-
-    # Assume the item has ["utterance", "output"], and "utterance" is used to create input.
-    def __call__(self, item):
-        return self.template(item)
 
 
 #
@@ -70,3 +73,5 @@ class DatasetWrapper(DatasetCreator, ABC):
     def build(self, split: str) -> Dataset:
         dataset = self.creator.build(split)
         return dataset.map(lambda x: {"input": self.prompt(x)})
+
+
