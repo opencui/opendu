@@ -10,6 +10,7 @@ from llama_index import VectorStoreIndex, SimpleKeywordTableIndex
 from llama_index.schema import TextNode, NodeWithScore
 from llama_index import QueryBundle
 from builders.viggo import Viggo
+from core.commons import DatasetCreator
 from core.embedding import InstructedEmbeddings
 
 # Retrievers
@@ -23,24 +24,23 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
 embedding_model_name = "BAAI/bge-small-en"
-embedding_instruction = "Represent this sentence for searching relevant passages:"
+embedding_instruction = "Represent this sentence in term of implied action:"
 
 
 # This is used to create the retriever so that we can get dynamic exemplars into understanding.
 
-def create_index(path: str, datasets: dict[str, Dataset]):
+def create_index(path: str, dataset_creators: list[DatasetCreator]):
     nodes = []
-    for name, dataset in datasets.items():
+    for creator in dataset_creators:
+        dataset = creator.build("train")
         for item in dataset:
             utterance = item['utterance']
-            output = item['output']
-            item_id = f"{name}:{item['id']}"
             nodes.append(
                 TextNode(
                     text=utterance,
-                    id_=item_id,
-                    metadata={"output": output},
-                    excluded_embed_metadata_keys=["output"]))
+                    id_=item['id'],
+                    metadata={"target_full": item["target_full"], "target_intent": item["target_intent"]},
+                    excluded_embed_metadata_keys=["target_full", "target_intent"]))
 
     # Init download hugging fact model
     service_context = ServiceContext.from_defaults(
@@ -78,7 +78,7 @@ def create_index(path: str, datasets: dict[str, Dataset]):
 class HybridRetriever(BaseRetriever):
     """Custom retriever that performs both semantic search and hybrid search."""
 
-    def __init__(self, path: str, topk: int = 8, mode: str = "embedding") -> None:
+    def __init__(self, path: str, topk: int = 3, mode: str = "embedding") -> None:
         """Init params."""
         if mode not in ("embedding", "keyword", "AND", "OR"):
             raise ValueError("Invalid mode.")
@@ -130,9 +130,8 @@ class HybridRetriever(BaseRetriever):
 
 
 if __name__ == "__main__":
-    ds = Viggo("intent_only").build("train")
     output = "./index/viggo/"
-    create_index(output, {"viggo": ds})
+    create_index(output, [Viggo()])
 
     retriever = HybridRetriever(output)
     utterance = "Are you into third person PC games like Little Big Adventure?"

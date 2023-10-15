@@ -26,9 +26,8 @@ def create_info_list(build, skills: list[str], slot_descriptions: dict[str, str]
 class Viggo(DatasetCreator):
     def __init__(self, mode: str = "full"):
         self.mode = mode
-
-    def get_meta(self) -> Domain:
-        return Domain(
+        self.tag = "gem/viggo"
+        self.domain = Domain(
             skills=create_info_list(
                 SkillInfo,
                 ['inform', 'request', 'give_opinion', 'confirm', 'verify_attribute', 'suggest',
@@ -56,23 +55,19 @@ class Viggo(DatasetCreator):
 
     def build(self, split: str) -> Dataset:
         datasets = load_dataset("GEM/viggo")
-        if split == "eval":
-            split = "validation"
         dataset = datasets[split]
         dataset = dataset.rename_column("target", "utterance")
-        dataset = dataset.rename_column("gem_id", "id")
         dataset = dataset.remove_columns("references")
-        if self.mode == "intent_only":
-            dataset = dataset.map(lambda x: {"output": x["meaning_representation"].split("(")[0]})
-        if self.mode == "full":
-            dataset = dataset.map(lambda x: {"output": x["meaning_representation"]})
+        dataset = dataset.map(lambda x: {"id": f"{self.tag}-{x['gem_id']}"})
+        dataset = dataset.map(lambda x: {"target_intent": x["meaning_representation"].split("(")[0]})
+        dataset = dataset.map(lambda x: {"target_full": x["meaning_representation"]})
         return dataset
 
 
 if __name__ == "__main__":
     dscreator = Viggo()
     items = dscreator.build("train").select(range(2))
-    domain = dscreator.get_meta()
+    domain = dscreator.domain
     print(domain.skills)
     print(domain.slots)
     for item in items:

@@ -2,26 +2,33 @@
 # Examples assumes that we have potentially more than one example, the goal
 # is to create a block for examples.
 #
+import sys
 from abc import ABC
-
+import logging
+from datasets import Dataset
 from langchain.schema import BaseRetriever
+from llama_index.schema import NodeWithScore
+
+from builders.viggo import Viggo
+from core.commons import Prompt, Domain, DatasetCreator
+from core.retriever import HybridRetriever
 from pybars import Compiler
 
-from core.commons import Prompt, Domain
+
 
 #
 # We will use eos: </s> automatically in both train and decode. Prompt can decide whether
 # and how they want to use bos: <s>.
+# We need to have two path: one for training (we need extra_tokens) and one for decoding.
 #
 
 
 # Simple prompt only has utterance.
 class SimplePrompt(Prompt, ABC):
-    def __init__(self, source):
-        self.template = Prompt.compiler.compile(source)
+    def __init__(self, source: str):
+        self.template = Compiler().compile(source)
 
-    # Assume the item has ["utterance", "output"], and "utterance" is used to create input.
-    def __call__(self, item:dict[str, any]) -> str:
+    def __call__(self, item: dict[str, str]) -> str:
         return self.template(item)
 
 
@@ -66,83 +73,110 @@ class ExampledPrompt(Prompt, ABC):
     def __int__(
             self,
             source: str,
-            retriever: BaseRetriever,
             domain: Domain,
+            retriever: BaseRetriever = None,
             topk: int = 3):
         self.source = source
         self.template = Prompt.compiler.compile(source)
         self.retriever = retriever
         self.skills = domain.skills
         self.slots = domain.slots
+        self.topk = topk
         self.helpers = {
             'list_examples': ObjectLister(item_header="Example"),
             'list_skills': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
-            'list_slots': ObjectLister(item_header="Slot"),
+            'list_slots': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
             'list_values': ObjectLister()
         }
         self.partials = {}
 
-    def __call__(self, item: dict[str, any]) -> str:
+    def dedup(self, old_results:NodeWithScore):
+        new_results = []
+        intents = set()
+        for itemWithScore in old_results:
+            item = itemWithScore.node
+            intent = item.metadata["target_intent"]
+            if intent not in intents:
+                intents.add(intent)
+                new_results.add(item)
+        return new_results[:self.topk]
+
+    def __call__(self, item: dict[str, any], train: bool = False) -> str:
         # First we need to create the example.
-        results = self.retriever.retrieve(item["utterance"])
-        item["examples"] = results
+        if self.retriever:
+            results = self.retriever.retrieve(item["utterance"])
+            if train:
+                results = filter(lambda x: x['id'] != item['id'], results)
+            item["examples"] = self.dedup(results)
+
         item["skills"] = self.skills
         item["slots"] = self.slots
 
         return self.template(item, helpers=self.helpers, partials=self.partials)
 
 
-full_simple_prompt = SimplePrompt("<s> Convert the input text to structured representation. ### Input: {{utterance}} ### Output:")
-
-
-full_exampled_prompt_full = f"""
-    Given a target sentence construct the underlying meaning representation
-    of the input sentence as a single function with attributes and attribute
-    values. This function should describe the target sentence accurately and the
-    function must be one of the following 
+full_simple_prompt_txt00 = """
+    <s> Given the input sentence, construct a function representation of this sentence, including the function name,
+    parameters, and their corresponding values. This function representation should describe the target sentence 
+    accurately.  
+     
+    The function must be one of the following 
     {{#list_skills skills}} {{name}} {{/list_skills}}
     .
     
-    The attributes must be one of the following:
+    For each parameter with its value mentioned in the sentence, enclose the parameter and its corresponding values in
+     brackets. The parameters must be one of the following:
     {{#list_slots slots}} {{name}} {{/list_slots}}
-    The order your list the attributes within the function must follow the
-    order listed above. 
     
-    For each attribute, fill in the corresponding value of the attribute 
-    within brackets. A couple of examples are below.
-    {{#list_examples examples}} Sentence: {{utterance}} \n Output: {{output}} \n {{/list_examples}}
-    
-    Give the output for the following sentence:
+    ### Input sentence:
     {{utterance}}
-    Output:<s>
+    ### Output:
     """
 
+full_exampled_prompt_txt00 = """
+    <s> Given the input sentence, construct a function representation of this sentence, including the function name,
+     parameters, and their corresponding values. This function representation should describe the target sentence 
+     accurately and the function must be one of the following 
+    {{#list_skills skills}} {{name}} {{/list_skills}}
+    .
+    For each parameter with its value mentioned in the sentence, enclose the parameter and its corresponding values in
+     brackets. The parameters must be one of the following:
+    {{#list_slots slots}} {{name}} {{/list_slots}}
+    The order your list the parameters within the function must follow the order listed above. 
+    
+    Here are a couple of examples.
+    {{#list_examples examples}} Sentence: {{utterance}} \n Output: {{output}} \n {{/list_examples}}
+    
+    ### Input sentence:
+    {{utterance}}
+    ### Output:
+    """
+
+
+def compute_k(dataset: Dataset, retriever: HybridRetriever):
+    counts = [0, 0]
+    for item in dataset:
+        results = retriever.retrieve(item["utterance"])
+        intents = set()
+        for result in results:
+            intents.add(result.node.metadata["target_intent"])
+        counts[0] += 1
+        if item["target_intent"] in intents:
+            counts[1] += 1
+        else:
+            print({"item": item, "intents": intents})
+    return counts
+
+
 if __name__ == "__main__":
-    compiler = Compiler()
+    logger = logging.getLogger()
+    logger.setLevel(logging.CRITICAL)
 
-    # Compile the template
-    source = u"{{#list_examples examples}} Sentence: {{utterance}} \n Output: {{output}} \n {{/list_examples}} {{#list_skills skills}} {{name}} {{/list_skills}} "
-    template = compiler.compile(source)
+    output = "./index/viggo/"
+    retriever = HybridRetriever(output, topk=16)
+
+    viggo = Viggo()
+    print(compute_k(viggo.build("validation"), retriever))
 
 
 
-
-    # Add partials
-    header = compiler.compile(u'<h1>People</h1>')
-    partials = {'header': header}
-
-    # Render the template
-    output = template({
-        'examples': [
-            {'utterance': "Yehuda", 'output': "Katz"},
-            {'utterance': "Carl", 'output': "Lerche"}
-        ],
-        'skills' : [
-            {"name": "inform"},
-            {"name": "notify"}
-        ]
-    }, helpers=helpers, partials=partials)
-
-    print(output)
-
-    sys.exit(0)
