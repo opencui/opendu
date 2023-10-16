@@ -5,7 +5,7 @@
 
 python3 ftconverter/finetune.py \
     --model_name_or_path PY007/TinyLlama-1.1B-intermediate-step-480k-1T \
-    --output_dir ./output/503B_FT_lr1e-5_ep5_top1_2023-09-25 \
+    --output_dir ./output/503B_FT_lr1e-5_ep5_top1_2023-09-26 \
     --logging_steps 10 \
     --save_strategy epoch \
     --data_seed 42 \

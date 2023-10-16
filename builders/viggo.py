@@ -1,6 +1,6 @@
-from abc import ABC
 from datasets import load_dataset, Dataset
-from builders.commons import Domain, DatasetCreator, SimplePrompt
+from core.commons import Domain, DatasetCreator, SkillInfo, SlotInfo
+
 
 # Each raw dataset should be responsible for a couple of things:
 # 1. Whether there are new special token need to be added.
@@ -13,57 +13,63 @@ from builders.commons import Domain, DatasetCreator, SimplePrompt
 # can be defined once and used many times. (Entities are reused at the type level, and slot can be
 # reused by implement frames, so it is platform level reuse).
 
-
-domain = Domain(
-    skills=['inform', 'request', 'give_opinion', 'confirm', 'verify_attribute', 'suggest', 'request_explanation',
-            'recommend', 'request_attribute'],
-    skill_descriptions=None,
-    slots=['name', 'release_year', 'esrb', 'genres', 'platforms', 'available_on_steam', 'has_linux_release',
-           'has_mac_release', 'specifier', 'rating', 'player_perspective', 'has_multiplayer', 'developer',
-           'exp_release_date'],
-    slot_descriptions={
-        'name': 'The name of a video game (e.g., Rise of the Tomb Raider).',
-        'release_year': 'The year a video game was released in (e.g., 2015).',
-        'exp_release_date': 'For a not-yet-released game, the date when it is expected to be released (e.g., February 22, 2019). Note: This slot cannot appear together with release_year in the same dialogue act.',
-        'developer': 'The name of the studio/person that created the game (e.g., Crystal Dynamics).',
-        'genres': 'A list of one or more genre labels from a set of possible values (e.g., action-adventure, shooter).',
-        'player_perspective': 'A list of one or more perspectives from which the game is/can be played (possible values: first person, third person, side view, bird view).',
-        'platforms': "A list of one or more gaming platforms the game was officially released for (possible values: PC, PlayStation, Xbox, Nintendo, Nintendo Switch).",
-        'esrb': "A game's content rating as determined by the ESRB (possible values: E (for Everyone), E 10+ (for Everyone 10 and Older), T (for Teen), M (for Mature)).",
-        'rating': "Depending on the dialogue act this slot is used with, it is a categorical representation of either the game's average rating or the game's liking (possible values: excellent, good, average, poor).",
-        'has_multiplayer': "Indicates whether a game supports multiplayer or can only be played in single-player mode (possible values: yes, no).",
-        'available_on_steam': "Indicates whether a game can be purchased through the Steam digital distribution service (possible values: yes, no).",
-        'has_linux_release': "Indicates whether a game is supported on Linux operating systems (possible values: yes, no).",
-        'has_mac_release': "Indicates whether a game is supported on macOS (possible values: yes, no).",
-        'specifier': "A game specifier used by the request DA, typically an adjective (e.g., addictive, easiest, overrated, visually impressive)."
-    }
-)
+def create_info_list(build, skills: list[str], slot_descriptions: dict[str, str] = {}):
+    result = []
+    for skill in skills:
+        info = build(skill)
+        if skill in slot_descriptions.keys():
+            info = build(skill, slot_descriptions[skill])
+        result.append(info)
+    return result
 
 
 class Viggo(DatasetCreator):
     def __init__(self, mode: str = "full"):
         self.mode = mode
-
-    def get_meta(self) -> Domain:
-        return domain
+        self.tag = "gem/viggo"
+        self.domain = Domain(
+            skills=create_info_list(
+                SkillInfo,
+                ['inform', 'request', 'give_opinion', 'confirm', 'verify_attribute', 'suggest',
+                 'request_explanation', 'recommend', 'request_attribute']),
+            slots=create_info_list(
+                SlotInfo,
+                ['name', 'release_year', 'esrb', 'genres', 'platforms', 'available_on_steam', 'has_linux_release',
+                'has_mac_release', 'specifier', 'rating', 'player_perspective', 'has_multiplayer', 'developer',
+                'exp_release_date'],
+        {
+                'name': 'The name of a video game (e.g., Rise of the Tomb Raider).',
+                'release_year': 'The year a video game was released in (e.g., 2015).',
+                'exp_release_date': 'For a not-yet-released game, the date when it is expected to be released (e.g., February 22, 2019). Note: This slot cannot appear together with release_year in the same dialogue act.',
+                'developer': 'The name of the studio/person that created the game (e.g., Crystal Dynamics).',
+                'genres': 'A list of one or more genre labels from a set of possible values (e.g., action-adventure, shooter).',
+                'player_perspective': 'A list of one or more perspectives from which the game is/can be played (possible values: first person, third person, side view, bird view).',
+                'platforms': "A list of one or more gaming platforms the game was officially released for (possible values: PC, PlayStation, Xbox, Nintendo, Nintendo Switch).",
+                'esrb': "A game's content rating as determined by the ESRB (possible values: E (for Everyone), E 10+ (for Everyone 10 and Older), T (for Teen), M (for Mature)).",
+                'rating': "Depending on the dialogue act this slot is used with, it is a categorical representation of either the game's average rating or the game's liking (possible values: excellent, good, average, poor).",
+                'has_multiplayer': "Indicates whether a game supports multiplayer or can only be played in single-player mode (possible values: yes, no).",
+                'available_on_steam': "Indicates whether a game can be purchased through the Steam digital distribution service (possible values: yes, no).",
+                'has_linux_release': "Indicates whether a game is supported on Linux operating systems (possible values: yes, no).",
+                'has_mac_release': "Indicates whether a game is supported on macOS (possible values: yes, no).",
+                'specifier': "A game specifier used by the request DA, typically an adjective (e.g., addictive, easiest, overrated, visually impressive)."}))
 
     def build(self, split: str) -> Dataset:
         datasets = load_dataset("GEM/viggo")
-        if split == "eval":
-            split = "validation"
         dataset = datasets[split]
         dataset = dataset.rename_column("target", "utterance")
-        dataset = dataset.rename_column("gem_id", "id")
         dataset = dataset.remove_columns("references")
-        if self.mode == "intent_only":
-            dataset = dataset.map(lambda x: {"output": x["meaning_representation"].split("(")[0]})
-        if self.mode == "full":
-            dataset = dataset.map(lambda x: {"output": x["meaning_representation"]})
+        dataset = dataset.map(lambda x: {"id": f"{self.tag}-{x['gem_id']}"})
+        dataset = dataset.map(lambda x: {"target_intent": x["meaning_representation"].split("(")[0]})
+        dataset = dataset.map(lambda x: {"target_full": x["meaning_representation"]})
         return dataset
 
 
 if __name__ == "__main__":
-    items = Viggo().build("train").select(range(2))
+    dscreator = Viggo()
+    items = dscreator.build("train").select(range(2))
+    domain = dscreator.domain
+    print(domain.skills)
+    print(domain.slots)
     for item in items:
         print(item)
         print("\n")

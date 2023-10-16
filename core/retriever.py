@@ -2,18 +2,17 @@
 # -*- coding: utf-8 -*-
 
 import sys
-import gin
 import shutil
 import logging
 from datasets import Dataset
-
-
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
-from llama_index import VectorStoreIndex,  SimpleKeywordTableIndex
+from llama_index import VectorStoreIndex, SimpleKeywordTableIndex
+from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode, NodeWithScore
 from llama_index import QueryBundle
-from embedding import get_embedding
-from builders.viggo import  Viggo
+from builders.viggo import Viggo
+from core.commons import DatasetCreator
+from core.embedding import InstructedEmbeddings, LLMEmbeddings, get_embedding
 
 # Retrievers
 from llama_index.retrievers import (
@@ -22,25 +21,25 @@ from llama_index.retrievers import (
     KeywordTableSimpleRetriever,
 )
 
-
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
 
+
+
 # This is used to create the retriever so that we can get dynamic exemplars into understanding.
-def create_index(path: str, datasets: dict[str, Dataset]):
+def create_index(path: str, dataset_creators: list[DatasetCreator]):
     nodes = []
-    for name, dataset in datasets:
+    for creator in dataset_creators:
+        dataset = creator.build("train")
         for item in dataset:
             utterance = item['utterance']
-            output = item['output']
-            item_id = f"{name}:{item['id']}"
             nodes.append(
                 TextNode(
                     text=utterance,
-                    id_=item_id,
-                    metadata={"output": output},
-                    excluded_embed_metadata_keys=["output"]))
+                    id_=item['id'],
+                    metadata={"target_full": item["target_full"], "target_intent": item["target_intent"]},
+                    excluded_embed_metadata_keys=["target_full", "target_intent"]))
 
     # Init download hugging fact model
     service_context = ServiceContext.from_defaults(
@@ -72,15 +71,22 @@ def create_index(path: str, datasets: dict[str, Dataset]):
         shutil.rmtree(path, ignore_errors=True)
 
 
+#
+# There are four kinds of mode: embedding, keyword, AND and OR.
+#
 class HybridRetriever(BaseRetriever):
     """Custom retriever that performs both semantic search and hybrid search."""
 
-    def __init__(self, path: str, topk: int = 8, mode: str = "AND") -> None:
+    def __init__(self, path: str, topk: int = 8, mode: str = "embedding") -> None:
         """Init params."""
+        if mode not in ("embedding", "keyword", "AND", "OR"):
+            raise ValueError("Invalid mode.")
+
+        embedding = get_embedding()
         service_context = ServiceContext.from_defaults(
             llm=None,
             llm_predictor=None,
-            embed_model=get_embedding())
+            embed_model=embedding)
         storage_context = StorageContext.from_defaults(persist_dir=path)
         embedding_index = load_index_from_storage(
             storage_context,
@@ -95,8 +101,6 @@ class HybridRetriever(BaseRetriever):
             index=embedding_index,
             similarity_top_k=topk)
         self._keyword_retriever = KeywordTableSimpleRetriever(index=keyword_index)
-        if mode not in ("AND", "OR"):
-            raise ValueError("Invalid mode.")
         self._mode = mode
 
     def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
@@ -111,7 +115,11 @@ class HybridRetriever(BaseRetriever):
         combined_dict = {n.node.node_id: n for n in vector_nodes}
         combined_dict.update({n.node.node_id: n for n in keyword_nodes})
 
-        if self._mode == "AND":
+        if self._mode == "embedding":
+            retrieve_ids = vector_ids
+        elif self._mode == "keyword":
+            retrieve_ids = keyword_ids
+        elif self._mode == "AND":
             retrieve_ids = vector_ids.intersection(keyword_ids)
         else:
             retrieve_ids = vector_ids.union(keyword_ids)
@@ -121,6 +129,12 @@ class HybridRetriever(BaseRetriever):
 
 
 if __name__ == "__main__":
-    ds = Viggo().build("train")
-    output = "./index/"
-    create_index(output, {"viggo": ds})
+    output = "./index/viggo/"
+    create_index(output, [Viggo()])
+
+    retriever = HybridRetriever(output)
+    utterance = "Are you into third person PC games like Little Big Adventure?"
+    results = retriever.retrieve(utterance)
+    for result in results:
+        print(result)
+        print("\n")

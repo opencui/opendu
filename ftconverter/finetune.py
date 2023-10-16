@@ -21,11 +21,7 @@ from transformers import (
 )
 from datasets import Dataset, concatenate_datasets
 from builders.viggo import Viggo
-from builders.commons import DatasetWrapper, SimplePrompt
-from pybars import Compiler
-
-if torch.cuda.is_available():
-    torch.backends.cuda.matmul.allow_tf32 = True
+from core.commons import DatasetWrapper, SimplePrompt
 
 logger = logging.getLogger(__name__)
 
@@ -245,7 +241,7 @@ class DataCollatorForCausalLM(object):
 
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
         # Extract elements
-        sources = [f"{example['input']}{self.tokenizer.bos_token}" for example in instances]
+        sources = [f"{example['input']}" for example in instances]
         targets = [f"{example['output']}{self.tokenizer.eos_token}" for example in instances]
 
         # Tokenize
@@ -457,7 +453,7 @@ def train(converters):
 
 
 if __name__ == "__main__":
-    prompt = SimplePrompt("Convert the input text to structured representation. ### Input: {{utterance}} ### Output:")
-    prompt = SimplePrompt("What is the meaning of the following input text, pick one from [ 'inform', 'request', 'give_opinion', 'confirm', 'verify_attribute', 'suggest', 'request_explanation','recommend', 'request_attribute' ] Input: {{utterance}} Output:")
-    converters = [DatasetWrapper(Viggo(), prompt)]
+    fprompt = SimplePrompt("<s> Convert the input text to structured representation. ### Input: {{utterance}} ### Output:")
+    iprompt = SimplePrompt("<s> What is the dialog act of the following input text, pick one from [ 'inform', 'request', 'give_opinion', 'confirm', 'verify_attribute', 'suggest', 'request_explanation','recommend', 'request_attribute' ] Input: {{utterance}} Output:")
+    converters = [DatasetWrapper(Viggo("full"), fprompt)]
     train(converters)
