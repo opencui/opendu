@@ -7,11 +7,12 @@ import logging
 from datasets import Dataset
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
 from llama_index import VectorStoreIndex, SimpleKeywordTableIndex
+from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode, NodeWithScore
 from llama_index import QueryBundle
 from builders.viggo import Viggo
 from core.commons import DatasetCreator
-from core.embedding import InstructedEmbeddings
+from core.embedding import InstructedEmbeddings, LLMEmbeddings, get_embedding
 
 # Retrievers
 from llama_index.retrievers import (
@@ -23,12 +24,10 @@ from llama_index.retrievers import (
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
-embedding_model_name = "BAAI/bge-small-en"
-embedding_instruction = "Represent this sentence in term of implied action:"
+
 
 
 # This is used to create the retriever so that we can get dynamic exemplars into understanding.
-
 def create_index(path: str, dataset_creators: list[DatasetCreator]):
     nodes = []
     for creator in dataset_creators:
@@ -46,7 +45,7 @@ def create_index(path: str, dataset_creators: list[DatasetCreator]):
     service_context = ServiceContext.from_defaults(
         llm=None,
         llm_predictor=None,
-        embed_model=InstructedEmbeddings(embedding_model_name, embedding_instruction),
+        embed_model=get_embedding(),
     )
 
     storage_context = StorageContext.from_defaults()
@@ -78,12 +77,12 @@ def create_index(path: str, dataset_creators: list[DatasetCreator]):
 class HybridRetriever(BaseRetriever):
     """Custom retriever that performs both semantic search and hybrid search."""
 
-    def __init__(self, path: str, topk: int = 3, mode: str = "embedding") -> None:
+    def __init__(self, path: str, topk: int = 8, mode: str = "embedding") -> None:
         """Init params."""
         if mode not in ("embedding", "keyword", "AND", "OR"):
             raise ValueError("Invalid mode.")
 
-        embedding = InstructedEmbeddings(embedding_model_name, embedding_instruction)
+        embedding = get_embedding()
         service_context = ServiceContext.from_defaults(
             llm=None,
             llm_predictor=None,

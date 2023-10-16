@@ -7,13 +7,12 @@ from abc import ABC
 import logging
 from datasets import Dataset
 from langchain.schema import BaseRetriever
-from llama_index.schema import NodeWithScore
+from llama_index.schema import NodeWithScore, Node, TextNode
 
 from builders.viggo import Viggo
 from core.commons import Prompt, Domain, DatasetCreator
 from core.retriever import HybridRetriever
 from pybars import Compiler
-
 
 
 #
@@ -90,23 +89,24 @@ class ExampledPrompt(Prompt, ABC):
         }
         self.partials = {}
 
-    def dedup(self, old_results:NodeWithScore):
+    def dedup(self, old_results: list[TextNode]):
         new_results = []
         intents = set()
-        for itemWithScore in old_results:
-            item = itemWithScore.node
+        for item in old_results:
             intent = item.metadata["target_intent"]
             if intent not in intents:
                 intents.add(intent)
-                new_results.add(item)
+                new_item = {"utterance": item.text}.update(item.metadata)
+                new_results.add(new_item)
         return new_results[:self.topk]
 
     def __call__(self, item: dict[str, any], train: bool = False) -> str:
         # First we need to create the example.
         if self.retriever:
-            results = self.retriever.retrieve(item["utterance"])
+            resultsWithScore = self.retriever.retrieve(item["utterance"])
+            results = map(lambda x: x.node, resultsWithScore)
             if train:
-                results = filter(lambda x: x['id'] != item['id'], results)
+                results = filter(lambda x: x.id_ != item['id'], results)
             item["examples"] = self.dedup(results)
 
         item["skills"] = self.skills
@@ -153,15 +153,19 @@ full_exampled_prompt_txt00 = """
     """
 
 
-def compute_k(dataset: Dataset, retriever: HybridRetriever):
+def compute_k(dataset: Dataset, retriever: HybridRetriever, topk: int = 3):
     counts = [0, 0]
     for item in dataset:
         results = retriever.retrieve(item["utterance"])
         intents = set()
+        lintents = []
         for result in results:
-            intents.add(result.node.metadata["target_intent"])
+            intent = result.node.metadata["target_intent"]
+            if intent not in intents:
+                intents.add(intent)
+                lintents.append(intent)
         counts[0] += 1
-        if item["target_intent"] in intents:
+        if item["target_intent"] in lintents[0:topk]:
             counts[1] += 1
         else:
             print({"item": item, "intents": intents})
@@ -173,10 +177,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.CRITICAL)
 
     output = "./index/viggo/"
-    retriever = HybridRetriever(output, topk=16)
+    retriever = HybridRetriever(output, topk=8)
 
     viggo = Viggo()
     print(compute_k(viggo.build("validation"), retriever))
-
-
-
