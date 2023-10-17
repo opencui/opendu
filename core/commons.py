@@ -1,29 +1,14 @@
 from abc import ABC
 
-from pybars import Compiler
 import abc
 from dataclasses import dataclass, field
 from datasets import Dataset
 
 
 @dataclass
-class SlotInfo:
-    name: str
-    description: str = None
-    type: str = None
-
-
-@dataclass
-class SkillInfo:
-    name: str
-    description: str = None
-    slots: list[SlotInfo] = field(default_factory=list)
-
-
-@dataclass
 class Domain:
-    skills: list[SkillInfo] = field(metadata={"help": "a list of function names."})
-    slots: list[SlotInfo] = field(metadata={"help": "a list of slot names."})
+    skills: list[dict[str, str]]
+    slots: list[dict[str, str]]
 
 
 #
@@ -57,17 +42,18 @@ class DatasetCreator(ABC):
 
 
 class DatasetWrapper(DatasetCreator, ABC):
-    def __init__(self, creator: DatasetCreator, prompt: Prompt, mode:str = "full"):
+    def __init__(self, creator: DatasetCreator, prompt: Prompt, mode: str = "full", num_procs: int = 4):
         self.creator = creator
         self.prompt = prompt
         self.mode = mode
+        self.num_procs = num_procs
         self.domain = creator.domain
 
     def build(self, split: str) -> Dataset:
         dataset = self.creator.build(split)
         if self.mode == "full":
-            dataset.amp(lambda x: {"output": x['target_full']})
+            dataset = dataset.map(lambda x: {"output": x['target_full']})
         else:
-            dataset.amp(lambda x: {"output": x['target_intent']})
+            dataset = dataset.map(lambda x: {"output": x['target_intent']})
         return dataset.map(lambda x: {"input": self.prompt(x)})
 

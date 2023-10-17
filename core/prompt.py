@@ -10,7 +10,7 @@ from langchain.schema import BaseRetriever
 from llama_index.schema import NodeWithScore, Node, TextNode
 
 from builders.viggo import Viggo
-from core.commons import Prompt, Domain, DatasetCreator
+from core.commons import Prompt, Domain, DatasetCreator, DatasetWrapper
 from core.retriever import HybridRetriever
 from pybars import Compiler
 
@@ -26,6 +26,7 @@ from pybars import Compiler
 class SimplePrompt(Prompt, ABC):
     def __init__(self, source: str):
         self.template = Compiler().compile(source)
+        self.extra_tokens = []
 
     def __call__(self, item: dict[str, str]) -> str:
         return self.template(item)
@@ -39,10 +40,8 @@ class ObjectLister:
             item_delim: str = "\n\n",
             block_header: str = "",
             block_tail: str = "",
-            max_size: int = 3,
             with_index: bool = True):
         self.item_header = item_header
-        self.max_size = max_size
         self.header_delim = header_delim
         self.item_delim = item_delim
         self.block_header = block_header
@@ -52,7 +51,7 @@ class ObjectLister:
     def __call__(self, this, options, items):
         result = []
         result.append(self.block_header)
-        for index, thing in enumerate(items[:self.max_size]):
+        for index, thing in enumerate(items):
             if index != 0:
                 result.append(self.item_delim)
             if self.item_header:
@@ -69,18 +68,21 @@ class ObjectLister:
 # Assume the source have examples, slots, skills, values as well as utterance.
 #
 class ExampledPrompt(Prompt, ABC):
-    def __int__(
+    def __init__(
             self,
             source: str,
             domain: Domain,
             retriever: BaseRetriever = None,
-            topk: int = 3):
-        self.source = source
-        self.template = Prompt.compiler.compile(source)
+            topk: int = 3,
+            train_mode: bool = False,
+            extra_tokens: list[str] = []):
+        self.template = Compiler().compile(source)
         self.retriever = retriever
         self.skills = domain.skills
         self.slots = domain.slots
         self.topk = topk
+        self.train_mode = train_mode
+        self.extra_tokens = extra_tokens
         self.helpers = {
             'list_examples': ObjectLister(item_header="Example"),
             'list_skills': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
@@ -96,16 +98,18 @@ class ExampledPrompt(Prompt, ABC):
             intent = item.metadata["target_intent"]
             if intent not in intents:
                 intents.add(intent)
-                new_item = {"utterance": item.text}.update(item.metadata)
-                new_results.add(new_item)
+                new_item = {"utterance": item.text, "output": item.metadata["target_full"]}
+                new_results.append(new_item)
+            if len(new_results) >= self.topk:
+                break
         return new_results[:self.topk]
 
-    def __call__(self, item: dict[str, any], train: bool = False) -> str:
+    def __call__(self, item: dict[str, any]) -> str:
         # First we need to create the example.
         if self.retriever:
             resultsWithScore = self.retriever.retrieve(item["utterance"])
             results = map(lambda x: x.node, resultsWithScore)
-            if train:
+            if self.train_mode and 'id' in item.keys():
                 results = filter(lambda x: x.id_ != item['id'], results)
             item["examples"] = self.dedup(results)
 
@@ -114,6 +118,7 @@ class ExampledPrompt(Prompt, ABC):
 
         return self.template(item, helpers=self.helpers, partials=self.partials)
 
+simple_prompt = "<s> Convert the input text to structured representation. ### Input: {{utterance}} ### Output:"
 
 full_simple_prompt_txt00 = """
     <s> Given the input sentence, construct a function representation of this sentence, including the function name,
@@ -164,6 +169,8 @@ def compute_k(dataset: Dataset, retriever: HybridRetriever, topk: int = 3):
             if intent not in intents:
                 intents.add(intent)
                 lintents.append(intent)
+            if len(lintents) >= topk:
+                break
         counts[0] += 1
         if item["target_intent"] in lintents[0:topk]:
             counts[1] += 1
@@ -176,8 +183,16 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
+    viggo = Viggo()
+
     output = "./index/viggo/"
     retriever = HybridRetriever(output, topk=8)
 
-    viggo = Viggo()
-    print(compute_k(viggo.build("validation"), retriever))
+    #print(compute_k(viggo.build("validation"), retriever))
+
+    prompt = ExampledPrompt(full_exampled_prompt_txt00, viggo.domain, retriever=retriever)
+    dsc = DatasetWrapper(Viggo("full"), prompt)
+    dataset = dsc.build("train")
+    for item in dataset:
+        print(item)
+        print("\n\n")
