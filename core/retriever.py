@@ -4,10 +4,8 @@
 import sys
 import shutil
 import logging
-from datasets import Dataset
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
 from llama_index import VectorStoreIndex, SimpleKeywordTableIndex
-from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode, NodeWithScore
 from llama_index import QueryBundle
 from builders.viggo import Viggo

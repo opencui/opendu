@@ -158,7 +158,8 @@ full_exampled_prompt_txt00 = """
     """
 
 
-def compute_k(dataset: Dataset, retriever: HybridRetriever, topk: int = 3):
+def compute_k(dataset: Dataset, output: str, topk: int = 3):
+    retriever = HybridRetriever(output, topk=8)
     counts = [0, 0]
     for item in dataset:
         results = retriever.retrieve(item["utterance"])
@@ -179,18 +180,19 @@ def compute_k(dataset: Dataset, retriever: HybridRetriever, topk: int = 3):
     return counts
 
 
+def get_prompt(dsc: DatasetCreator, index_path: str) -> Prompt:
+    retriever = HybridRetriever(index_path)
+    return ExampledPrompt(full_exampled_prompt_txt00, dsc.domain, retriever=retriever)
+
 if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
     viggo = Viggo()
-
     output = "./index/viggo/"
-    retriever = HybridRetriever(output, topk=8)
+    #print(compute_k(viggo.build("validation"), output, retriever))
 
-    #print(compute_k(viggo.build("validation"), retriever))
-
-    prompt = ExampledPrompt(full_exampled_prompt_txt00, viggo.domain, retriever=retriever)
+    prompt = get_prompt(viggo,  output)
     dsc = DatasetWrapper(Viggo("full"), prompt)
     dataset = dsc.build("train")
     for item in dataset:
