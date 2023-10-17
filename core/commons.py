@@ -6,26 +6,9 @@ from datasets import Dataset
 
 
 @dataclass
-class SlotInfo:
-    name: str
-    description: str
-
-    def __repr__(self):
-        return f"SlotInfo(name={self.name}, description={self.description})"
-
-
-@dataclass
-class SkillInfo:
-    name: str
-    description: str
-
-    def __repr__(self):
-        return f"SkillInfo(name={self.name}, description={self.description})"
-
-@dataclass
 class Domain:
-    skills: list[SkillInfo] = field(metadata={"help": "a list of function names."})
-    slots: list[SlotInfo] = field(metadata={"help": "a list of slot names."})
+    skills: list[dict[str, str]]
+    slots: list[dict[str, str]]
 
 
 #
@@ -69,8 +52,8 @@ class DatasetWrapper(DatasetCreator, ABC):
     def build(self, split: str) -> Dataset:
         dataset = self.creator.build(split)
         if self.mode == "full":
-            dataset.map(lambda x: {"output": x['target_full']})
+            dataset = dataset.map(lambda x: {"output": x['target_full']})
         else:
-            dataset.map(lambda x: {"output": x['target_intent']})
+            dataset = dataset.map(lambda x: {"output": x['target_intent']})
         return dataset.map(lambda x: {"input": self.prompt(x)})
 

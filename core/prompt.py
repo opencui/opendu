@@ -10,7 +10,7 @@ from langchain.schema import BaseRetriever
 from llama_index.schema import NodeWithScore, Node, TextNode
 
 from builders.viggo import Viggo
-from core.commons import Prompt, Domain, DatasetCreator
+from core.commons import Prompt, Domain, DatasetCreator, DatasetWrapper
 from core.retriever import HybridRetriever
 from pybars import Compiler
 
@@ -191,5 +191,8 @@ if __name__ == "__main__":
     #print(compute_k(viggo.build("validation"), retriever))
 
     prompt = ExampledPrompt(full_exampled_prompt_txt00, viggo.domain, retriever=retriever)
-    item = {"utterance": "let us try this"}
-    print(prompt(item))
+    dsc = DatasetWrapper(Viggo("full"), prompt)
+    dataset = dsc.build("train")
+    for item in dataset:
+        print(item)
+        print("\n\n")

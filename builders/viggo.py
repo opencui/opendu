@@ -1,5 +1,5 @@
 from datasets import load_dataset, Dataset
-from core.commons import Domain, DatasetCreator, SkillInfo, SlotInfo
+from core.commons import Domain, DatasetCreator
 
 
 # Each raw dataset should be responsible for a couple of things:
@@ -13,7 +13,13 @@ from core.commons import Domain, DatasetCreator, SkillInfo, SlotInfo
 # can be defined once and used many times. (Entities are reused at the type level, and slot can be
 # reused by implement frames, so it is platform level reuse).
 
-def create_info_list(build, items: list[str], descriptions: dict[str, str] = {}):
+def create_info_list(items: list[str], descriptions: dict[str, str] = {}) -> list[dict[str, str]]:
+    def build(name, description=None):
+        if description:
+            return {"name": name, "description": description}
+        else:
+            return {"name": name}
+
     result = []
     for skill in items:
         info = build(name=skill, description="")
@@ -29,11 +35,9 @@ class Viggo(DatasetCreator):
         self.tag = "gem/viggo"
         self.domain = Domain(
             skills=create_info_list(
-                SkillInfo,
                 ['inform', 'request', 'give_opinion', 'confirm', 'verify_attribute', 'suggest',
                  'request_explanation', 'recommend', 'request_attribute']),
             slots=create_info_list(
-                SlotInfo,
                 ['name', 'release_year', 'esrb', 'genres', 'platforms', 'available_on_steam', 'has_linux_release',
                 'has_mac_release', 'specifier', 'rating', 'player_perspective', 'has_multiplayer', 'developer',
                 'exp_release_date'],

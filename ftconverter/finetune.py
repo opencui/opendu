@@ -455,6 +455,9 @@ def train(converters):
 
 
 if __name__ == "__main__":
+    logger = logging.getLogger()
+    logger.setLevel(logging.CRITICAL)
+
     viggo = Viggo()
     output = "./index/viggo/"
     retriever = HybridRetriever(output, topk=8)
