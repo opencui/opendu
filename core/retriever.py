@@ -12,7 +12,7 @@ from llama_index.schema import TextNode, NodeWithScore
 from llama_index import QueryBundle
 from builders.viggo import Viggo
 from core.commons import DatasetCreator
-from core.embedding import InstructedEmbeddings, LLMEmbeddings, get_embedding
+from core.embedding import get_embedding
 
 # Retrievers
 from llama_index.retrievers import (
@@ -23,8 +23,6 @@ from llama_index.retrievers import (
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
-
-
 
 
 # This is used to create the retriever so that we can get dynamic exemplars into understanding.
@@ -136,5 +134,5 @@ if __name__ == "__main__":
     utterance = "Are you into third person PC games like Little Big Adventure?"
     results = retriever.retrieve(utterance)
     for result in results:
-        print(result)
+        print(result.node)
         print("\n")

@@ -13,12 +13,12 @@ from core.commons import Domain, DatasetCreator, SkillInfo, SlotInfo
 # can be defined once and used many times. (Entities are reused at the type level, and slot can be
 # reused by implement frames, so it is platform level reuse).
 
-def create_info_list(build, skills: list[str], slot_descriptions: dict[str, str] = {}):
+def create_info_list(build, items: list[str], descriptions: dict[str, str] = {}):
     result = []
-    for skill in skills:
-        info = build(skill)
-        if skill in slot_descriptions.keys():
-            info = build(skill, slot_descriptions[skill])
+    for skill in items:
+        info = build(name=skill, description="")
+        if skill in descriptions.keys():
+            info = build(name=skill, description=descriptions[skill])
         result.append(info)
     return result
 

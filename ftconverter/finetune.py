@@ -21,7 +21,9 @@ from transformers import (
 )
 from datasets import Dataset, concatenate_datasets
 from builders.viggo import Viggo
-from core.commons import DatasetWrapper, SimplePrompt
+from core.commons import DatasetWrapper
+from core.prompt import ExampledPrompt, full_exampled_prompt_txt00
+from core.retriever import HybridRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +151,7 @@ class GenerationArguments:
     no_repeat_ngram_size: Optional[int] = field(default=0)
 
 
-def get_accelerate_model(args, pconverters):
+def get_accelerate_model(args, converters):
     device_map = "auto"
 
     # if we are in a distributed setting, we need to set the device map and max memory per device
@@ -179,7 +181,7 @@ def get_accelerate_model(args, pconverters):
 
     extra_special_tokens = set()
     for converter in converters:
-        extra_special_tokens.update(converter.prompt.extra_tokens())
+        extra_special_tokens.update(converter.prompt.extra_tokens)
 
     special_tokens_dict.update(additional_special_tokens=list(extra_special_tokens))
 
@@ -325,7 +327,7 @@ def make_data_module(data_collator, args, converters) -> Dict:
     """
     # Split train/eval, reduce size
     if args.do_eval or args.do_predict:
-        eval_dataset = get_dataset(converters, "eval")
+        eval_dataset = get_dataset(converters, "validation")
     if args.do_train:
         train_dataset = get_dataset(converters, "train")
 
@@ -453,7 +455,12 @@ def train(converters):
 
 
 if __name__ == "__main__":
-    fprompt = SimplePrompt("<s> Convert the input text to structured representation. ### Input: {{utterance}} ### Output:")
-    iprompt = SimplePrompt("<s> What is the dialog act of the following input text, pick one from [ 'inform', 'request', 'give_opinion', 'confirm', 'verify_attribute', 'suggest', 'request_explanation','recommend', 'request_attribute' ] Input: {{utterance}} Output:")
-    converters = [DatasetWrapper(Viggo("full"), fprompt)]
+    viggo = Viggo()
+    output = "./index/viggo/"
+    retriever = HybridRetriever(output, topk=8)
+    prompt = ExampledPrompt(full_exampled_prompt_txt00, viggo.domain, retriever=retriever, train_mode=True)
+
+    #print(prompt({"utterance": "let us try this"}))
+
+    converters = [DatasetWrapper(Viggo("full"), prompt)]
     train(converters)
