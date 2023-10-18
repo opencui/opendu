@@ -22,7 +22,7 @@ from transformers import (
 from datasets import Dataset, concatenate_datasets
 from builders.viggo import Viggo
 from core.commons import DatasetWrapper
-from core.prompt import ExampledPrompt, full_exampled_prompt_txt00
+from core.prompt import ExampledPrompt, full_exampled_prompt_txt00, get_prompt
 from core.retriever import HybridRetriever
 
 logger = logging.getLogger(__name__)
@@ -460,8 +460,7 @@ if __name__ == "__main__":
 
     viggo = Viggo()
     output = "./index/viggo/"
-    retriever = HybridRetriever(output, topk=8)
-    prompt = ExampledPrompt(full_exampled_prompt_txt00, viggo.domain, retriever=retriever, train_mode=True)
+    prompt = get_prompt(viggo, output)
 
     #print(prompt({"utterance": "let us try this"}))
 

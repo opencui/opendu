@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import tempfile
-import chromadb
 import hashlib
 import json
 import yaml
@@ -123,3 +122,6 @@ class Converter:
     def addExemplars(self, name: str = "exemplars", data: List[Exemplar] = []):
         collection = self.chroma_client.get_or_create_collection(name=name)
         self._addIndex(collection, exemplars=data)
+
+
+
