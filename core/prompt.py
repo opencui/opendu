@@ -13,7 +13,7 @@ from builders.viggo import Viggo
 from core.commons import Prompt, Domain, DatasetCreator, DatasetWrapper
 from core.retriever import HybridRetriever
 from pybars import Compiler
-
+import random
 
 #
 # We will use eos: </s> automatically in both train and decode. Prompt can decide whether
@@ -102,6 +102,7 @@ class ExampledPrompt(Prompt, ABC):
                 new_results.append(new_item)
             if len(new_results) >= self.topk:
                 break
+        random.shuffle(new_results)
         return new_results[:self.topk]
 
     def __call__(self, item: dict[str, any]) -> str:
