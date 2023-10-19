@@ -464,5 +464,5 @@ if __name__ == "__main__":
 
     #print(prompt({"utterance": "let us try this"}))
 
-    converters = [DatasetWrapper(Viggo("full"), prompt)]
+    converters = [DatasetWrapper(Viggo(), prompt, mode="intent")]
     train(converters)

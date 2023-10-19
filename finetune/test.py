@@ -1,3 +1,5 @@
+import logging
+
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import transformers
 import torch
@@ -24,8 +26,8 @@ class Converter:
             model=model
         )
 
-    def __call__(self, utterance, prompt):
-        formatted_prompt = prompt({"utterance": utterance})
+    def __call__(self, item, prompt):
+        formatted_prompt = prompt(item)
         return self.pipeline(
             formatted_prompt,
             do_sample=True,
@@ -39,10 +41,14 @@ class Converter:
 
 
 def get_func(x):
-    return x.split("(")[0]
+    #return x.split("(")[0]
+    return x
 
 
 if __name__ == "__main__":
+    logger = logging.getLogger()
+    logger.setLevel(logging.CRITICAL)
+
     viggo = Viggo()
     output = "./index/viggo/"
     prompt = get_prompt(viggo, output)
@@ -51,15 +57,15 @@ if __name__ == "__main__":
 
     dataset = Viggo("full").build("test")
     counts = [0, 0]
+    marker = "### Output:"
     for item in dataset:
-        sequences = convert(item["utterance"], prompt)
+        sequences = convert(item, prompt)
         counts[0] += 1
         seq = sequences[0]
         text = seq['generated_text']
-        idx = text.index("Output:")
-        result = text[idx+7:].strip()
+        idx = text.index(marker)
+        result = text[idx+len(marker):].strip()
         item_id = item["id"]
-        print(f"Id:{item_id}\n")
         result = get_func(result)
         target = get_func(item['target_full'])
         if result == target:
