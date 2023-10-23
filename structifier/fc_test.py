@@ -1,4 +1,4 @@
-from converter import Converter
+from structifier import Converter
 
 openAPI_json = {
     "swagger": "2.0",

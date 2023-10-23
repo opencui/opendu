@@ -188,8 +188,8 @@ class GenerateSlotExamples:
                 for match in matches:
                     candidate_spans.append(match.span())
 
-                if slot_name in expression.slots.keys():
-                    value_spans = expression.slots[slot_name]
+                if slot_name in expression.target_slots.keys():
+                    value_spans = expression.target_slots[slot_name]
                     total_pos_cnt += 1
                     examples[intent].append(SlotExample(intent, utterance, slot_name, candidate_spans, value_spans))
                 else:

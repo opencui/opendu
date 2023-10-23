@@ -4,8 +4,10 @@ import hashlib
 import json
 import yaml
 from typing import Dict, List, TypedDict, Union
-from chromadb.api.models.Collection import Collection
 
+#
+# The goal here is to create index.
+#
 
 class LoadDataError(Exception):
     pass

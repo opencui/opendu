@@ -7,11 +7,12 @@ from abc import ABC
 import logging
 from datasets import Dataset
 from langchain.schema import BaseRetriever
-from llama_index.schema import NodeWithScore, Node, TextNode
+from llama_index.schema import NodeWithScore, TextNode
 
-from builders.viggo import Viggo
-from core.commons import Prompt, Domain, DatasetCreator, DatasetWrapper
-from core.retriever import HybridRetriever
+from builders.sgd import SGDSkills
+from core.commons import Prompt, DatasetCreator, DatasetWrapper, DomainInfo
+from core.embedding import get_embedding
+from core.retriever import HybridRetriever, build_nodes_from_skills, build_nodes_from_dataset, create_index
 from pybars import Compiler
 import random
 
@@ -66,12 +67,12 @@ class ObjectLister:
 
 #
 # Assume the source have examples, slots, skills, values as well as utterance.
-#
-class ExampledPrompt(Prompt, ABC):
+# This prompt template is designed to address the function representation
+class FullPrompt(Prompt, ABC):
     def __init__(
             self,
             source: str,
-            domain: Domain,
+            domain: DomainInfo,
             retriever: BaseRetriever = None,
             topk: int = 3,
             train_mode: bool = False,
@@ -84,8 +85,8 @@ class ExampledPrompt(Prompt, ABC):
         self.train_mode = train_mode
         self.extra_tokens = extra_tokens
         self.helpers = {
-            'list_examples': ObjectLister(item_header="Example"),
-            'list_skills': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
+            'list_examples': ObjectLister(item_header="### Example"),
+            'list_skills': ObjectLister(item_header="### Functions", item_delim=",", block_header="[", block_tail="]"),
             'list_slots': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
             'list_values': ObjectLister()
         }
@@ -118,6 +119,17 @@ class ExampledPrompt(Prompt, ABC):
         item["slots"] = self.slots
 
         return self.template(item, helpers=self.helpers, partials=self.partials)
+
+    @classmethod
+    def build_index(cls, dsc: DatasetCreator, output: str = "./output/"):
+        desc_nodes = build_nodes_from_skills(dsc.domain.skills)
+        exemplar_nodes = build_nodes_from_dataset(dsc.build("train"))
+
+        create_index(output, "desc", desc_nodes, get_embedding("tools"))
+        create_index(output, "exemplars", exemplar_nodes, get_embedding("irda"))
+
+
+
 
 simple_prompt = "<s> Convert the input text to structured representation. ### Input: {{utterance}} ### Output:"
 
@@ -158,38 +170,22 @@ full_exampled_prompt_txt00 = """
     ### Output:
     """
 
+#
+# Assume the node id_ is the same as dataset id.
+#
 
-def compute_k(dataset: Dataset, output: str, topk: int = 3):
-    retriever = HybridRetriever(output, topk=8)
-    counts = [0, 0]
-    for item in dataset:
-        results = retriever.retrieve(item["utterance"])
-        intents = set()
-        lintents = []
-        for result in results:
-            intent = result.node.metadata["target_intent"]
-            if intent not in intents:
-                intents.add(intent)
-                lintents.append(intent)
-            if len(lintents) >= topk:
-                break
-        counts[0] += 1
-        if item["target_intent"] in lintents[0:topk]:
-            counts[1] += 1
-        else:
-            print({"item": item, "intents": intents})
-    return counts
 
 
 def get_prompt(dsc: DatasetCreator, index_path: str) -> Prompt:
     retriever = HybridRetriever(index_path)
-    return ExampledPrompt(full_exampled_prompt_txt00, dsc.domain, retriever=retriever)
+    return FullPrompt(full_exampled_prompt_txt00, dsc.domain, retriever=retriever)
+
 
 if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
-    viggo = Viggo()
+    viggo = SGDSkills()
     output = "./index/viggo/"
     #print(compute_k(viggo.build("validation"), output, retriever))
 
