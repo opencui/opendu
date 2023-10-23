@@ -30,7 +30,7 @@ class SGD:
 # replicate the use case that most businesses face. (Only gatekeeper need to deal with more than one business providing
 # the same service.
 #
-def load_schema_as_dict(full_path):
+def load_schema_as_dict(full_path, suffix: str = "_1"):
     domain = DomainInfo(skills={}, slots={})
     with open(f"{full_path}/schema.json", encoding='utf-8') as f:
         f = json.load(f)
@@ -38,40 +38,37 @@ def load_schema_as_dict(full_path):
         for service in f:
             service_name = service["service_name"]
 
-            if SGD.limited_to_first_service and service_name.endswith("_1"):
+            if SGD.limited_to_first_service and service_name.endswith(suffix):
                 continue
 
             # handle intents
             intents = service["intents"]
             for intent in intents:
-                intent_label = f"{service_name}.{intent['name']}"
                 intent_name = intent['name']
                 intent_desc = intent["description"]
                 slots = intent["required_slots"]
                 optional_slots = intent["optional_slots"].keys()
                 slots.extend(list(optional_slots))
-                slots = [f"{service_name}.{slot}" for slot in slots]
-                domain.skills[intent_label] = SkillInfo(intent_name, intent_desc, slots).to_dict()
+                slots = [f"{slot}" for slot in slots]
+                domain.skills[intent_name] = SkillInfo(intent_name, intent_desc, slots).to_dict()
             slots = service["slots"]
             for slot in slots:
-                slot_label = f"{service_name}.{slot['name']}"
                 slot_name = slot['name']
                 is_categorical = slot['is_categorical']
                 possible_values = slot['possible_values']
                 slot_description = slot["description"]
-                domain.slots[slot_label] = SlotInfo(slot_name, slot_description, is_categorical, possible_values).to_dict()
+                domain.slots[slot_name] = SlotInfo(slot_name, slot_description, is_categorical,
+                                                   possible_values).to_dict()
     return domain
-
-
-
 
 
 class SGDSkills(DatasetCreator):
 
     # Which schema do we use? Default to train.
-    def __init__(self, base_path, domain="train"):
+    def __init__(self, base_path, domain="train", suffix: str = "_1"):
         self.base_path = base_path
         self.tag = "sgd/skill"
+        self.suffix = suffix
         self.counts = [0, 0, 0, 0]
         self.domain = load_schema_as_dict(f"{base_path}/{domain}/")
 
@@ -124,7 +121,7 @@ class SGDSkills(DatasetCreator):
                                 continue
 
                             frame = turn['frames'][0]
-                            if SGD.limited_to_first_service and frame["service"].endswith("_1"):
+                            if SGD.limited_to_first_service and frame["service"].endswith(self.suffix):
                                 continue
 
                             if frame['state']['active_intent'] not in (active_intents - pre_intents):
@@ -148,6 +145,7 @@ class SGDSkills(DatasetCreator):
                             id = f"sgd.{split}.{dialogue_id}.{idx}"
                             # yield the example
                             yield Expression(id, utterance, skill_name, local_slots, spans).to_dict()
+
         return IterableDataset.from_generator(gen)
 
 

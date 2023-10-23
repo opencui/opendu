@@ -29,7 +29,7 @@ logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 def build_nodes_from_dataset(dataset: Dataset):
     nodes = []
     for item in dataset:
-        utterance = item['utterance']
+        utterance = item['exemplar']
         nodes.append(
             TextNode(
                 text=utterance,

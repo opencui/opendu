@@ -3,7 +3,8 @@ from langchain.schema import BaseRetriever
 from llama_index.schema import TextNode
 from sentence_transformers import SentenceTransformer, losses
 from sentence_transformers.readers import InputExample
-from datasets import Dataset
+from datasets import Dataset, IterableDataset, concatenate_datasets
+from torch.utils.data import DataLoader
 
 from core.commons import SkillInfo, Config
 from core.embedding import EmbeddingStore
@@ -40,26 +41,28 @@ def train(model: SentenceTransformer, dataset: Dataset, model_save_path: str):
 
 def create_sentence_pair_for_description(skills: dict[str, SkillInfo], dataset: Dataset, retriever: BaseRetriever, num_neg=1):
     embedding = EmbeddingStore.get_embedding_by_task("desc")
-
+    results = []
     for item in dataset:
         utterance = item["utterance"]
         query = embedding.expand_for_query(utterance)
         label = item["target_intent"]
         nodesWithScore = retriever.retrieve(utterance)
         nodes : list[TextNode] = [item.node for item in nodesWithScore]
-        content = embedding.expand_for_content(skills[label].description)
-        yield InputExample([query, content], 1)
+        content = embedding.expand_for_content(skills[label]["description"])
+        results.append(InputExample(texts=[query, content], label=1.0))
         count = 0
         for node in nodes:
             content = embedding.expand_for_content(node.text)
             node_label = node.metadata["target_intent"]
             if count < num_neg and label != node_label:
                 count += 1
-                yield InputExample([query, content], 0)
+                results.append(InputExample(texts=[query, content], label=0.0))
+    return results
 
 
 def create_sentence_pair_for_exemplars(dataset: Dataset, retriever: BaseRetriever, num_examples=1):
     embedding = EmbeddingStore.get_embedding_by_task("exemplar")
+    results = []
     for item in dataset:
         utterance = item["utterance"]
         query = embedding.expand_for_query(utterance)
@@ -74,36 +77,43 @@ def create_sentence_pair_for_exemplars(dataset: Dataset, retriever: BaseRetrieve
             node_label = node.metadata["target_intent"]
             if pos == num_examples and neg == num_examples:
                 break
-            if pos < num_examples and node_label == label:
-                pos += 1
-                yield InputExample([query, content], 1)
+            # We should never create pair with identical
+            if id == node.id_:
+                continue
+
+            if node_label == label:
+                if pos < num_examples:
+                    pos += 1
+                    results.append(InputExample(texts=[query, content], label=1.0))
             else:
-                neg += 1
-                yield InputExample([query, content], 0)
+                if neg < num_examples:
+                    neg += 1
+                    results.append(InputExample(texts=[query, content], label=0.0))
+    return results
 
 
 def generate_sentence_pairs(dataset_infos: list[DatasetCreatorWithIndex]) -> Dataset:
     generators = []
     for dataset_info in dataset_infos:
         dataset = dataset_info.creator.build("train")
-        generators.append(
+        generators.extend(
             create_sentence_pair_for_description(
                 dataset_info.creator.domain.skills,
                 dataset,
                 dataset_info.desc_retriever
             ))
-        generators.append(
-            create_sentence_pair_for_exemplars(
+        generators.extend(
+           create_sentence_pair_for_exemplars(
                 dataset,
                 dataset_info.exemplar_retriever
             ))
-    return itertools.chain(generators)
+    return generators
 
 
 if __name__ == "__main__":
     from builders.sgd import SGDSkills
     print(Config.embedding_model)
     dsc = [DatasetCreatorWithIndex.build(SGDSkills("/home/sean/src/dstc8-schema-guided-dialogue/"), "./index/sgdskill/")]
-    dataset = generate_sentence_pairs(dsc)
+    dataset = DataLoader(generate_sentence_pairs(dsc))
     base_model = EmbeddingStore.get_model(Config.embedding_model)
     train(base_model, dataset, "./output/embedding/")
