@@ -67,13 +67,27 @@ class Expression:
         return res_utterance
 
 
+@dataclass
+@dataclass_json
+class Exemplar:
+    """
+    expression examples
+    """
+    target_intent: str = field(metadata={"required": True})
+    exemplar: str = field(metadata={"required": True})
+
+    def __init__(self, exemplar, intent):
+        self.exemplar = exemplar
+        self.target_intent = intent
+
+
 @dataclass_json
 @dataclass
 class SlotInfo:
     name: str = field(metadata={"required": True})
     description: str = field(metadata={"required": True})
-    is_categorical: bool = field(metadata={"required": True})
-    possible_values: list[str] = field(metadata={"required": True})
+    closed: bool = field(metadata={"required": True}, default=False)
+    possible_values: list[str] = field(metadata={"required": True}, default_factory=list)
 
 
 @dataclass_json
@@ -116,7 +130,7 @@ class DatasetCreator(ABC):
     domain: DomainInfo
 
     @abc.abstractmethod
-    def build(self, split: str) -> Dataset:
+    def build(self, split: str = "train") -> Dataset:
         """This return the domain meta needed."""
         return
 
