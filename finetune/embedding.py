@@ -1,4 +1,6 @@
 import itertools
+import logging
+
 from langchain.schema import BaseRetriever
 from llama_index.schema import TextNode
 from sentence_transformers import SentenceTransformer, losses
@@ -117,6 +119,9 @@ def generate_sentence_pairs(dataset_infos: list[DatasetCreatorWithIndex]) -> Dat
 
 
 if __name__ == "__main__":
+    logger = logging.getLogger()
+    logger.setLevel(logging.CRITICAL)
+
     from builders.sgd import SGDSkills
     print(Config.embedding_model)
     dsc = [DatasetCreatorWithIndex.build(SGDSkills("/home/sean/src/dstc8-schema-guided-dialogue/"), "./index/sgdskill/")]
