@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 
 from core.commons import SkillInfo, Config
 from core.embedding import EmbeddingStore
-from core.retriever import DatasetCreatorWithIndex
+from core.retriever import DatasetCreatorWithIndex, has_no_intent
 
 
 # There are many different flavor of embedding we need to support to chatbot building
@@ -46,8 +46,14 @@ def create_sentence_pair_for_description(skills: dict[str, SkillInfo], dataset: 
         utterance = item["utterance"]
         query = embedding.expand_for_query(utterance)
         label = item["target_intent"]
+
+        # For random utterance, we do not have information to use it as anchor.
+        if has_no_intent(label):
+            continue
+
         nodesWithScore = retriever.retrieve(utterance)
-        nodes : list[TextNode] = [item.node for item in nodesWithScore]
+        nodes: list[TextNode] = [item.node for item in nodesWithScore]
+
         content = embedding.expand_for_content(skills[label]["description"])
         results.append(InputExample(texts=[query, content], label=1.0))
         count = 0

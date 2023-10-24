@@ -26,16 +26,22 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
 
+def has_no_intent(label: str):
+    return label in {"NONE"}
+
+
 def build_nodes_from_dataset(dataset: Dataset):
     nodes = []
     for item in dataset:
         utterance = item['exemplar']
-        nodes.append(
-            TextNode(
-                text=utterance,
-                id_=item['id'],
-                metadata={"target_slots": item["target_slots"], "target_intent": item["target_intent"]},
-                excluded_embed_metadata_keys=["target_slots", "target_intent"]))
+        label = item["target_intent"]
+        if has_no_intent(label):
+            nodes.append(
+                TextNode(
+                    text=utterance,
+                    id_=item['id'],
+                    metadata={"target_slots": item["target_slots"], "target_intent": label},
+                    excluded_embed_metadata_keys=["target_slots", "target_intent"]))
     return nodes
 
 
