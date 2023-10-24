@@ -247,18 +247,18 @@ class IntentMeta:
         self.dataset = None
 
     def add_sample(self, expression):
-        expression_template = generate_expression_template(expression.slots, expression.utterance, expression.spans)
+        expression_template = generate_expression_template(expression.target_slots, expression.utterance, expression.spans)
         if expression_template in self.exemplars:
             return
 
         expression.exemplar = expression_template
-        for slot_name, slot_val_list in expression.slots.items():
+        for slot_name, slot_val_list in expression.target_slots.items():
             for slot_val in slot_val_list:
                 self.slot_dict[slot_name].add(slot_val)
         self.exemplars[expression_template] = expression
 
     def generate_utterance(self, expression):
-        expression_template = generate_expression_template(expression.slots, expression.utterance, expression.spans)
+        expression_template = generate_expression_template(expression.target_slots, expression.utterance, expression.spans)
         for slot_name, slot_vals in self.slot_dict.items():
             if '< ' + slot_name + ' >' in expression_template:
                 expression_template = expression_template.replace('< ' + slot_name + ' >', list(slot_vals)[random.randint(0, len(slot_vals) - 1)])
@@ -309,7 +309,7 @@ def cover_reaction(expression_A, expression_B):
     '''
     check if the slot of A could cover all slot of B
     '''
-    return set(expression_B.slots.keys()).issubset(set(expression_A.slots.keys()))
+    return set(expression_B.target_slots.keys()).issubset(set(expression_A.target_slots.keys()))
 
 
 def slot_val_to_slot_name(slot_dict, utterance):

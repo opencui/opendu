@@ -1,0 +1,2 @@
+llama_index
+sentence_transformers

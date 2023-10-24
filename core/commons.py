@@ -3,9 +3,20 @@ from abc import ABC
 
 import abc
 from dataclasses import dataclass, field
+from functools import reduce
 
 from dataclasses_json import dataclass_json
-from datasets import Dataset
+from datasets import Dataset, concatenate_datasets
+
+
+class Config:
+    embedding_device = "cpu"
+    embedding_model = 'BAAI/llm-embedder'
+    retriever_mode = "embedding"
+    desc_retrieve_topk = 8
+    exemplar_retrieve_topk = 16
+    llm_device = "cpu"
+
 
 @dataclass
 @dataclass_json
@@ -13,21 +24,23 @@ class Expression:
     """
     expression examples
     """
+    id: str = field(metadata={"required": True})
     utterance: str = field(metadata={"required": True})
-    skill_label: str = field(metadata={"required": True})
-    slots: dict[str, str] = field(metadata={"required": True})
+    target_intent: str = field(metadata={"required": True})
+    target_slots: dict[str, str] = field(metadata={"required": True})
     spans: list[tuple[int, int]] = field(metadata={"required": True})
     exemplar: str = field(metadata={"required": True})
 
-    def __init__(self, utterance, intent, slots, spans):
+    def __init__(self, id, utterance, intent, slots, spans):
+        self.id = id
         self.utterance = utterance
-        self.skill_label = intent
-        self.slots = slots  # dict to store slot, value pairs
+        self.target_intent = intent
+        self.target_slots = slots  # dict to store slot, value pairs
         self.spans = spans
         self.exemplar = Expression.generate_expression_template(utterance, slots, spans)
 
     @classmethod
-    def generate_expression_template(cls, utterance, slot_dict,  spans):
+    def generate_expression_template(cls, utterance, slot_dict, spans):
         '''
         replacing the slot val with the slot name,to avoid match the short slot val which may be included in other
         long slot val, we need sort by the length of the slot val
@@ -70,18 +83,12 @@ class SkillInfo:
     description: str = field(metadata={"required": True})
     slots: list[str] = field(metadata={"required": True})
 
+
 @dataclass_json
 @dataclass
 class DomainInfo:
     skills: dict[str, SkillInfo]
     slots: dict[str, SlotInfo]
-
-
-
-@dataclass
-class Domain:
-    skills: list[dict[str, str]]
-    slots: list[dict[str, str]]
 
 
 #
@@ -106,7 +113,7 @@ class Prompt:
 @dataclass
 class DatasetCreator(ABC):
     __metaclass__ = abc.ABCMeta
-    domain: Domain
+    domain: DomainInfo
 
     @abc.abstractmethod
     def build(self, split: str) -> Dataset:
@@ -114,24 +121,22 @@ class DatasetCreator(ABC):
         return
 
 
-class DatasetWrapper(DatasetCreator, ABC):
-    def __init__(self, creator: DatasetCreator, prompt: Prompt, mode: str = "full", num_procs: int = 4):
-        self.creator = creator
-        self.prompt = prompt
-        self.mode = mode
-        self.num_procs = num_procs
-        self.domain = creator.domain
+@dataclass
+class DatasetsCreator(ABC):
+    __metaclass__ = abc.ABCMeta
 
-    def build(self, split: str) -> Dataset:
-        dataset = self.creator.build(split)
-        if self.mode == "full":
-            dataset = dataset.map(lambda x: {"output": x['target_full']})
-        else:
-            dataset = dataset.map(lambda x: {"output": x['target_intent']})
-        return dataset.map(lambda x: {"input": self.prompt(x)})
+    def __init__(self, dscs=list[DatasetCreator]):
+        self.domain = DomainInfo(
+            skills=reduce(lambda x, y: {**x, **y}, [dsc.domain.skills for dsc in dscs]),
+            slots=reduce(lambda x, y: {**x, **y}, [dsc.domain.target_slots for dsc in dscs])
+        )
+        self.dscs = dscs
 
+    def build(self, split):
+        datasets = [dsc.build(split) for dsc in self.dscs]
+        return concatenate_datasets(**datasets)
 
 
 if __name__ == "__main__":
-    skill = SkillInfo(name="test", description="what")
-    print(skill.to_dict())
+    print(Config.embedding_model)
+

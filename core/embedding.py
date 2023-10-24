@@ -2,9 +2,9 @@ from typing import Any, List
 
 from llama_index.embeddings.base import BaseEmbedding
 from sentence_transformers import SentenceTransformer
-from InstructorEmbedding import INSTRUCTOR
-
 from llama_index.bridge.pydantic import PrivateAttr
+
+from core.commons import Config
 
 embedding_model_name = "BAAI/bge-small-en-v1.5"
 embedding_instruction = "Represent this sentence in term of implied action:"
@@ -18,10 +18,17 @@ INSTRUCTIONS = {
         "query": "Convert this example into vector to look for useful examples: ",
         "key": "Convert this example into vector for retrieval: ",
     },
-    "iclda": {
-        "query": "Convert the dialog acts of this example into vector to look for useful dialog act examples: ",
-        "key": "Convert the dialog acts of this example into vector for retrieval: ",
+
+    "desc": {
+        "query": "Convert this example into vector to look for useful function: ",
+        "key": "Convert this function description into vector for retrieval: ",
     },
+
+    "exemplar": {
+        "query": "Convert this example into vector to look for useful examples: ",
+        "key": "Convert this example into vector for retrieval: ",
+    },
+
     "chat": {
         "query": "Embed this dialogue to find useful historical dialogues: ",
         "key": "Embed this historical dialogue for retrieval: ",
@@ -41,21 +48,37 @@ INSTRUCTIONS = {
 }
 
 
-def get_embedding(kind: str = 'iclda') -> BaseEmbedding:
-    return InstructedEmbeddings('BAAI/llm-embedder', INSTRUCTIONS[kind])
+# We reuse the underlying embedding when we can.
+class EmbeddingStore:
+    _models: dict[str, SentenceTransformer] = {}
+
+    @classmethod
+    def get_model(cls, model_name):
+        if model_name in EmbeddingStore._models:
+            return EmbeddingStore._models[model_name]
+        else:
+            print(model_name)
+            model = SentenceTransformer(model_name, device=Config.embedding_device)
+            EmbeddingStore._models[model_name] = model
+            return model
+
+    @classmethod
+    def get_embedding_by_task(cls, kind: str = 'desc') -> BaseEmbedding:
+        model = EmbeddingStore.get_model(Config.embedding_model)
+        return InstructedEmbeddings(model, INSTRUCTIONS[kind])
 
 
 class InstructedEmbeddings(BaseEmbedding):
-    _model: INSTRUCTOR = PrivateAttr()
     _instructions: dict[str, str] = PrivateAttr()
+    _model: SentenceTransformer = PrivateAttr()
 
     def __init__(
             self,
-            model_name: str,
+            model: SentenceTransformer,
             instruction: dict[str, str],
             **kwargs: Any,
     ) -> None:
-        self._model = SentenceTransformer(model_name, device="cpu")
+        self._model = model
         self._instructions = instruction
         super().__init__(**kwargs)
 
@@ -64,8 +87,12 @@ class InstructedEmbeddings(BaseEmbedding):
         return "instructor"
 
     # embedding might have two different modes: one for query, and one for key/text.
-    def expand(self, query: str, mode: str) -> str:
-        return f"{self._instructions[mode]} {query}"
+
+    def expand_for_content(self, query):
+        return f"{self._instructions['key']} {query}"
+
+    def expand_for_query(self, query):
+        return f"{self._instructions['query']} {query}"
 
     async def _aget_query_embedding(self, query: str) -> List[float]:
         return self._get_query_embedding(query)
@@ -74,10 +101,10 @@ class InstructedEmbeddings(BaseEmbedding):
         return self._get_text_embedding(text)
 
     def _get_query_embedding(self, query: str) -> List[float]:
-        return self._model.encode(self.expand(query, 'query'), normalize_embeddings=True)
+        return self._model.encode(self.expand_for_query(query), normalize_embeddings=True)
 
     def _get_text_embedding(self, text: str) -> List[float]:
-        return self._model.encode(self.expand(text, 'key'), normalize_embeddings=True)
+        return self._model.encode(self.expand_for_content(text), normalize_embeddings=True)
 
     def _get_text_embeddings(self, texts: List[str]) -> List[List[float]]:
         texts = [self._instructions["key"] + key for key in texts]
