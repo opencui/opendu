@@ -1,26 +1,30 @@
-<div align="center">
-# Function Calling 
-</div>
+# LUG, Language Understanding and Generation
 
-The repository contained retrieval augmented generation based implementation of function calling. Here, function calling
-is responsible for converting natural text into function representation. It is essential for building chatbot and agent.
+For now, this repository contained retrieval augmented generation based implementation of language understanding (
+a term commonly use in chatbot development community), or function calling known tool-using. 
 
-There are couple short term goal for OpenCUI function calling:
-1. It is based on OpenAPI specification, thus it is easy to replace the OpenAI function calling API.
-2. It should be easy to fix understanding errors, with exemplars.
-3. It should be easy to utilize the external entity recognizer for slot filling. 
+It is designed to be an open source implementation of function calling, which can be used with any LLM with
+provided finetune implementation for both embedding model and generation model. We will also make efficient inference
+possible based on excellent project like llama.cpp, vllm, for example. 
 
-This project is intended to be a one-stop shop for function calling, it will come with fine-tuning for both
-embedding model and LLM used for generation, as well as the efficient inference based on excellent project
-like llama.cpp, vllm, for example.
+
+There are couple basic goals for this repo:
+1. It should use the same return as OpenAI function calling API.
+2. It can be instructed by OpenAPI function specifications.
+3. It should be easy to fix understanding issues, with exemplars defined in OpenCUI format.
+4. It should be easy to utilize the external entity recognizer for slot filling. 
+
+
+## How do you define the conversation?
+
 
 ## Model supported
 The main hypothesis is that functional calling does not need LLM with extreme large parameters. The model
 we based our fine-tuning on is all small models, so it is easy to deploy.
 - [] [TinyLlama-1.1B](https://github.com/jzhang38/TinyLlama)
 
-
 ## Example Usage
+
 
 ```opencui
 from opencui import Structifier, FunctionId, IntentLabel, EntitySpans, SlotMeta, SlotValue

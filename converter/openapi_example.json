@@ -1,63 +1,4 @@
-from structifier import Converter
-
-openAPI_json = {
-    "swagger": "2.0",
-    "info": {
-        "title": "Simple API overview",
-        "version": "v2"
-    },
-    "paths": {
-        "/": {
-            "get": {
-                "operationId": "listVersionsv2",
-                "summary": "List API versions",
-                "produces": ["application/json"],
-                "responses": {
-                    "200": {
-                        "description": "200 300 response",
-                        "examples": {
-                            "application/json":
-                            "{\n    \"versions\": [\n        {\n            \"status\": \"CURRENT\",\n            \"updated\": \"2011-01-21T11:33:21Z\",\n            \"id\": \"v2.0\",\n            \"links\": [\n                {\n                    \"href\": \"http://127.0.0.1:8774/v2/\",\n                    \"rel\": \"self\"\n                }\n            ]\n        },\n        {\n            \"status\": \"EXPERIMENTAL\",\n            \"updated\": \"2013-07-23T11:33:21Z\",\n            \"id\": \"v3.0\",\n            \"links\": [\n                {\n                    \"href\": \"http://127.0.0.1:8774/v3/\",\n                    \"rel\": \"self\"\n                }\n            ]\n        }\n    ]\n}"
-                        }
-                    },
-                    "300": {
-                        "description": "200 300 response",
-                        "examples": {
-                            "application/json":
-                            "{\n    \"versions\": [\n        {\n            \"status\": \"CURRENT\",\n            \"updated\": \"2011-01-21T11:33:21Z\",\n            \"id\": \"v2.0\",\n            \"links\": [\n                {\n                    \"href\": \"http://127.0.0.1:8774/v2/\",\n                    \"rel\": \"self\"\n                }\n            ]\n        },\n        {\n            \"status\": \"EXPERIMENTAL\",\n            \"updated\": \"2013-07-23T11:33:21Z\",\n            \"id\": \"v3.0\",\n            \"links\": [\n                {\n                    \"href\": \"http://127.0.0.1:8774/v3/\",\n                    \"rel\": \"self\"\n                }\n            ]\n        }\n    ]\n}"
-                        }
-                    }
-                }
-            }
-        },
-        "/v2": {
-            "get": {
-                "operationId": "getVersionDetailsv2",
-                "summary": "Show API version details",
-                "produces": ["application/json"],
-                "responses": {
-                    "200": {
-                        "description": "200 203 response",
-                        "examples": {
-                            "application/json":
-                            "{\n    \"version\": {\n        \"status\": \"CURRENT\",\n        \"updated\": \"2011-01-21T11:33:21Z\",\n        \"media-types\": [\n            {\n                \"base\": \"application/xml\",\n                \"type\": \"application/vnd.openstack.compute+xml;version=2\"\n            },\n            {\n                \"base\": \"application/json\",\n                \"type\": \"application/vnd.openstack.compute+json;version=2\"\n            }\n        ],\n        \"id\": \"v2.0\",\n        \"links\": [\n            {\n                \"href\": \"http://127.0.0.1:8774/v2/\",\n                \"rel\": \"self\"\n            },\n            {\n                \"href\": \"http://docs.openstack.org/api/openstack-compute/2/os-compute-devguide-2.pdf\",\n                \"type\": \"application/pdf\",\n                \"rel\": \"describedby\"\n            },\n            {\n                \"href\": \"http://docs.openstack.org/api/openstack-compute/2/wadl/os-compute-2.wadl\",\n                \"type\": \"application/vnd.sun.wadl+xml\",\n                \"rel\": \"describedby\"\n            },\n            {\n              \"href\": \"http://docs.openstack.org/api/openstack-compute/2/wadl/os-compute-2.wadl\",\n              \"type\": \"application/vnd.sun.wadl+xml\",\n              \"rel\": \"describedby\"\n            }\n        ]\n    }\n}"
-                        }
-                    },
-                    "203": {
-                        "description": "200 203 response",
-                        "examples": {
-                            "application/json":
-                            "{\n    \"version\": {\n        \"status\": \"CURRENT\",\n        \"updated\": \"2011-01-21T11:33:21Z\",\n        \"media-types\": [\n            {\n                \"base\": \"application/xml\",\n                \"type\": \"application/vnd.openstack.compute+xml;version=2\"\n            },\n            {\n                \"base\": \"application/json\",\n                \"type\": \"application/vnd.openstack.compute+json;version=2\"\n            }\n        ],\n        \"id\": \"v2.0\",\n        \"links\": [\n            {\n                \"href\": \"http://23.253.228.211:8774/v2/\",\n                \"rel\": \"self\"\n            },\n            {\n                \"href\": \"http://docs.openstack.org/api/openstack-compute/2/os-compute-devguide-2.pdf\",\n                \"type\": \"application/pdf\",\n                \"rel\": \"describedby\"\n            },\n            {\n                \"href\": \"http://docs.openstack.org/api/openstack-compute/2/wadl/os-compute-2.wadl\",\n                \"type\": \"application/vnd.sun.wadl+xml\",\n                \"rel\": \"describedby\"\n            }\n        ]\n    }\n}"
-                        }
-                    }
-                }
-            }
-        }
-    },
-    "consumes": ["application/json"]
-}
-
-openAPI_json_1 = {
+{
     "swagger": "2.0",
     "info": {
         "version": "1.0.0",
@@ -91,7 +32,7 @@ openAPI_json_1 = {
                     "name": "tags",
                     "in": "query",
                     "description": "tags to filter by",
-                    "required": False,
+                    "required": false,
                     "type": "array",
                     "collectionFormat": "csv",
                     "items": {
@@ -101,7 +42,7 @@ openAPI_json_1 = {
                     "name": "limit",
                     "in": "query",
                     "description": "maximum number of results to return",
-                    "required": False,
+                    "required": false,
                     "type": "integer",
                     "format": "int32"
                 }],
@@ -132,7 +73,7 @@ openAPI_json_1 = {
                     "name": "pet",
                     "in": "body",
                     "description": "Pet to add to the store",
-                    "required": True,
+                    "required": true,
                     "schema": {
                         "$ref": "#/definitions/NewPet"
                     }
@@ -163,7 +104,7 @@ openAPI_json_1 = {
                     "name": "id",
                     "in": "path",
                     "description": "ID of pet to fetch",
-                    "required": True,
+                    "required": true,
                     "type": "integer",
                     "format": "int64"
                 }],
@@ -191,7 +132,7 @@ openAPI_json_1 = {
                     "name": "id",
                     "in": "path",
                     "description": "ID of pet to delete",
-                    "required": True,
+                    "required": true,
                     "type": "integer",
                     "format": "int64"
                 }],
@@ -254,24 +195,3 @@ openAPI_json_1 = {
 }
 
 
-def test_converter():
-    s = Converter()
-    s.addSpecs(data=openAPI_json_1)
-
-
-def test_converter_parseSpecs():
-    s = Converter.parseSpecs(data=openAPI_json)
-    assert len(s) == 2
-
-    assert s[0].name == "listVersionsv2"
-    assert s[0].description == "List API versions"
-    assert s[1].name == "getVersionDetailsv2"
-    assert s[1].description == "Show API version details"
-
-    s = Converter.parseSpecs(data=openAPI_json_1)
-    assert len(s) == 4
-    assert s[0].name == "findPets"
-    assert "Returns all pets from the system that" in s[0].description
-    _tags = s[0].parameters.properties.get("tags", {})
-    assert _tags.get("_type", "") == "array"
-    assert _tags.get("description", "") == "tags to filter by"

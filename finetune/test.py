@@ -9,7 +9,7 @@ from core.prompt import get_prompt
 
 
 #
-# Converter is a lower level component of structifier. This directly use the model.
+# Converter is a lower level component of converter. This directly use the model.
 #
 class Converter:
     def __init__(self, path):
