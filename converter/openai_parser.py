@@ -12,10 +12,8 @@ from core.commons import SkillInfo, DatasetCreator, SlotInfo, DomainInfo, Exempl
 #
 class OpenAIParser(DatasetCreator, ABC):
 
-    def __init__(self, path) -> None:
-        functions = json.load(open(path))
+    def __init__(self, functions) -> None:
         self.exemplars = []
-
         skillInfos = {}
         slotInfos = {}
         for func in functions:
@@ -43,6 +41,6 @@ class OpenAIParser(DatasetCreator, ABC):
 
 
 if __name__ == "__main__":
-    openaids = OpenAIParser("./converter/openai_example.json")
+    openaids = OpenAIParser(json.load("./converter/openai_example.json"))
     print(openaids.domain)
 
