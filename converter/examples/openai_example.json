@@ -16,9 +16,7 @@
                 }
             },
             "required": ["location", "format"]
-        },
-        "exemplars": [
-        ]
+        }
     },
     {
         "name": "get_n_day_weather_forecast",
@@ -41,9 +39,6 @@
                 }
             },
             "required": ["location", "format", "num_days"]
-        },
-        "exemplars": [
-
-        ]
+        }
     }
 ]

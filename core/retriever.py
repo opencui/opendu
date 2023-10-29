@@ -6,13 +6,13 @@ import shutil
 import logging
 from dataclasses import dataclass
 
-from datasets import Dataset
+from factories import Dataset
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
 from llama_index import VectorStoreIndex, SimpleKeywordTableIndex
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode, NodeWithScore
 from llama_index import QueryBundle
-from core.commons import DatasetCreator, SkillInfo, Config
+from core.commons import DatasetFactory, SkillInfo, Config
 from core.embedding import EmbeddingStore
 
 # Retrievers
@@ -93,12 +93,12 @@ def create_index(base: str, tag: str, nodes: list[TextNode]):
         shutil.rmtree(path, ignore_errors=True)
 
 
-def build_exemplar_index(dsc: DatasetCreator, output: str):
+def build_exemplar_index(dsc: DatasetFactory, output: str):
     exemplar_nodes = build_nodes_from_dataset(dsc.build("train"))
     create_index(output, "exemplar", exemplar_nodes)
 
 
-def build_desc_index(dsc: DatasetCreator, output: str):
+def build_desc_index(dsc: DatasetFactory, output: str):
     desc_nodes = build_nodes_from_skills(dsc.domain.skills)
     create_index(output, "desc", desc_nodes)
 
@@ -168,12 +168,12 @@ class HybridRetriever(BaseRetriever):
 
 @dataclass
 class DatasetCreatorWithIndex:
-    creator: DatasetCreator
+    creator: DatasetFactory
     desc_retriever: HybridRetriever
     exemplar_retriever: HybridRetriever
 
     @classmethod
-    def build(cls, creator: DatasetCreator, path: str):
+    def build(cls, creator: DatasetFactory, path: str):
         return DatasetCreatorWithIndex(
             creator=creator,
             desc_retriever=HybridRetriever(path, "desc", Config.desc_retrieve_topk),
@@ -222,7 +222,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.CRITICAL)
 
     output = "./index/sgdskill/"
-    from builders.sgd import SGDSkills
+    from factories.sgd import SGDSkills
     dsc = SGDSkills("/home/sean/src/dstc8-schema-guided-dialogue/")
 
     Config.embedding_device = "cuda"

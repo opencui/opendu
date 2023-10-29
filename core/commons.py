@@ -125,7 +125,7 @@ class Prompt:
 # We expect the input dataset has utterance field.
 # We need to make sure the output dataset has input/output field,
 @dataclass
-class DatasetCreator(ABC):
+class DatasetFactory(ABC):
     __metaclass__ = abc.ABCMeta
     domain: DomainInfo
 
@@ -139,7 +139,7 @@ class DatasetCreator(ABC):
 class DatasetsCreator(ABC):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, dscs=list[DatasetCreator]):
+    def __init__(self, dscs=list[DatasetFactory]):
         self.domain = DomainInfo(
             skills=reduce(lambda x, y: {**x, **y}, [dsc.domain.skills for dsc in dscs]),
             slots=reduce(lambda x, y: {**x, **y}, [dsc.domain.target_slots for dsc in dscs])

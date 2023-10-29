@@ -7,8 +7,8 @@ import os
 import sys
 from collections import defaultdict
 
-from datasets import IterableDataset
-from core.commons import DomainInfo, SkillInfo, SlotInfo, DatasetCreator, Expression, Config
+from factories import IterableDataset
+from core.commons import DomainInfo, SkillInfo, SlotInfo, DatasetFactory, Expression, Config
 from core.retriever import build_desc_index, build_exemplar_index
 
 
@@ -62,7 +62,7 @@ def load_schema_as_dict(full_path, suffix: str = "_1"):
     return domain
 
 
-class SGDSkills(DatasetCreator):
+class SGDSkills(DatasetFactory):
 
     # Which schema do we use? Default to train.
     def __init__(self, base_path, domain="train", suffix: str = "_1"):

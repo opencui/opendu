@@ -7,10 +7,10 @@ import sys
 import gin
 import random
 from collections import defaultdict
-from datasets import Dataset
+from factories import Dataset
 import torch
 import pandas as pd
-from builders.base.core import save, ModelEncoder, GenerateIntentExamples, IntentMeta, check_stop_words, Expression
+from factories.base.core import save, ModelEncoder, GenerateIntentExamples, IntentMeta, check_stop_words, Expression
 
 # pip install -U gin-config faiss-cpu scikit-learn sentence-transformers
 # python3 generate_intent.py --input=/home/sean/src/dstc8-schema-guided-dialogue/train/ --output=./res/train

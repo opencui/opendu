@@ -19,8 +19,8 @@ from transformers import (
     set_seed,
     Seq2SeqTrainer,
 )
-from datasets import Dataset, concatenate_datasets
-from builders.viggo import Viggo
+from factories import Dataset, concatenate_datasets
+from factories.viggo import Viggo
 from core.commons import DatasetWrapper
 from core.prompt import ExampledPrompt, full_exampled_prompt_txt00, get_prompt
 from core.retriever import HybridRetriever
@@ -322,7 +322,7 @@ def make_data_module(data_collator, args, converters) -> Dict:
     Make dataset and collator for supervised fine-tuning.
     Datasets are expected to have the following columns: { `utterance`, `output` }
 
-    Available datasets to be selected with `dataset` argument:
+    Available factories to be selected with `dataset` argument:
         - viggo
     """
     # Split train/eval, reduce size

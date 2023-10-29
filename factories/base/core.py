@@ -5,7 +5,7 @@ import torch
 from evaluate import load
 import gin
 import json
-from datasets import Dataset
+from factories import Dataset
 from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from transformers import AutoTokenizer, AutoModel
