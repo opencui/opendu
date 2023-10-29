@@ -6,7 +6,7 @@ import yaml
 from typing import Dict, List, TypedDict, Union
 
 from datasets import Dataset
-from core.commons import SkillInfo, DatasetFactory, SlotInfo, DomainInfo
+from core.commons import SkillInfo, DatasetFactory, SlotInfo, ModelInfo
 
 #
 # This is used to create dataset need for build index from OpenAPI specs.
@@ -38,7 +38,7 @@ class OpenAPI2Parser(DatasetFactory, ABC):
                 skills.append(f)
                 f.parameters = p
 
-        self.domain = DomainInfo(skills, slots)
+        self.domain = ModelInfo(skills, slots)
 
     def build(self, split) -> Dataset:
         return Dataset.from_list(self.exemplars)

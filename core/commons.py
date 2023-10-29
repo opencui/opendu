@@ -100,7 +100,7 @@ class SkillInfo:
 
 @dataclass_json
 @dataclass
-class DomainInfo:
+class ModelInfo:
     skills: dict[str, SkillInfo]
     slots: dict[str, SlotInfo]
 
@@ -127,7 +127,7 @@ class Prompt:
 @dataclass
 class DatasetFactory(ABC):
     __metaclass__ = abc.ABCMeta
-    domain: DomainInfo
+    domain: ModelInfo
 
     @abc.abstractmethod
     def build(self, split: str = "train") -> Dataset:
@@ -140,7 +140,7 @@ class DatasetsCreator(ABC):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, dscs=list[DatasetFactory]):
-        self.domain = DomainInfo(
+        self.domain = ModelInfo(
             skills=reduce(lambda x, y: {**x, **y}, [dsc.domain.skills for dsc in dscs]),
             slots=reduce(lambda x, y: {**x, **y}, [dsc.domain.target_slots for dsc in dscs])
         )

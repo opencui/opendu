@@ -10,7 +10,7 @@ from langchain.schema import BaseRetriever
 from llama_index.schema import NodeWithScore, TextNode
 
 from factories.sgd import SGDSkills
-from core.commons import Prompt, DatasetFactory, DatasetWrapper, DomainInfo
+from core.commons import Prompt, DatasetFactory, DatasetWrapper, ModelInfo
 from core.embedding import get_embedding
 from core.retriever import HybridRetriever, build_nodes_from_skills, build_nodes_from_dataset, create_index
 from pybars import Compiler
@@ -72,7 +72,7 @@ class FullPrompt(Prompt, ABC):
     def __init__(
             self,
             source: str,
-            domain: DomainInfo,
+            domain: ModelInfo,
             retriever: BaseRetriever = None,
             topk: int = 3,
             train_mode: bool = False,

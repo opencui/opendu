@@ -2,7 +2,7 @@
 import json
 from abc import ABC
 from datasets import Dataset
-from core.commons import SkillInfo, DatasetFactory, SlotInfo, DomainInfo, Exemplar
+from core.commons import SkillInfo, DatasetFactory, SlotInfo, ModelInfo, Exemplar
 
 
 #
@@ -32,7 +32,7 @@ class OpenAIParser(DatasetFactory, ABC):
                     slot_description = slot["description"]
                     slotInfos[slot_name] = SlotInfo(slot_name, slot_description)
             skillInfos[f_name] = SkillInfo(f_name, f_description, f_slots)
-        self.domain = DomainInfo(skillInfos, slotInfos)
+        self.domain = ModelInfo(skillInfos, slotInfos)
 
     def build(self, split) -> Dataset:
         return Dataset.from_list(self.exemplars)

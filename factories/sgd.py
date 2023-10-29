@@ -8,7 +8,7 @@ import sys
 from collections import defaultdict
 
 from factories import IterableDataset
-from core.commons import DomainInfo, SkillInfo, SlotInfo, DatasetFactory, Expression, Config
+from core.commons import ModelInfo, SkillInfo, SlotInfo, DatasetFactory, Expression, Config
 from core.retriever import build_desc_index, build_exemplar_index
 
 
@@ -31,7 +31,7 @@ class SGD:
 # the same service.
 #
 def load_schema_as_dict(full_path, suffix: str = "_1"):
-    domain = DomainInfo(skills={}, slots={})
+    domain = ModelInfo(skills={}, slots={})
     with open(f"{full_path}/schema.json", encoding='utf-8') as f:
         f = json.load(f)
 
