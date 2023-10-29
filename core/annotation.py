@@ -1,9 +1,6 @@
 import json
 from enum import Enum
-from typing import Union, List, TypedDict, Optional
-
-from typing_extensions import Annotated
-
+from typing import Union, List, TypedDict, Optional, Dict
 from pydantic import BaseModel, Field
 from pydantic.config import ConfigDict
 
@@ -28,6 +25,11 @@ class PatternEntity(AnnotatedModel):
     pattern: str = Field(description="regex pattern to recognize the instance of this entity.")
 
 
+class SlotStore(BaseModel):
+    slot_types: Dict[str, str] = Field(description="the mapping from slot name to entity name")
+    entities: Dict[str, Union[ListEntity, PatternEntity]] =  Field(description="the name to recognizer")
+
+
 # owner is not needed if exemplars are listed insider function specs.
 class Exemplar(BaseModel):
     context: Optional[str] = Field(description="the context under which this exemplar works.")
@@ -37,6 +39,13 @@ class Exemplar(BaseModel):
 class ExampledModel(BaseModel):
     owner: Optional[str] = Field(description="symbolic representation of the skill.")
     exemplars: List[Exemplar] = Field(description="The type with natural language example")
+
+
+# There are two different use cases for exemplars:
+# During fine-turning, we need both utterance and exemplars.
+# During index, we only need exemplars.
+class ExampleStore(BaseModel):
+    examples: Dict[str, ExampledModel] = Field(description="this is for all the ")
 
 
 if __name__ == "__main__":

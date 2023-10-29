@@ -1,5 +1,5 @@
-from datasets import load_dataset, Dataset
-from core.commons import DatasetCreator, DomainInfo
+from factories import load_dataset, Dataset
+from core.commons import DatasetFactory, ModelInfo
 
 
 # Each raw dataset should be responsible for a couple of things:
@@ -24,11 +24,11 @@ def create_info_list(build, items: list[str], descriptions: dict[str, str] = {})
     return result
 
 
-class Viggo(DatasetCreator):
+class Viggo(DatasetFactory):
     def __init__(self, mode: str = "full"):
         self.mode = mode
         self.tag = "gem/viggo"
-        self.domain = DomainInfo(
+        self.domain = ModelInfo(
             skills=create_info_list(
                 ['inform', 'request', 'give_opinion', 'confirm', 'verify_attribute', 'suggest',
                  'request_explanation', 'recommend', 'request_attribute']),

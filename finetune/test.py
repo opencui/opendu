@@ -4,7 +4,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import transformers
 import torch
 
-from builders.viggo import Viggo
+from factories.viggo import Viggo
 from core.prompt import get_prompt
 
 

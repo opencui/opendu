@@ -5,7 +5,7 @@ from langchain.schema import BaseRetriever
 from llama_index.schema import TextNode
 from sentence_transformers import SentenceTransformer, losses
 from sentence_transformers.readers import InputExample
-from datasets import Dataset, IterableDataset, concatenate_datasets
+from factories import Dataset, IterableDataset, concatenate_datasets
 from torch.utils.data import DataLoader
 
 from core.commons import SkillInfo, Config
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
-    from builders.sgd import SGDSkills
+    from factories.sgd import SGDSkills
     print(Config.embedding_model)
     dsc = [DatasetCreatorWithIndex.build(SGDSkills("/home/sean/src/dstc8-schema-guided-dialogue/"), "./index/sgdskill/")]
     dataset = DataLoader(generate_sentence_pairs(dsc))

@@ -2,7 +2,7 @@
 import json
 from abc import ABC
 from datasets import Dataset
-from core.commons import SkillInfo, DatasetCreator, SlotInfo, DomainInfo, Exemplar
+from core.commons import SkillInfo, DatasetFactory, SlotInfo, ModelInfo, Exemplar
 
 
 #
@@ -10,8 +10,7 @@ from core.commons import SkillInfo, DatasetCreator, SlotInfo, DomainInfo, Exempl
 #
 # We assume that in each domain, the slot name are unique, and skill name are unique.
 #
-class OpenAIParser(DatasetCreator, ABC):
-
+class OpenAIParser(DatasetFactory, ABC):
     def __init__(self, functions) -> None:
         self.exemplars = []
         skillInfos = {}
@@ -33,14 +32,13 @@ class OpenAIParser(DatasetCreator, ABC):
                     slot_description = slot["description"]
                     slotInfos[slot_name] = SlotInfo(slot_name, slot_description)
             skillInfos[f_name] = SkillInfo(f_name, f_description, f_slots)
-            self.exemplars.extend([ Exemplar(ex, f_name)  for ex in func["exemplars"]])
-        self.domain = DomainInfo(skillInfos, slotInfos)
+        self.domain = ModelInfo(skillInfos, slotInfos)
 
-    def build(self, split):
+    def build(self, split) -> Dataset:
         return Dataset.from_list(self.exemplars)
 
 
 if __name__ == "__main__":
-    openaids = OpenAIParser(json.load("./converter/openai_example.json"))
+    openaids = OpenAIParser(json.load(open("./converter/examples/openai_example.json")))
     print(openaids.domain)
 

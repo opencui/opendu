@@ -4,14 +4,14 @@ from abc import ABC
 import json
 import yaml
 from typing import Dict, List, TypedDict, Union
-from core.commons import SkillInfo, DatasetCreator, SlotInfo, DomainInfo
 
+from datasets import Dataset
+from core.commons import SkillInfo, DatasetFactory, SlotInfo, ModelInfo
 
 #
 # This is used to create dataset need for build index from OpenAPI specs.
 #
-class OpenAPIParser(DatasetCreator, ABC):
-    # TODO (this is not fully tested yet, do not use, leave this here as reminder that we need to work on this soon).
+class OpenAPI2Parser(DatasetFactory, ABC):
     def __init__(self, specs) -> None:
         self.exemplars = []
 
@@ -38,11 +38,14 @@ class OpenAPIParser(DatasetCreator, ABC):
                 skills.append(f)
                 f.parameters = p
 
-        self.domain = DomainInfo(skills, slots)
+        self.domain = ModelInfo(skills, slots)
+
+    def build(self, split) -> Dataset:
+        return Dataset.from_list(self.exemplars)
 
 
 if __name__ == "__main__":
-    s = OpenAPIParser("./converter/openapi_example.json")
+    s = OpenAPI2Parser(json.load(open("./converter/examples/openapi_petstore_v2.0.json")))
 
 
 

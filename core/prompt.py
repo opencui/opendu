@@ -5,12 +5,12 @@
 import sys
 from abc import ABC
 import logging
-from datasets import Dataset
+from factories import Dataset
 from langchain.schema import BaseRetriever
 from llama_index.schema import NodeWithScore, TextNode
 
-from builders.sgd import SGDSkills
-from core.commons import Prompt, DatasetCreator, DatasetWrapper, DomainInfo
+from factories.sgd import SGDSkills
+from core.commons import Prompt, DatasetFactory, DatasetWrapper, ModelInfo
 from core.embedding import get_embedding
 from core.retriever import HybridRetriever, build_nodes_from_skills, build_nodes_from_dataset, create_index
 from pybars import Compiler
@@ -72,7 +72,7 @@ class FullPrompt(Prompt, ABC):
     def __init__(
             self,
             source: str,
-            domain: DomainInfo,
+            domain: ModelInfo,
             retriever: BaseRetriever = None,
             topk: int = 3,
             train_mode: bool = False,
@@ -121,7 +121,7 @@ class FullPrompt(Prompt, ABC):
         return self.template(item, helpers=self.helpers, partials=self.partials)
 
     @classmethod
-    def build_index(cls, dsc: DatasetCreator, output: str = "./output/"):
+    def build_index(cls, dsc: DatasetFactory, output: str = "./output/"):
         desc_nodes = build_nodes_from_skills(dsc.domain.skills)
         exemplar_nodes = build_nodes_from_dataset(dsc.build("train"))
 
@@ -176,7 +176,7 @@ full_exampled_prompt_txt00 = """
 
 
 
-def get_prompt(dsc: DatasetCreator, index_path: str) -> Prompt:
+def get_prompt(dsc: DatasetFactory, index_path: str) -> Prompt:
     retriever = HybridRetriever(index_path)
     return FullPrompt(full_exampled_prompt_txt00, dsc.domain, retriever=retriever)
 
