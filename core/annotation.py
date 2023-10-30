@@ -25,9 +25,9 @@ class PatternEntity(AnnotatedModel):
     pattern: str = Field(description="regex pattern to recognize the instance of this entity.")
 
 
-class SlotStore(BaseModel):
-    slot_types: Dict[str, str] = Field(description="the mapping from slot name to entity name")
-    entities: Dict[str, Union[ListEntity, PatternEntity]] =  Field(description="the name to recognizer")
+class SlotRecognizer(BaseModel):
+    slots: Dict[str, str] = Field(description="the mapping from slot name to entity name")
+    recognizers: Dict[str, Union[ListEntity, PatternEntity]] =  Field(description="the name to recognizer")
 
 
 # owner is not needed if exemplars are listed insider function specs.
@@ -36,17 +36,12 @@ class Exemplar(BaseModel):
     template: str = Field(description="the example utterance that should trigger the given skill")
 
 
-class ExampledModel(BaseModel):
-    owner: Optional[str] = Field(description="symbolic representation of the skill.")
-    exemplars: List[Exemplar] = Field(description="The type with natural language example")
-
-
 # There are two different use cases for exemplars:
 # During fine-turning, we need both utterance and exemplars.
 # During index, we only need exemplars.
-class ExampleStore(BaseModel):
-    examples: Dict[str, ExampledModel] = Field(description="this is for all the ")
+class ExemplarStore(BaseModel):
+    examples: Dict[str, List[Exemplar]] = Field(description="this is for all the ")
 
 
 if __name__ == "__main__":
-    print(json.dumps(ExampledModel.model_json_schema(), indent=2))
+    print(json.dumps(ExemplarStore.model_json_schema(), indent=2))

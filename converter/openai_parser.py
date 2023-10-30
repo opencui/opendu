@@ -2,7 +2,7 @@
 import json
 from abc import ABC
 from datasets import Dataset
-from core.commons import SkillInfo, DatasetFactory, SlotInfo, ModelInfo, Exemplar
+from core.commons import SkillInfo, DatasetFactory, SlotInfo, ModelInfo
 
 
 #
