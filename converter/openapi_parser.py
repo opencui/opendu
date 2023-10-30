@@ -8,10 +8,11 @@ from typing import Dict, List, TypedDict, Union
 from datasets import Dataset
 from core.commons import SkillInfo, DatasetFactory, SlotInfo, ModelInfo
 
+
 #
 # This is used to create dataset need for build index from OpenAPI specs.
 #
-class OpenAPI2Parser(DatasetFactory, ABC):
+class OpenAPIParser(DatasetFactory, ABC):
     def __init__(self, specs) -> None:
         self.exemplars = []
 
@@ -19,25 +20,20 @@ class OpenAPI2Parser(DatasetFactory, ABC):
         slots = {}
         for path, v in specs.get("paths", {}).items():
             for op, _v in v.items():
-                f = SkillInfo()
-                f.name = _v.get("operationId", "")
+                label = f"{path}.{op}"
+                f = {}
+                name = _v.get("operationId", "")
                 description = _v.get("description", "")
                 if description == "":
                     description = _v.get("summary", "")
-                f.description = description
-
-                p = SlotInfo()
-                p._type = "object"
-                p.properties = {}
-
+                parameters = []
                 for _p in _v.get("parameters", []):
-                    p.properties[_p.get("name", "")] = {
-                        "_type": _p.get("type", ""),
-                        "description": _p.get("description", "")
-                    }
-                skills.append(f)
-                f.parameters = p
-
+                    slot_name = _p.get("name", "")
+                    slot_description = _p.get("description", "")
+                    if slot_name not in slots:
+                        slots[slot_name] = SlotInfo(slot_name, slot_description)
+                    parameters.append(slot_name)
+                skills[label] = SkillInfo(name, description, parameters)
         self.domain = ModelInfo(skills, slots)
 
     def build(self, split) -> Dataset:
@@ -45,7 +41,7 @@ class OpenAPI2Parser(DatasetFactory, ABC):
 
 
 if __name__ == "__main__":
-    s = OpenAPI2Parser(json.load(open("./converter/examples/openapi_petstore_v2.0.json")))
-
+    s = OpenAPIParser(json.load(open("./converter/examples/openapi_petstore_v3.1.json")))
+    print(s.domain)
 
 

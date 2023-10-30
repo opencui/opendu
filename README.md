@@ -1,12 +1,11 @@
-# LUG, Language Understanding and Generation
+# RALUG (Retrieval-augmented Language Understanding and Generation)
 
-For now, this repository contained retrieval augmented generation based implementation of language understanding (
-a term commonly use in chatbot development community), or function calling known tool-using. 
+For now, RALUG is retrieval augmented generation based open source implementation of function calling API
+that is designed for dialog understanding in chatbot development and tool-using agent development. 
 
-It is designed to be an open source implementation of function calling, which can be used with any LLM with
-provided finetune implementation for both embedding model and generation model. We will also make efficient inference
-possible based on excellent project like llama.cpp, vllm, for example. 
-
+It is designed to be used with any LLMs with provided finetune script for both embedding model and generation model.
+We will also make efficient inference possible based on excellent project like llama.cpp, vllm, for example. With open
+sourced LLM, you can privately deploy the entire function calling API solution anywhere you want.
 
 There are couple basic goals for this repo:
 1. It should use the same return as OpenAI function calling API.
@@ -14,8 +13,8 @@ There are couple basic goals for this repo:
 3. It should be easy to fix understanding issues, with exemplars defined in OpenCUI format.
 4. It should be easy to utilize the external entity recognizer for slot filling. 
 
+## How do you define conversion?
 
-## How do you define the conversation?
 
 
 ## Model supported
