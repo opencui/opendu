@@ -1,0 +1,9 @@
+{
+  "get_current_weather" : [
+    {
+      "template": "what is template in <location> in <format>?"
+    }, {
+      "template": "How cold is there?"
+    }
+  ]
+}

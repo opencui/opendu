@@ -1,21 +1,12 @@
 import json
 from abc import ABC
-
 import abc
 from dataclasses import dataclass, field
 from functools import reduce
-
 from dataclasses_json import dataclass_json
 from datasets import Dataset, concatenate_datasets
 
-
-class Config:
-    embedding_device = "cpu"
-    embedding_model = 'BAAI/llm-embedder'
-    retriever_mode = "embedding"
-    desc_retrieve_topk = 8
-    exemplar_retrieve_topk = 16
-    llm_device = "cpu"
+from converter.config import Config
 
 
 @dataclass
@@ -122,7 +113,7 @@ class DatasetFactory(ABC):
 
 
 @dataclass
-class DatasetsCreator(ABC):
+class DatasetsCreator(DatasetFactory):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, dscs=list[DatasetFactory]):
@@ -135,6 +126,19 @@ class DatasetsCreator(ABC):
     def build(self, split):
         datasets = [dsc.build(split) for dsc in self.dscs]
         return concatenate_datasets(**datasets)
+
+
+@dataclass
+class DatasetFactoryWrapper(DatasetFactory):
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, dsf: DatasetFactory, prompt: Prompt):
+        self.domain = dsf.domain
+        self.prompt = prompt
+
+    def build(self, split: str) -> Dataset:
+        dataset = self.creator.build(split)
+        return dataset.map(lambda x: {"input": self.prompt(x)})
 
 
 if __name__ == "__main__":

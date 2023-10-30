@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
+import abc
 import json
 from abc import ABC
 from datasets import Dataset
+
+from core.annotation import ExemplarStore, SlotRecognizers
 from core.commons import SkillInfo, DatasetFactory, SlotInfo, ModelInfo
 
 
@@ -10,7 +13,9 @@ from core.commons import SkillInfo, DatasetFactory, SlotInfo, ModelInfo
 #
 # We assume that in each domain, the slot name are unique, and skill name are unique.
 #
-class OpenAIParser(DatasetFactory, ABC):
+class OpenAIParser(DatasetFactory):
+    __metaclass__ = abc.ABCMeta
+
     def __init__(self, functions) -> None:
         self.exemplars = []
         skillInfos = {}
@@ -41,4 +46,12 @@ class OpenAIParser(DatasetFactory, ABC):
 if __name__ == "__main__":
     openaids = OpenAIParser(json.load(open("./converter/examples/openai_example.json")))
     print(openaids.domain)
+    print("\n")
 
+    exemplars = ExemplarStore(**json.load(open("./converter/examples/exemplars.json")))
+    print(exemplars)
+    print("\n")
+
+    recognizer = SlotRecognizers(**json.load(open("./converter/examples/recognizers.json")))
+    print(recognizer)
+    print("\n")

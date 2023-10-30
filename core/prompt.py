@@ -5,16 +5,19 @@
 import sys
 from abc import ABC
 import logging
-from factories import Dataset
 from langchain.schema import BaseRetriever
 from llama_index.schema import NodeWithScore, TextNode
 
 from factories.sgd import SGDSkills
-from core.commons import Prompt, DatasetFactory, DatasetWrapper, ModelInfo
-from core.embedding import get_embedding
+from core.commons import Prompt, DatasetFactory, DatasetFactoryWrapper, ModelInfo
+from core.embedding import EmbeddingStore
 from core.retriever import HybridRetriever, build_nodes_from_skills, build_nodes_from_dataset, create_index
+from core.prompt import GeneratorPrompts
 from pybars import Compiler
 import random
+
+from factories.viggo import Viggo
+
 
 #
 # We will use eos: </s> automatically in both train and decode. Prompt can decide whether
@@ -72,15 +75,15 @@ class FullPrompt(Prompt, ABC):
     def __init__(
             self,
             source: str,
-            domain: ModelInfo,
+            module: ModelInfo,
             retriever: BaseRetriever = None,
             topk: int = 3,
             train_mode: bool = False,
             extra_tokens: list[str] = []):
         self.template = Compiler().compile(source)
         self.retriever = retriever
-        self.skills = domain.skills
-        self.slots = domain.slots
+        self.skills = module.skills
+        self.slots = module.slots
         self.topk = topk
         self.train_mode = train_mode
         self.extra_tokens = extra_tokens
@@ -125,60 +128,59 @@ class FullPrompt(Prompt, ABC):
         desc_nodes = build_nodes_from_skills(dsc.domain.skills)
         exemplar_nodes = build_nodes_from_dataset(dsc.build("train"))
 
-        create_index(output, "desc", desc_nodes, get_embedding("tools"))
-        create_index(output, "exemplars", exemplar_nodes, get_embedding("irda"))
+        create_index(output, "desc", desc_nodes, EmbeddingStore.for_description())
+        create_index(output, "exemplars", exemplar_nodes, EmbeddingStore.for_exemplar())
 
 
+GeneratorPrompts = {
+    "simple_prompt":
+        "<s> Convert the input text to structured representation. ### Input: {{utterance}} ### Output:",
+    "full_simple_prompt_txt00":
+        """
+        <s> Given the input sentence, construct a function representation of this sentence, including the function name,
+        parameters, and their corresponding values. This function representation should describe the target sentence 
+        accurately.  
+         
+        The function must be one of the following 
+        {{#list_skills skills}} {{name}} {{/list_skills}}
+        .
+        
+        For each parameter with its value mentioned in the sentence, enclose the parameter and its corresponding values in
+         brackets. The parameters must be one of the following:
+        {{#list_slots slots}} {{name}} {{/list_slots}}
+        
+        ### Input sentence:
+        {{utterance}}
+        ### Output:
+        """,
+    "full_exampled_prompt":
+        """
+        <s> Given the input sentence, construct a function representation of this sentence, including the function name,
+         parameters, and their corresponding values. This function representation should describe the target sentence 
+         accurately and the function must be one of the following 
+        {{#list_skills skills}} {{name}} {{/list_skills}}
+        .
+        For each parameter with its value mentioned in the sentence, enclose the parameter and its corresponding values in
+         brackets. The parameters must be one of the following:
+        {{#list_slots slots}} {{name}} {{/list_slots}}
+        The order your list the parameters within the function must follow the order listed above. 
+        
+        Here are a couple of examples.
+        {{#list_examples examples}} Sentence: {{utterance}} \n Output: {{output}} \n {{/list_examples}}
+        
+        ### Input sentence:
+        {{utterance}}
+        ### Output:
+        """
+}
 
-
-simple_prompt = "<s> Convert the input text to structured representation. ### Input: {{utterance}} ### Output:"
-
-full_simple_prompt_txt00 = """
-    <s> Given the input sentence, construct a function representation of this sentence, including the function name,
-    parameters, and their corresponding values. This function representation should describe the target sentence 
-    accurately.  
-     
-    The function must be one of the following 
-    {{#list_skills skills}} {{name}} {{/list_skills}}
-    .
-    
-    For each parameter with its value mentioned in the sentence, enclose the parameter and its corresponding values in
-     brackets. The parameters must be one of the following:
-    {{#list_slots slots}} {{name}} {{/list_slots}}
-    
-    ### Input sentence:
-    {{utterance}}
-    ### Output:
-    """
-
-full_exampled_prompt_txt00 = """
-    <s> Given the input sentence, construct a function representation of this sentence, including the function name,
-     parameters, and their corresponding values. This function representation should describe the target sentence 
-     accurately and the function must be one of the following 
-    {{#list_skills skills}} {{name}} {{/list_skills}}
-    .
-    For each parameter with its value mentioned in the sentence, enclose the parameter and its corresponding values in
-     brackets. The parameters must be one of the following:
-    {{#list_slots slots}} {{name}} {{/list_slots}}
-    The order your list the parameters within the function must follow the order listed above. 
-    
-    Here are a couple of examples.
-    {{#list_examples examples}} Sentence: {{utterance}} \n Output: {{output}} \n {{/list_examples}}
-    
-    ### Input sentence:
-    {{utterance}}
-    ### Output:
-    """
 
 #
 # Assume the node id_ is the same as dataset id.
 #
-
-
-
 def get_prompt(dsc: DatasetFactory, index_path: str) -> Prompt:
     retriever = HybridRetriever(index_path)
-    return FullPrompt(full_exampled_prompt_txt00, dsc.domain, retriever=retriever)
+    return FullPrompt(GeneratorPrompts["full_exampled_prompt"], dsc.domain, retriever=retriever)
 
 
 if __name__ == "__main__":
@@ -190,7 +192,7 @@ if __name__ == "__main__":
     #print(compute_k(viggo.build("validation"), output, retriever))
 
     prompt = get_prompt(viggo,  output)
-    dsc = DatasetWrapper(Viggo("full"), prompt)
+    dsc = DatasetFactoryWrapper(Viggo("full"), prompt)
     dataset = dsc.build("train")
     for item in dataset:
         print(item)

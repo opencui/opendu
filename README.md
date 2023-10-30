@@ -59,7 +59,8 @@ An example in the json format is as follows:
   "get_current_weather" : [
     {
       "template": "what is template in <location> in <format>?"
-    }, {
+    }, 
+    {
       "template": "How cold is there?"
     } 
   ]
@@ -77,6 +78,9 @@ An example in the json format is as follows:
 {
   "recognizers": {
     "city" : {
+      "name": "city",
+      "rec_type": "list",
+      "description": "the place where people live",
       "instances": [
         {"label": "seattle", "expressions" :  ["seattle", "evergreen"]}
       ]
