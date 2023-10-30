@@ -44,14 +44,14 @@ class OpenAIParser(DatasetFactory):
 
 
 if __name__ == "__main__":
-    openaids = OpenAIParser(json.load(open("./converter/examples/openai_example.json")))
+    openaids = OpenAIParser(json.load(open("./converter/openai_examples/schemas.json")))
     print(openaids.domain)
     print("\n")
 
-    exemplars = ExemplarStore(**json.load(open("./converter/examples/exemplars.json")))
+    exemplars = ExemplarStore(**json.load(open("./converter/openai_examples/exemplars.json")))
     print(exemplars)
     print("\n")
 
-    recognizer = SlotRecognizers(**json.load(open("./converter/examples/recognizers.json")))
+    recognizer = SlotRecognizers(**json.load(open("./converter/openai_examples/recognizers.json")))
     print(recognizer)
     print("\n")

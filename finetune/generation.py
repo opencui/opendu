@@ -49,14 +49,14 @@ class DataArguments:
     max_train_samples: Optional[int] = field(
         default=None,
         metadata={
-            "help": "For debugging purposes or quicker training, truncate the number of training examples to this "
+            "help": "For debugging purposes or quicker training, truncate the number of training openai_examples to this "
                     "value if set."
         },
     )
     max_eval_samples: Optional[int] = field(
         default=None,
         metadata={
-            "help": "For debugging purposes or quicker training, truncate the number of evaluation examples to this "
+            "help": "For debugging purposes or quicker training, truncate the number of evaluation openai_examples to this "
                     "value if set."
         },
     )

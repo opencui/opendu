@@ -1,6 +1,6 @@
 #
 # Examples assumes that we have potentially more than one example, the goal
-# is to create a block for examples.
+# is to create a block for openai_examples.
 #
 import sys
 from abc import ABC
@@ -69,7 +69,7 @@ class ObjectLister:
 
 
 #
-# Assume the source have examples, slots, skills, values as well as utterance.
+# Assume the source have openai_examples, slots, skills, values as well as utterance.
 # This prompt template is designed to address the function representation
 class FullPrompt(Prompt, ABC):
     def __init__(
@@ -116,7 +116,7 @@ class FullPrompt(Prompt, ABC):
             results = map(lambda x: x.node, resultsWithScore)
             if self.train_mode and 'id' in item.keys():
                 results = filter(lambda x: x.id_ != item['id'], results)
-            item["examples"] = self.dedup(results)
+            item["openai_examples"] = self.dedup(results)
 
         item["skills"] = self.skills
         item["slots"] = self.slots
@@ -165,8 +165,8 @@ GeneratorPrompts = {
         {{#list_slots slots}} {{name}} {{/list_slots}}
         The order your list the parameters within the function must follow the order listed above. 
         
-        Here are a couple of examples.
-        {{#list_examples examples}} Sentence: {{utterance}} \n Output: {{output}} \n {{/list_examples}}
+        Here are a couple of openai_examples.
+        {{#list_examples openai_examples}} Sentence: {{utterance}} \n Output: {{output}} \n {{/list_examples}}
         
         ### Input sentence:
         {{utterance}}

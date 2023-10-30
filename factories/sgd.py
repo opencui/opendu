@@ -80,9 +80,9 @@ class SGDSkills(DatasetFactory):
 
         def gen():
             """
-            load original sgd data and create expression examples
+            load original sgd data and create expression openai_examples
             :param base_path: input path to original sgd dataset
-            :return: expression examples
+            :return: expression openai_examples
             """
             files = os.listdir(base_path)
             sentence_set = defaultdict(set)

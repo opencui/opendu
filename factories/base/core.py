@@ -29,8 +29,8 @@ class PerplexityCalculator:
 
 def save(examples, path, label):
     """
-    save generated examples into tsv files
-    :param examples:  generated examples
+    save generated openai_examples into tsv files
+    :param examples:  generated openai_examples
     :param path: output path
     :return: None
     """
@@ -85,7 +85,7 @@ def query(encoder, text, dataset, k=4):
 @gin.configurable
 class GenerateIntentExamples:
     """
-    generate examples from templates.
+    generate openai_examples from templates.
     """
     def __init__(self, encoder, training_percentage, negative_percentage, seed=None):
         if training_percentage < 0.0 or training_percentage > 1.0:
@@ -283,7 +283,7 @@ class IntentMeta:
 
 class Expression:
     """
-    expression examples
+    expression openai_examples
     """
 
     def __init__(self, expression, intent, slots, string_list=None):

@@ -41,7 +41,7 @@ class OpenAPIParser(DatasetFactory, ABC):
 
 
 if __name__ == "__main__":
-    s = OpenAPIParser(json.load(open("./converter/examples/openapi_petstore_v3.1.json")))
+    s = OpenAPIParser(json.load(open("./converter/openai_examples/openapi_petstore_v3.1.json")))
     print(s.domain)
 
 
