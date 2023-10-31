@@ -6,9 +6,10 @@ import getopt
 import shutil
 import logging
 
-from converter.openai_parser import OpenAIParser
+from converter.schema_parser import OpenAIParser, from_openai, from_openapi
 from converter.openapi_parser import OpenAPIParser
-from core.annotation import ExemplarStore, SlotRecognizers
+from core.annotation import ExemplarStore, SlotRecognizers, build_nodes_from_exemplar_store
+from core.retriever import create_index, build_nodes_from_skills
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
@@ -38,18 +39,22 @@ if __name__ == "__main__":
         # We assume that there are schema.json, exemplars.json and recognizers.json under the directory
         for module in modules:
             schema_object = json.load(open(f"{module}/schemas.json"))
-            parser = None
+            schema = None
             if isinstance(schema_object, list):
                 # this is OpenAI schema
-                parser = OpenAIParser(schema_object)
+                schema = from_openai(schema_object)
             else:
-                parser = OpenAPIParser(schema_object)
+                schema = from_openapi(schema_object)
 
             examplers = ExemplarStore(**json.load(open(f"{module}/exemplars.json")))
             recognizers = SlotRecognizers(**json.load(open(f"{module}/recognizers.json")))
 
-        print(examplers)
-        print(recognizers)
+            desc_nodes = build_nodes_from_skills(schema.skills)
+            create_index(output_path, "desc", desc_nodes)
+
+            exemplar_nodes = build_nodes_from_exemplar_store(examplers)
+            create_index(output_path, "exemplar", exemplar_nodes)
+
     except Exception as e:
         print(str(e))
         shutil.rmtree(output_path, ignore_errors=True)

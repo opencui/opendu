@@ -9,7 +9,7 @@ from langchain.schema import BaseRetriever
 from llama_index.schema import NodeWithScore, TextNode
 
 from factories.sgd import SGDSkills
-from core.commons import Prompt, DatasetFactory, DatasetFactoryWrapper, ModelInfo
+from core.commons import Prompt, DatasetFactory, DatasetFactoryWrapper, ModuleSchema
 from core.embedding import EmbeddingStore
 from core.retriever import HybridRetriever, build_nodes_from_skills, build_nodes_from_dataset, create_index
 from core.prompt import GeneratorPrompts
@@ -75,7 +75,7 @@ class FullPrompt(Prompt, ABC):
     def __init__(
             self,
             source: str,
-            module: ModelInfo,
+            module: ModuleSchema,
             retriever: BaseRetriever = None,
             topk: int = 3,
             train_mode: bool = False,

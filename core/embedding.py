@@ -4,7 +4,7 @@ from llama_index.embeddings.base import BaseEmbedding
 from sentence_transformers import SentenceTransformer
 from llama_index.bridge.pydantic import PrivateAttr
 
-from core.commons import Config
+from core.commons import LugConfig
 
 
 # We reuse the underlying embedding when we can.
@@ -56,20 +56,20 @@ class EmbeddingStore:
             return EmbeddingStore._models[model_name]
         else:
             print(model_name)
-            model = SentenceTransformer(model_name, device=Config.embedding_device)
+            model = SentenceTransformer(model_name, device=LugConfig.embedding_device)
             EmbeddingStore._models[model_name] = model
             return model
 
     @classmethod
     def for_description(cls) -> BaseEmbedding:
-        model = EmbeddingStore.get_model(Config.embedding_model)
-        kind = Config.embedding_desc_prompt
+        model = EmbeddingStore.get_model(LugConfig.embedding_model)
+        kind = LugConfig.embedding_desc_prompt
         return InstructedEmbeddings(model, EmbeddingStore.INSTRUCTIONS[kind])
 
     @classmethod
     def for_exemplar(cls) -> BaseEmbedding:
-        model = EmbeddingStore.get_model(Config.embedding_model)
-        kind = Config.embedding_desc_prompt
+        model = EmbeddingStore.get_model(LugConfig.embedding_model)
+        kind = LugConfig.embedding_desc_prompt
         return InstructedEmbeddings(model, EmbeddingStore.INSTRUCTIONS[kind])
 
 

@@ -6,7 +6,7 @@ from functools import reduce
 from dataclasses_json import dataclass_json
 from datasets import Dataset, concatenate_datasets
 
-from converter.config import Config
+from converter.lugconfig import LugConfig
 
 
 @dataclass
@@ -77,7 +77,7 @@ class SkillInfo:
 
 @dataclass_json
 @dataclass
-class ModelInfo:
+class ModuleSchema:
     skills: dict[str, SkillInfo]
     slots: dict[str, SlotInfo]
 
@@ -104,7 +104,7 @@ class Prompt:
 @dataclass
 class DatasetFactory(ABC):
     __metaclass__ = abc.ABCMeta
-    domain: ModelInfo
+    domain: ModuleSchema
 
     @abc.abstractmethod
     def build(self, split: str = "train") -> Dataset:
@@ -117,7 +117,7 @@ class DatasetsCreator(DatasetFactory):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, dscs=list[DatasetFactory]):
-        self.domain = ModelInfo(
+        self.domain = ModuleSchema(
             skills=reduce(lambda x, y: {**x, **y}, [dsc.domain.skills for dsc in dscs]),
             slots=reduce(lambda x, y: {**x, **y}, [dsc.domain.target_slots for dsc in dscs])
         )
@@ -142,5 +142,5 @@ class DatasetFactoryWrapper(DatasetFactory):
 
 
 if __name__ == "__main__":
-    print(Config.embedding_model)
+    print(LugConfig.embedding_model)
 

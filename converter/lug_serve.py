@@ -10,9 +10,6 @@ from aiohttp import web
 from pybars import Compiler
 from llama_index import set_global_service_context
 from llama_index import StorageContext, ServiceContext, load_index_from_storage
-from processors.embedding import get_embedding
-from processors.retriever import HybridRetriever
-from processors.llm import get_generator
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
@@ -69,8 +66,8 @@ async def query(request: web.Request):
     return web.json_response(dataclasses.asdict(resp))
 
 
-@routes.post("/retrieve")
-async def retrieve(request: web.Request):
+@routes.post("/retrieve"
+def retrieve(request: web.Request):
     req = await request.json()
     turns = req.get("turns", [])
     prompt = req.get("prompt", "")

@@ -1,6 +1,8 @@
 import json
 from enum import Enum
 from typing import Union, List, TypedDict, Optional, Dict, Literal
+
+from llama_index.schema import TextNode
 from typing_extensions import Annotated
 from pydantic import BaseModel, Field
 
@@ -41,6 +43,24 @@ class Exemplar(BaseModel):
 class ExemplarStore(TypedDict):
     name: str
     exemplars: List[Exemplar]
+
+
+def build_nodes_from_exemplar_store(store: ExemplarStore) -> list[TextNode]:
+    nodes = []
+    for label, exemplars in store.items():
+        for exemplar in exemplars:
+            nodes.append(
+                TextNode(
+                    text=exemplar.template,
+                    id_=str(hash(exemplar.template))[1:13],
+                    metadata={"target_intent": label, "context": exemplar.context},
+                    excluded_embed_metadata_keys=["target_intent", "context"]))
+    return nodes
+
+
+class SemanticStructure(BaseModel):
+    name: str = Field(description="the name of the function/skill/intent")
+    arguments: TypedDict = Field(description="argument for callable object")
 
 
 if __name__ == "__main__":
