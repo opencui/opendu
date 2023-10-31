@@ -56,14 +56,14 @@ def from_openapi(specs) -> ModuleSchema:
 
 
 if __name__ == "__main__":
-    schema = from_openai(json.load(open("./converter/openai_examples/schemas.json")))
+    schema = from_openai(json.load(open("./converter/examples/schemas.json")))
     print(schema)
     print("\n")
 
-    exemplars = ExemplarStore(**json.load(open("./converter/openai_examples/exemplars.json")))
+    exemplars = ExemplarStore(**json.load(open("./converter/examples/exemplars.json")))
     print(exemplars)
     print("\n")
 
-    recognizer = SlotRecognizers(**json.load(open("./converter/openai_examples/recognizers.json")))
+    recognizer = SlotRecognizers(**json.load(open("./converter/examples/recognizers.json")))
     print(recognizer)
     print("\n")

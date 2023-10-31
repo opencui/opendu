@@ -13,7 +13,7 @@ from converter.lugconfig import LugConfig
 @dataclass_json
 class Expression:
     """
-    expression openai_examples
+    expression examples
     """
     id: str = field(metadata={"required": True})
     utterance: str = field(metadata={"required": True})
@@ -93,7 +93,7 @@ class Prompt:
 
     @abc.abstractmethod
     def __call__(self, item: dict[str, str]) -> str:
-        # Expecting: utterance, [skills, slots, openai_examples]
+        # Expecting: utterance, [skills, slots, examples]
         return
 
 

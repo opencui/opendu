@@ -18,7 +18,7 @@ class EmbeddingStore:
             "key": "Represent this document for retrieval: ",
         },
         "icl": {
-            "query": "Convert this example into vector to look for useful openai_examples: ",
+            "query": "Convert this example into vector to look for useful examples: ",
             "key": "Convert this example into vector for retrieval: ",
         },
 
@@ -28,7 +28,7 @@ class EmbeddingStore:
         },
 
         "exemplar": {
-            "query": "Convert this example into vector to look for useful openai_examples: ",
+            "query": "Convert this example into vector to look for useful examples: ",
             "key": "Convert this example into vector for retrieval: ",
         },
 

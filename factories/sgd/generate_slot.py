@@ -12,7 +12,7 @@ import gin
 
 class SlotExpression:
     """
-    expression openai_examples
+    expression examples
     """
 
     def __init__(self, service, intent, expression, slots, idx):
@@ -49,7 +49,7 @@ def build_matcher(slot_values):
 @gin.configurable
 class GenerateSlotExamples:
     """
-    generate openai_examples
+    generate examples
     """
 
     def __init__(self, input, output, training_percentage, neg_percentage, seed=None):
@@ -124,9 +124,9 @@ class GenerateSlotExamples:
 
     def load_slot_expressions(self):
         """
-        load original sgd data and create expression openai_examples
+        load original sgd data and create expression examples
         :param base_path: input path to original sgd dataset
-        :return: expression openai_examples
+        :return: expression examples
         """
         files = os.listdir(self.base_path)
         expressions = list()
@@ -210,8 +210,8 @@ class GenerateSlotExamples:
 
     def save(self, slot_examples):
         """
-        save generated openai_examples into tsv files
-        :param slot_examples:  generated openai_examples
+        save generated examples into tsv files
+        :param slot_examples:  generated examples
         :param path: output path
         :return: None
         """
