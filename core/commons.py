@@ -1,21 +1,12 @@
 import json
 from abc import ABC
-
 import abc
 from dataclasses import dataclass, field
 from functools import reduce
-
 from dataclasses_json import dataclass_json
 from datasets import Dataset, concatenate_datasets
 
-
-class Config:
-    embedding_device = "cpu"
-    embedding_model = 'BAAI/llm-embedder'
-    retriever_mode = "embedding"
-    desc_retrieve_topk = 8
-    exemplar_retrieve_topk = 16
-    llm_device = "cpu"
+from converter.lugconfig import LugConfig
 
 
 @dataclass
@@ -86,7 +77,7 @@ class SkillInfo:
 
 @dataclass_json
 @dataclass
-class ModelInfo:
+class ModuleSchema:
     skills: dict[str, SkillInfo]
     slots: dict[str, SlotInfo]
 
@@ -113,7 +104,7 @@ class Prompt:
 @dataclass
 class DatasetFactory(ABC):
     __metaclass__ = abc.ABCMeta
-    domain: ModelInfo
+    domain: ModuleSchema
 
     @abc.abstractmethod
     def build(self, split: str = "train") -> Dataset:
@@ -122,11 +113,11 @@ class DatasetFactory(ABC):
 
 
 @dataclass
-class DatasetsCreator(ABC):
+class DatasetsCreator(DatasetFactory):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, dscs=list[DatasetFactory]):
-        self.domain = ModelInfo(
+        self.domain = ModuleSchema(
             skills=reduce(lambda x, y: {**x, **y}, [dsc.domain.skills for dsc in dscs]),
             slots=reduce(lambda x, y: {**x, **y}, [dsc.domain.target_slots for dsc in dscs])
         )
@@ -137,6 +128,19 @@ class DatasetsCreator(ABC):
         return concatenate_datasets(**datasets)
 
 
+@dataclass
+class DatasetFactoryWrapper(DatasetFactory):
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, dsf: DatasetFactory, prompt: Prompt):
+        self.domain = dsf.domain
+        self.prompt = prompt
+
+    def build(self, split: str) -> Dataset:
+        dataset = self.creator.build(split)
+        return dataset.map(lambda x: {"input": self.prompt(x)})
+
+
 if __name__ == "__main__":
-    print(Config.embedding_model)
+    print(LugConfig.embedding_model)
 

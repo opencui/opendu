@@ -8,7 +8,7 @@ from sentence_transformers.readers import InputExample
 from factories import Dataset, IterableDataset, concatenate_datasets
 from torch.utils.data import DataLoader
 
-from core.commons import SkillInfo, Config
+from core.commons import SkillInfo, LugConfig
 from core.embedding import EmbeddingStore
 from core.retriever import DatasetCreatorWithIndex, has_no_intent
 
@@ -123,8 +123,8 @@ if __name__ == "__main__":
     logger.setLevel(logging.CRITICAL)
 
     from factories.sgd import SGDSkills
-    print(Config.embedding_model)
+    print(LugConfig.embedding_model)
     dsc = [DatasetCreatorWithIndex.build(SGDSkills("/home/sean/src/dstc8-schema-guided-dialogue/"), "./index/sgdskill/")]
     dataset = DataLoader(generate_sentence_pairs(dsc))
-    base_model = EmbeddingStore.get_model(Config.embedding_model)
+    base_model = EmbeddingStore.get_model(LugConfig.embedding_model)
     train(base_model, dataset, "./output/embedding/")

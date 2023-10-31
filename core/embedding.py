@@ -4,53 +4,51 @@ from llama_index.embeddings.base import BaseEmbedding
 from sentence_transformers import SentenceTransformer
 from llama_index.bridge.pydantic import PrivateAttr
 
-from core.commons import Config
-
-embedding_model_name = "BAAI/bge-small-en-v1.5"
-embedding_instruction = "Represent this sentence in term of implied action:"
-
-INSTRUCTIONS = {
-    "qa": {
-        "query": "Represent this query for retrieving relevant documents: ",
-        "key": "Represent this document for retrieval: ",
-    },
-    "icl": {
-        "query": "Convert this example into vector to look for useful examples: ",
-        "key": "Convert this example into vector for retrieval: ",
-    },
-
-    "desc": {
-        "query": "Convert this example into vector to look for useful function: ",
-        "key": "Convert this function description into vector for retrieval: ",
-    },
-
-    "exemplar": {
-        "query": "Convert this example into vector to look for useful examples: ",
-        "key": "Convert this example into vector for retrieval: ",
-    },
-
-    "chat": {
-        "query": "Embed this dialogue to find useful historical dialogues: ",
-        "key": "Embed this historical dialogue for retrieval: ",
-    },
-    "lrlm": {
-        "query": "Embed this text chunk for finding useful historical chunks: ",
-        "key": "Embed this historical text chunk for retrieval: ",
-    },
-    "tool": {
-        "query": "Transform this user request for fetching helpful tool descriptions: ",
-        "key": "Transform this tool description for retrieval: "
-    },
-    "convsearch": {
-        "query": "Encode this query and context for searching relevant passages: ",
-        "key": "Encode this passage for retrieval: ",
-    },
-}
+from core.commons import LugConfig
 
 
 # We reuse the underlying embedding when we can.
 class EmbeddingStore:
     _models: dict[str, SentenceTransformer] = {}
+    # We need different instruction pairs for different use cases.
+    INSTRUCTIONS = {
+        "qa": {
+
+            "query": "Represent this query for retrieving relevant documents: ",
+            "key": "Represent this document for retrieval: ",
+        },
+        "icl": {
+            "query": "Convert this example into vector to look for useful examples: ",
+            "key": "Convert this example into vector for retrieval: ",
+        },
+
+        "desc": {
+            "query": "Convert this example into vector to look for useful function: ",
+            "key": "Convert this function description into vector for retrieval: ",
+        },
+
+        "exemplar": {
+            "query": "Convert this example into vector to look for useful examples: ",
+            "key": "Convert this example into vector for retrieval: ",
+        },
+
+        "chat": {
+            "query": "Embed this dialogue to find useful historical dialogues: ",
+            "key": "Embed this historical dialogue for retrieval: ",
+        },
+        "lrlm": {
+            "query": "Embed this text chunk for finding useful historical chunks: ",
+            "key": "Embed this historical text chunk for retrieval: ",
+        },
+        "tool": {
+            "query": "Transform this user request for fetching helpful tool descriptions: ",
+            "key": "Transform this tool description for retrieval: "
+        },
+        "convsearch": {
+            "query": "Encode this query and context for searching relevant passages: ",
+            "key": "Encode this passage for retrieval: ",
+        },
+    }
 
     @classmethod
     def get_model(cls, model_name):
@@ -58,14 +56,21 @@ class EmbeddingStore:
             return EmbeddingStore._models[model_name]
         else:
             print(model_name)
-            model = SentenceTransformer(model_name, device=Config.embedding_device)
+            model = SentenceTransformer(model_name, device=LugConfig.embedding_device)
             EmbeddingStore._models[model_name] = model
             return model
 
     @classmethod
-    def get_embedding_by_task(cls, kind: str = 'desc') -> BaseEmbedding:
-        model = EmbeddingStore.get_model(Config.embedding_model)
-        return InstructedEmbeddings(model, INSTRUCTIONS[kind])
+    def for_description(cls) -> BaseEmbedding:
+        model = EmbeddingStore.get_model(LugConfig.embedding_model)
+        kind = LugConfig.embedding_desc_prompt
+        return InstructedEmbeddings(model, EmbeddingStore.INSTRUCTIONS[kind])
+
+    @classmethod
+    def for_exemplar(cls) -> BaseEmbedding:
+        model = EmbeddingStore.get_model(LugConfig.embedding_model)
+        kind = LugConfig.embedding_desc_prompt
+        return InstructedEmbeddings(model, EmbeddingStore.INSTRUCTIONS[kind])
 
 
 class InstructedEmbeddings(BaseEmbedding):

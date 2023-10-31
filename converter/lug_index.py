@@ -1,84 +1,60 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
-import os.path
-import re
+import json
 import sys
-import gin
+import getopt
 import shutil
 import logging
 
-from urllib.parse import urlparse
-
-from llama_index import ServiceContext, StorageContext
-from llama_index import VectorStoreIndex, SimpleDirectoryReader, SimpleKeywordTableIndex
-from llama_index import set_global_service_context
-
+from converter.schema_parser import OpenAIParser, from_openai, from_openapi
+from converter.openapi_parser import OpenAPIParser
+from core.annotation import ExemplarStore, SlotRecognizers, build_nodes_from_exemplar_store
+from core.retriever import create_index, build_nodes_from_skills
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
-
-# python fc-index index_persist_path collection_path...
-# collection_path
-#     data/
-#     /data
-#     https://abc.com/xyz.md
-#     https://<token>@github.com/<org>/<repo>
-#     https://<token>@github.com/<org>/<repo>/tree/<tag_name|branch_name>/<sub_dir>
-#     https://<token>@github.com/<org>/<repo>/blob/<tag_name|branch_name|commit_id>/<sub_dir>/<file_name>.md
+# python lug-index path_for_store_index module_specs_paths_intr
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        sys.exit(0)
+    argv = sys.argv[1:]
+    input_paths = ''
+    output_path = './index/'
+    opts, args = getopt.getopt(argv, "hi:o:")
+    for opt, arg in opts:
+        if opt == '-h':
+            print('lug_index.py -o <output_directory> -i <input_files>')
+            sys.exit()
+        elif opt == "-i":
+            input_paths = arg
+        elif opt == "-o":
+            outputfile = arg
 
-    # We assume that there output directory is the first argument, and the rest is input directory
-    output = sys.argv[1]
-    gin.parse_config_file('index.gin')
+    modules = input_paths.split(",")
 
-    # init download hugging fact model
-    service_context = ServiceContext.from_defaults(
-        llm=None,
-        llm_predictor=None,
-        embed_model=get_embedding(),
-    )
-
-    storage_context = StorageContext.from_defaults()
-
-    set_global_service_context(service_context)
-
-    documents = []
-    for file_path in sys.argv[2:]:
-        if os.path.isfile(file_path) and file_path.endswith(".md"):
-            print(map_func["file"])
-            documents.extend(map_func["file"](file_path))
-        elif os.path.isdir(file_path):
-            documents.extend(map_func["dir"](file_path))
-        else:
-            match_github = re.search(re_github, file_path)
-            if match_github:
-                documents.extend(map_func["github"](match_github))
-                continue
-
-            match_url = urlparse(file_path)
-            if match_url.scheme and match_url.netloc:
-                documents.extend(map_func["url"](file_path))
-                continue
-
-    # exclude these things from considerations.
-    for doc in documents:
-        doc.excluded_llm_metadata_keys = ["file_name", "content_type"]
-        doc.excluded_embed_metadata_keys = ["file_name", "content_type"]
+    # For now, we only support single module
+    if len(modules) != 1:
+        print('lug_index.py -o <output_directory> -i <input_files>')
 
     try:
-        embedding_index = VectorStoreIndex.from_documents(
-            documents, storage_context=storage_context)
-        keyword_index = SimpleKeywordTableIndex(
-            documents, storage_context=storage_context)
+        # We assume that there are schema.json, exemplars.json and recognizers.json under the directory
+        for module in modules:
+            schema_object = json.load(open(f"{module}/schemas.json"))
+            schema = None
+            if isinstance(schema_object, list):
+                # this is OpenAI schema
+                schema = from_openai(schema_object)
+            else:
+                schema = from_openapi(schema_object)
 
-        embedding_index.set_index_id("embedding")
-        embedding_index.storage_context.persist(persist_dir=output)
-        keyword_index.set_index_id("keyword")
-        keyword_index.storage_context.persist(persist_dir=output)
+            examplers = ExemplarStore(**json.load(open(f"{module}/exemplars.json")))
+            recognizers = SlotRecognizers(**json.load(open(f"{module}/recognizers.json")))
+
+            desc_nodes = build_nodes_from_skills(schema.skills)
+            create_index(output_path, "desc", desc_nodes)
+
+            exemplar_nodes = build_nodes_from_exemplar_store(examplers)
+            create_index(output_path, "exemplar", exemplar_nodes)
+
     except Exception as e:
         print(str(e))
-        shutil.rmtree(output, ignore_errors=True)
+        shutil.rmtree(output_path, ignore_errors=True)

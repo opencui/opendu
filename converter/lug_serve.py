@@ -10,9 +10,8 @@ from aiohttp import web
 from pybars import Compiler
 from llama_index import set_global_service_context
 from llama_index import StorageContext, ServiceContext, load_index_from_storage
-from processors.embedding import get_embedding
-from processors.retriever import HybridRetriever
-from processors.llm import get_generator
+
+from core.retriever import HybridRetriever
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
@@ -105,7 +104,6 @@ def init_app(embedding_index, keyword_index):
     app['keyword'] = keyword_retriever
     app['embedding'] = embedding_retriever
 
-    app["llm"] = get_generator()
 
     app['compiler'] = Compiler()
     app['prompt'] = "We have provided context information below. \n" \
@@ -127,13 +125,6 @@ if __name__ == "__main__":
 
     if not os.path.isdir(p):
         sys.exit(1)
-
-    service_context = ServiceContext.from_defaults(
-        llm=None,
-        llm_predictor=None,
-        embed_model=get_embedding())
-
-    set_global_service_context(service_context)
 
     storage_context = StorageContext.from_defaults(persist_dir=p)
     embedding_index = load_index_from_storage(storage_context, index_id="embedding")

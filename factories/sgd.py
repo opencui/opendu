@@ -8,8 +8,8 @@ import sys
 from collections import defaultdict
 
 from factories import IterableDataset
-from core.commons import ModelInfo, SkillInfo, SlotInfo, DatasetFactory, Expression, Config
-from core.retriever import build_desc_index, build_exemplar_index
+from core.commons import ModuleSchema, SkillInfo, SlotInfo, DatasetFactory, Expression, LugConfig
+from core.retriever import build_desc_index, build_dataset_index
 
 
 # pip install -U gin-config faiss-cpu scikit-learn sentence-transformers
@@ -31,7 +31,7 @@ class SGD:
 # the same service.
 #
 def load_schema_as_dict(full_path, suffix: str = "_1"):
-    domain = ModelInfo(skills={}, slots={})
+    domain = ModuleSchema(skills={}, slots={})
     with open(f"{full_path}/schema.json", encoding='utf-8') as f:
         f = json.load(f)
 
@@ -158,4 +158,4 @@ if __name__ == '__main__':
 
     print(f"there are {len(dsc.domain.skills)} skills.")
     build_desc_index(dsc, output)
-    build_exemplar_index(dsc, output)
+    build_dataset_index(dsc, output)
