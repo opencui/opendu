@@ -4,12 +4,14 @@ from langchain.schema import BaseRetriever
 from llama_index.schema import TextNode
 from sentence_transformers import SentenceTransformer, losses
 from sentence_transformers.readers import InputExample
-from finetune.datasets import Dataset
+from datasets import Dataset
 from torch.utils.data import DataLoader
 
-from finetune.commons import SkillSpec, LugConfig
+from core.annotation import SkillSpec
+from converter.lugconfig import LugConfig
 from core.embedding import EmbeddingStore
-from core.retriever import DatasetCreatorWithIndex, has_no_intent
+from core.retriever import has_no_intent
+
 
 
 # There are many different flavor of embedding we need to support to chatbot building
@@ -99,29 +101,15 @@ def create_sentence_pair_for_exemplars(dataset: Dataset, retriever: BaseRetrieve
     return results
 
 
-def generate_sentence_pairs(dataset_infos: list[DatasetCreatorWithIndex]) -> Dataset:
-    generators = []
-    for dataset_info in dataset_infos:
-        dataset = dataset_info.creator.build("train")
-        generators.extend(
-            create_sentence_pair_for_description(
-                dataset_info.creator.domain.skills,
-                dataset,
-                dataset_info.desc_retriever
-            ))
-        generators.extend(
-           create_sentence_pair_for_exemplars(
-                dataset,
-                dataset_info.exemplar_retriever
-            ))
-    return generators
+
 
 
 if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
+    from finetune.commons import DatasetCreatorWithIndex, generate_sentence_pairs
 
-    from finetune.datasets import SGDSkills
+    from finetune.sgd import SGDSkills
     print(LugConfig.embedding_model)
     dsc = [DatasetCreatorWithIndex.build(SGDSkills("/home/sean/src/dstc8-schema-guided-dialogue/"), "./index/sgdskill/")]
     dataset = DataLoader(generate_sentence_pairs(dsc))

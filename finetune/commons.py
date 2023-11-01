@@ -11,6 +11,7 @@ from core.annotation import ModuleSpec
 from core.embedding import EmbeddingStore
 from core.prompt import Prompt
 from core.retriever import build_nodes_from_skills, build_nodes_from_dataset, create_index, HybridRetriever
+from finetune.embedding import create_sentence_pair_for_description, create_sentence_pair_for_exemplars
 
 
 @dataclass
@@ -114,7 +115,6 @@ class DatasetFactoryWrapper(DatasetFactory):
         create_index(output, "exemplars", exemplar_nodes, EmbeddingStore.for_exemplar())
 
 
-
 @dataclass
 class DatasetCreatorWithIndex:
     creator: DatasetFactory
@@ -128,6 +128,23 @@ class DatasetCreatorWithIndex:
             desc_retriever=HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk),
             exemplar_retriever=HybridRetriever(path, "exemplar", LugConfig.exemplar_retrieve_topk))
 
+
+def generate_sentence_pairs(dataset_infos: list[DatasetCreatorWithIndex]) -> Dataset:
+    generators = []
+    for dataset_info in dataset_infos:
+        dataset = dataset_info.creator.build("train")
+        generators.extend(
+            create_sentence_pair_for_description(
+                dataset_info.creator.domain.skills,
+                dataset,
+                dataset_info.desc_retriever
+            ))
+        generators.extend(
+           create_sentence_pair_for_exemplars(
+                dataset,
+                dataset_info.exemplar_retriever
+            ))
+    return generators
 
 if __name__ == "__main__":
     print(LugConfig.embedding_model)
