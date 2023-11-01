@@ -6,9 +6,12 @@ from functools import reduce
 from dataclasses_json import dataclass_json
 from datasets import Dataset, concatenate_datasets
 
-from converter.lugconfig import LugConfig
+from converter.lug_config import LugConfig
 from core.annotation import ModuleSpec
+from core.embedding import EmbeddingStore
 from core.prompt import Prompt
+from core.retriever import build_nodes_from_skills, build_nodes_from_dataset, create_index, HybridRetriever
+from finetune.embedding import create_sentence_pair_for_description, create_sentence_pair_for_exemplars
 
 
 @dataclass
@@ -103,6 +106,45 @@ class DatasetFactoryWrapper(DatasetFactory):
         dataset = self.creator.build(split)
         return dataset.map(lambda x: {"input": self.prompt(x)})
 
+    @classmethod
+    def build_index(cls, dsc: DatasetFactory, output: str = "./output/"):
+        desc_nodes = build_nodes_from_skills(dsc.domain.skills)
+        exemplar_nodes = build_nodes_from_dataset(dsc.build("train"))
+
+        create_index(output, "desc", desc_nodes, EmbeddingStore.for_description())
+        create_index(output, "exemplars", exemplar_nodes, EmbeddingStore.for_exemplar())
+
+
+@dataclass
+class DatasetCreatorWithIndex:
+    creator: DatasetFactory
+    desc_retriever: HybridRetriever
+    exemplar_retriever: HybridRetriever
+
+    @classmethod
+    def build(cls, creator: DatasetFactory, path: str):
+        return DatasetCreatorWithIndex(
+            creator=creator,
+            desc_retriever=HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk),
+            exemplar_retriever=HybridRetriever(path, "exemplar", LugConfig.exemplar_retrieve_topk))
+
+
+def generate_sentence_pairs(dataset_infos: list[DatasetCreatorWithIndex]) -> Dataset:
+    generators = []
+    for dataset_info in dataset_infos:
+        dataset = dataset_info.creator.build("train")
+        generators.extend(
+            create_sentence_pair_for_description(
+                dataset_info.creator.domain.skills,
+                dataset,
+                dataset_info.desc_retriever
+            ))
+        generators.extend(
+           create_sentence_pair_for_exemplars(
+                dataset,
+                dataset_info.exemplar_retriever
+            ))
+    return generators
 
 if __name__ == "__main__":
     print(LugConfig.embedding_model)

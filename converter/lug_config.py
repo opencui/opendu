@@ -3,7 +3,7 @@
 class LugConfig:
     embedding_device = "cpu"
     embedding_model = 'BAAI/llm-embedder'
-    embedding_desc_prompt = "tools"
+    embedding_desc_prompt = "tool"
     embedding_exemplar_prompt = "irda"
     retriever_mode = "embedding"
     desc_retrieve_topk = 8

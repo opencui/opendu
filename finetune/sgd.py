@@ -9,6 +9,7 @@ from collections import defaultdict
 from datasets import IterableDataset
 
 from core.annotation import ModuleSpec, SkillSpec, SlotSpec
+from core.embedding import EmbeddingStore
 from finetune.commons import DatasetFactory, Expression
 from core.retriever import build_desc_index, build_dataset_index
 
@@ -58,7 +59,7 @@ def load_schema_as_dict(full_path, suffix: str = "_1"):
                 is_categorical = slot['is_categorical']
                 possible_values = slot['possible_values']
                 slot_description = slot["description"]
-                domain.slots[slot_name] = SlotSpec(slot_name, slot_description, is_categorical, possible_values).to_dict()
+                domain.slots[slot_name] = SlotSpec(slot_name, slot_description).to_dict()
     return domain
 
 
@@ -157,5 +158,5 @@ if __name__ == '__main__':
     dsc = SGDSkills("/home/sean/src/dstc8-schema-guided-dialogue/")
 
     print(f"there are {len(dsc.domain.skills)} skills.")
-    build_desc_index(dsc, output)
-    build_dataset_index(dsc, output)
+    build_desc_index(dsc.domain, output, EmbeddingStore.for_description())
+    build_dataset_index(dsc.build("train"), output, EmbeddingStore.for_exemplar())

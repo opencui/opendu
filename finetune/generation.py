@@ -19,10 +19,11 @@ from transformers import (
     set_seed,
     Seq2SeqTrainer,
 )
-from finetune.datasets import Dataset, concatenate_datasets
-from finetune.datasets.viggo import Viggo
-from finetune.commons import DatasetWrapper
+from datasets import Dataset, concatenate_datasets
+
+
 from core.prompt import get_prompt
+from finetune.commons import DatasetFactoryWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -457,11 +458,13 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
+    from finetune.viggo import Viggo
+
     viggo = Viggo()
     output = "./index/viggo/"
     prompt = get_prompt(viggo, output)
 
     #print(prompt({"utterance": "let us try this"}))
 
-    converters = [DatasetWrapper(Viggo(), prompt, mode="intent")]
+    converters = [DatasetFactoryWrapper(Viggo(), prompt, mode="intent")]
     train(converters)
