@@ -6,7 +6,7 @@ from functools import reduce
 from dataclasses_json import dataclass_json
 from datasets import Dataset, concatenate_datasets
 
-from converter.lugconfig import LugConfig
+from converter.lug_config import LugConfig
 from core.annotation import ModuleSpec
 from core.embedding import EmbeddingStore
 from core.prompt import Prompt

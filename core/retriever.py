@@ -12,7 +12,7 @@ from llama_index import VectorStoreIndex, SimpleKeywordTableIndex
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode, NodeWithScore
 from llama_index import QueryBundle
-from converter.lugconfig import LugConfig
+from converter.lug_config import LugConfig
 from core.embedding import EmbeddingStore
 from core.annotation import SkillSpec, ModuleSpec
 

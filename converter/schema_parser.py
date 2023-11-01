@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
 import json
-from core.annotation import ExemplarStore, SlotRecognizers
-from finetune.commons import SkillSpec, SlotSpec, ModuleSpec
+from core.annotation import ExemplarStore, SlotRecognizers, SkillSpec, SlotSpec, ModuleSpec
 
 
 #

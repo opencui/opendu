@@ -8,7 +8,7 @@ from datasets import Dataset
 from torch.utils.data import DataLoader
 
 from core.annotation import SkillSpec
-from converter.lugconfig import LugConfig
+from converter.lug_config import LugConfig
 from core.embedding import EmbeddingStore
 from core.retriever import has_no_intent
 
