@@ -1,26 +1,34 @@
 import json
+from dataclasses import field
 from enum import Enum
 from typing import Union, List, TypedDict, Optional, Dict, Literal
+from dataclasses import dataclass
 
+from dataclasses_json import dataclass_json
 from llama_index.schema import TextNode
 from typing_extensions import Annotated
 from pydantic import BaseModel, Field
 
-
-class SlotSpec(BaseModel):
-    name: str = Field(description="name of the slot, or parameter")
-    description: str = Field(description="the purpose of the slot or parameter")
-
-
-class SkillSpec(BaseModel):
-    name: str = Field(description="name of the skill, or function to be CUI exposed")
-    description: str = Field(description="the purpose of function")
-    slots: List[str] = Field(description="the specification of its parameters")
+@dataclass_json
+@dataclass
+class SlotSpec:
+    name: str = field(metadata={"required": True})
+    description: str = field(metadata={"required": True})
 
 
-class ModuleSpec(BaseModel):
-    skills: Dict[str, SkillSpec] = Field(description="all the functions")
-    slots: Dict[str, SlotSpec] = Field(description="all the parameters")
+@dataclass_json
+@dataclass
+class SkillSpec:
+    name: str = field(metadata={"required": True})
+    description: str = field(metadata={"required": True})
+    slots: list[str] = field(default_factory=list)
+
+
+@dataclass_json
+@dataclass
+class ModuleSpec:
+    skills: Dict[str, SkillSpec]
+    slots: Dict[str, SlotSpec]
 
 
 class EntityInstance(BaseModel):

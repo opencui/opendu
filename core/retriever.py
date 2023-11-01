@@ -12,8 +12,9 @@ from llama_index import VectorStoreIndex, SimpleKeywordTableIndex
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode, NodeWithScore
 from llama_index import QueryBundle
-from finetune.commons import DatasetFactory, SkillSpec, LugConfig
+from converter.lugconfig import LugConfig
 from core.embedding import EmbeddingStore
+from core.annotation import SkillSpec, ModuleSpec
 
 # Retrievers
 from llama_index.retrievers import (
@@ -60,9 +61,8 @@ def build_nodes_from_skills(skills: dict[str, SkillSpec]):
 
 
 # This is used to create the retriever so that we can get dynamic exemplars into understanding.
-def create_index(base: str, tag: str, nodes: list[TextNode]):
+def create_index(base: str, tag: str, nodes: list[TextNode], embedding: BaseEmbedding):
     path = f"{base}/{tag}/"
-    embedding: BaseEmbedding = EmbeddingStore.get_embedding_by_task(tag)
     # Init download hugging fact model
     service_context = ServiceContext.from_defaults(
         llm=None,
@@ -93,14 +93,14 @@ def create_index(base: str, tag: str, nodes: list[TextNode]):
         shutil.rmtree(path, ignore_errors=True)
 
 
-def build_dataset_index(dsc: DatasetFactory, output: str):
-    exemplar_nodes = build_nodes_from_dataset(dsc.build("train"))
-    create_index(output, "exemplar", exemplar_nodes)
+def build_dataset_index(dsc: Dataset, output: str, embedding: BaseEmbedding):
+    exemplar_nodes = build_nodes_from_dataset(dsc)
+    create_index(output, "exemplar", exemplar_nodes, embedding)
 
 
-def build_desc_index(dsc: DatasetFactory, output: str):
-    desc_nodes = build_nodes_from_skills(dsc.domain.skills)
-    create_index(output, "desc", desc_nodes)
+def build_desc_index(dsc: ModuleSpec, output: str, embedding: BaseEmbedding):
+    desc_nodes = build_nodes_from_skills(dsc.skills)
+    create_index(output, "desc", desc_nodes, embedding)
 
 
 def get_retrievers(path: str):
@@ -166,20 +166,6 @@ class HybridRetriever(BaseRetriever):
         return retrieve_nodes
 
 
-@dataclass
-class DatasetCreatorWithIndex:
-    creator: DatasetFactory
-    desc_retriever: HybridRetriever
-    exemplar_retriever: HybridRetriever
-
-    @classmethod
-    def build(cls, creator: DatasetFactory, path: str):
-        return DatasetCreatorWithIndex(
-            creator=creator,
-            desc_retriever=HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk),
-            exemplar_retriever=HybridRetriever(path, "exemplar", LugConfig.exemplar_retrieve_topk))
-
-
 def compute_k(dataset: Dataset, output: str, tag: str, topk: int = 3):
     retriever = HybridRetriever(output, tag, topk=8)
     counts = [0, 0]
@@ -222,7 +208,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.CRITICAL)
 
     output = "./index/sgdskill/"
-    from finetune.datasets import SGDSkills
+    from finetune.sgd import SGDSkills
     dsc = SGDSkills("/home/sean/src/dstc8-schema-guided-dialogue/")
 
     LugConfig.embedding_device = "cuda"

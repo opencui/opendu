@@ -11,14 +11,10 @@ from langchain.schema import BaseRetriever
 from llama_index.schema import TextNode
 
 from core.annotation import ModuleSpec
-from finetune.datasets import SGDSkills
-from finetune.commons import DatasetFactory, DatasetFactoryWrapper
 from core.embedding import EmbeddingStore
 from core.retriever import HybridRetriever, build_nodes_from_skills, build_nodes_from_dataset, create_index
 from pybars import Compiler
 import random
-
-from finetune.datasets.viggo import Viggo
 
 
 #
@@ -142,13 +138,7 @@ class FullPrompt(Prompt, ABC):
 
         return self.template(item, helpers=self.helpers, partials=self.partials)
 
-    @classmethod
-    def build_index(cls, dsc: DatasetFactory, output: str = "./output/"):
-        desc_nodes = build_nodes_from_skills(dsc.domain.skills)
-        exemplar_nodes = build_nodes_from_dataset(dsc.build("train"))
 
-        create_index(output, "desc", desc_nodes, EmbeddingStore.for_description())
-        create_index(output, "exemplars", exemplar_nodes, EmbeddingStore.for_exemplar())
 
 
 #
@@ -237,20 +227,24 @@ Prompts = {
 #
 # Assume the node id_ is the same as dataset id.
 #
-def get_prompt(dsc: DatasetFactory, index_path: str) -> Prompt:
+def get_prompt(domain: ModuleSpec, index_path: str) -> Prompt:
     retriever = HybridRetriever(index_path)
-    return FullPrompt(Prompts["full_exampled_prompt"], dsc.domain, retriever=retriever)
+    return FullPrompt(Prompts["full_exampled_prompt"], domain, retriever=retriever)
 
 
 if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
+    from finetune.sgd import SGDSkills
+    from finetune.viggo import Viggo
     viggo = SGDSkills()
     output = "./index/viggo/"
     #print(compute_k(viggo.build("validation"), output, retriever))
 
     prompt = get_prompt(viggo,  output)
+
+    from finetune.commons import DatasetFactory, DatasetFactoryWrapper
     dsc = DatasetFactoryWrapper(Viggo("full"), prompt)
     dataset = dsc.build("train")
     for item in dataset:

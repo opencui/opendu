@@ -1,4 +1,4 @@
-from finetune.datasets import load_dataset, Dataset
+from datasets import load_dataset, Dataset
 from finetune.commons import DatasetFactory, ModuleSpec
 
 

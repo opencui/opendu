@@ -20,7 +20,7 @@ from transformers import (
     Seq2SeqTrainer,
 )
 from finetune.datasets import Dataset, concatenate_datasets
-from finetune.datasets.viggo import Viggo
+from finetune.viggo import Viggo
 from finetune.commons import DatasetWrapper
 from core.prompt import get_prompt
 

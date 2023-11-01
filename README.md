@@ -1,4 +1,4 @@
-# Ralug (Retrieval-augmented language understanding and generation)
+# Lug (language understanding and generation)
 
 For now, RALUG is retrieval augmented generation based open source implementation of function calling API
 that is designed for dialog understanding in chatbot development and tool-using agent development. 
