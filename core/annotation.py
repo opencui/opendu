@@ -7,6 +7,22 @@ from typing_extensions import Annotated
 from pydantic import BaseModel, Field
 
 
+class SlotSpec(BaseModel):
+    name: str = Field(description="name of the slot, or parameter")
+    description: str = Field(description="the purpose of the slot or parameter")
+
+
+class SkillSpec(BaseModel):
+    name: str = Field(description="name of the skill, or function to be CUI exposed")
+    description: str = Field(description="the purpose of function")
+    slots: List[str] = Field(description="the specification of its parameters")
+
+
+class ModuleSpec(BaseModel):
+    skills: Dict[str, SkillSpec] = Field(description="all the functions")
+    slots: Dict[str, SlotSpec] = Field(description="all the parameters")
+
+
 class EntityInstance(BaseModel):
     label: str = Field(description='the canonical form of the instance')
     expressions: List[str] = Field(description="the expressions used to identify this instance.")
@@ -33,6 +49,7 @@ class SlotRecognizers(BaseModel):
 
 # owner is not needed if exemplars are listed insider function specs.
 class Exemplar(BaseModel):
+    owner: Optional[str] = Field(description="onwer of this exemplar.")
     context: Optional[str] = Field(description="the context under which this exemplar works.")
     template: str = Field(description="the example utterance that should trigger the given skill")
 

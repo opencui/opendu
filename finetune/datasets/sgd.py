@@ -4,11 +4,12 @@
 import json
 import logging
 import os
-import sys
 from collections import defaultdict
 
-from factories import IterableDataset
-from core.commons import ModuleSchema, SkillInfo, SlotInfo, DatasetFactory, Expression, LugConfig
+from datasets import IterableDataset
+
+from core.annotation import ModuleSpec, SkillSpec, SlotSpec
+from finetune.commons import DatasetFactory, Expression
 from core.retriever import build_desc_index, build_dataset_index
 
 
@@ -31,7 +32,7 @@ class SGD:
 # the same service.
 #
 def load_schema_as_dict(full_path, suffix: str = "_1"):
-    domain = ModuleSchema(skills={}, slots={})
+    domain = ModuleSpec(skills={}, slots={})
     with open(f"{full_path}/schema.json", encoding='utf-8') as f:
         f = json.load(f)
 
@@ -50,15 +51,14 @@ def load_schema_as_dict(full_path, suffix: str = "_1"):
                 optional_slots = intent["optional_slots"].keys()
                 slots.extend(list(optional_slots))
                 slots = [f"{slot}" for slot in slots]
-                domain.skills[intent_name] = SkillInfo(intent_name, intent_desc, slots).to_dict()
+                domain.skills[intent_name] = SkillSpec(intent_name, intent_desc, slots).to_dict()
             slots = service["slots"]
             for slot in slots:
                 slot_name = slot['name']
                 is_categorical = slot['is_categorical']
                 possible_values = slot['possible_values']
                 slot_description = slot["description"]
-                domain.slots[slot_name] = SlotInfo(slot_name, slot_description, is_categorical,
-                                                   possible_values).to_dict()
+                domain.slots[slot_name] = SlotSpec(slot_name, slot_description, is_categorical, possible_values).to_dict()
     return domain
 
 

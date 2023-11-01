@@ -2,7 +2,7 @@
 
 import json
 from core.annotation import ExemplarStore, SlotRecognizers
-from core.commons import SkillInfo, DatasetFactory, SlotInfo, ModuleSchema
+from finetune.commons import SkillSpec, SlotSpec, ModuleSpec
 
 
 #
@@ -10,7 +10,7 @@ from core.commons import SkillInfo, DatasetFactory, SlotInfo, ModuleSchema
 #
 # We assume that in each domain, the slot name are unique, and skill name are unique.
 #
-def from_openai(functions) -> ModuleSchema:
+def from_openai(functions) -> ModuleSpec:
     skillInfos = {}
     slotInfos = {}
     for func in functions:
@@ -28,12 +28,12 @@ def from_openai(functions) -> ModuleSchema:
             else:
                 slot_name = key
                 slot_description = slot["description"]
-                slotInfos[slot_name] = SlotInfo(slot_name, slot_description)
-        skillInfos[f_name] = SkillInfo(f_name, f_description, f_slots)
-    return ModuleSchema(skillInfos, slotInfos)
+                slotInfos[slot_name] = SlotSpec(slot_name, slot_description)
+        skillInfos[f_name] = SkillSpec(f_name, f_description, f_slots)
+    return ModuleSpec(skillInfos, slotInfos)
 
 
-def from_openapi(specs) -> ModuleSchema:
+def from_openapi(specs) -> ModuleSpec:
     skills = {}
     slots = {}
     for path, v in specs.get("paths", {}).items():
@@ -49,10 +49,24 @@ def from_openapi(specs) -> ModuleSchema:
                 slot_name = _p.get("name", "")
                 slot_description = _p.get("description", "")
                 if slot_name not in slots:
-                    slots[slot_name] = SlotInfo(slot_name, slot_description)
+                    slots[slot_name] = SlotSpec(slot_name, slot_description)
                 parameters.append(slot_name)
-            skills[label] = SkillInfo(name, description, parameters)
-    return ModuleSchema(skills, slots)
+            skills[label] = SkillSpec(name, description, parameters)
+    return ModuleSpec(skills, slots)
+
+
+# This assumes that in a directory we have schemas.json in openai/openapi format, and then exemplars
+# recognizers.
+def load_schema_from_directory(path):
+    schema_object = json.load(open(path))
+    return from_openai(schema_object) if isinstance(schema_object, list) else from_openapi(schema_object)
+
+
+def load_all_from_directory(input_path):
+    module_schema = load_schema_from_directory(f"{input_path}/schemas.json")
+    examplers = ExemplarStore(**json.load(open(f"{input_path}/exemplars.json")))
+    recognizers = SlotRecognizers(**json.load(open(f"{input_path}/recognizers.json")))
+    return module_schema, examplers, recognizers
 
 
 if __name__ == "__main__":

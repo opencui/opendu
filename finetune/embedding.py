@@ -1,14 +1,13 @@
-import itertools
 import logging
 
 from langchain.schema import BaseRetriever
 from llama_index.schema import TextNode
 from sentence_transformers import SentenceTransformer, losses
 from sentence_transformers.readers import InputExample
-from factories import Dataset, IterableDataset, concatenate_datasets
+from finetune.datasets import Dataset
 from torch.utils.data import DataLoader
 
-from core.commons import SkillInfo, LugConfig
+from finetune.commons import SkillSpec, LugConfig
 from core.embedding import EmbeddingStore
 from core.retriever import DatasetCreatorWithIndex, has_no_intent
 
@@ -41,7 +40,7 @@ def train(model: SentenceTransformer, dataset: Dataset, model_save_path: str):
         show_progress_bar=True)
 
 
-def create_sentence_pair_for_description(skills: dict[str, SkillInfo], dataset: Dataset, retriever: BaseRetriever, num_neg=1):
+def create_sentence_pair_for_description(skills: dict[str, SkillSpec], dataset: Dataset, retriever: BaseRetriever, num_neg=1):
     embedding = EmbeddingStore.get_embedding_by_task("desc")
     results = []
     for item in dataset:
@@ -122,7 +121,7 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
-    from factories.sgd import SGDSkills
+    from finetune.datasets import SGDSkills
     print(LugConfig.embedding_model)
     dsc = [DatasetCreatorWithIndex.build(SGDSkills("/home/sean/src/dstc8-schema-guided-dialogue/"), "./index/sgdskill/")]
     dataset = DataLoader(generate_sentence_pairs(dsc))

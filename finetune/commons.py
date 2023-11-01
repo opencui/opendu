@@ -7,6 +7,8 @@ from dataclasses_json import dataclass_json
 from datasets import Dataset, concatenate_datasets
 
 from converter.lugconfig import LugConfig
+from core.annotation import ModuleSpec
+from core.prompt import Prompt
 
 
 @dataclass
@@ -58,45 +60,6 @@ class Expression:
         return res_utterance
 
 
-@dataclass_json
-@dataclass
-class SlotInfo:
-    name: str = field(metadata={"required": True})
-    description: str = field(metadata={"required": True})
-    closed: bool = field(default=False)
-    possible_values: list[str] = field(default_factory=list)
-
-
-@dataclass_json
-@dataclass
-class SkillInfo:
-    name: str = field(metadata={"required": True})
-    description: str = field(metadata={"required": True})
-    slots: list[str] = field(default_factory=list)
-
-
-@dataclass_json
-@dataclass
-class ModuleSchema:
-    skills: dict[str, SkillInfo]
-    slots: dict[str, SlotInfo]
-
-
-#
-# This assumes the dataset has skills, skill_descriptions, slots, slot_descriptions
-# Then user utterance as input, and output.
-#
-@dataclass
-class Prompt:
-    __metaclass__ = abc.ABCMeta
-    extra_tokens: list[str] = field(default_factory=list)
-
-    @abc.abstractmethod
-    def __call__(self, item: dict[str, str]) -> str:
-        # Expecting: utterance, [skills, slots, examples]
-        return
-
-
 #
 # This is need to create the different dataset based on prompt templating.
 # We expect the input dataset has utterance field.
@@ -104,7 +67,7 @@ class Prompt:
 @dataclass
 class DatasetFactory(ABC):
     __metaclass__ = abc.ABCMeta
-    domain: ModuleSchema
+    domain: ModuleSpec
 
     @abc.abstractmethod
     def build(self, split: str = "train") -> Dataset:
@@ -117,7 +80,7 @@ class DatasetsCreator(DatasetFactory):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, dscs=list[DatasetFactory]):
-        self.domain = ModuleSchema(
+        self.domain = ModuleSpec(
             skills=reduce(lambda x, y: {**x, **y}, [dsc.domain.skills for dsc in dscs]),
             slots=reduce(lambda x, y: {**x, **y}, [dsc.domain.target_slots for dsc in dscs])
         )
