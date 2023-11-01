@@ -4,7 +4,7 @@ from llama_index.embeddings.base import BaseEmbedding
 from sentence_transformers import SentenceTransformer
 from llama_index.bridge.pydantic import PrivateAttr
 
-from core.commons import LugConfig
+from finetune.commons import LugConfig
 
 
 # We reuse the underlying embedding when we can.

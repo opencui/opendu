@@ -6,9 +6,8 @@ import getopt
 import shutil
 import logging
 
-from converter.schema_parser import OpenAIParser, from_openai, from_openapi
-from converter.openapi_parser import OpenAPIParser
-from core.annotation import ExemplarStore, SlotRecognizers, build_nodes_from_exemplar_store
+from converter.schema_parser import load_all_from_directory
+from core.annotation import build_nodes_from_exemplar_store
 from core.retriever import create_index, build_nodes_from_skills
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -38,18 +37,9 @@ if __name__ == "__main__":
     try:
         # We assume that there are schema.json, exemplars.json and recognizers.json under the directory
         for module in modules:
-            schema_object = json.load(open(f"{module}/schemas.json"))
-            schema = None
-            if isinstance(schema_object, list):
-                # this is OpenAI schema
-                schema = from_openai(schema_object)
-            else:
-                schema = from_openapi(schema_object)
+            module_schema, examplers, recognizers = load_all_from_directory(module)
 
-            examplers = ExemplarStore(**json.load(open(f"{module}/exemplars.json")))
-            recognizers = SlotRecognizers(**json.load(open(f"{module}/recognizers.json")))
-
-            desc_nodes = build_nodes_from_skills(schema.skills)
+            desc_nodes = build_nodes_from_skills(module_schema.skills)
             create_index(output_path, "desc", desc_nodes)
 
             exemplar_nodes = build_nodes_from_exemplar_store(examplers)

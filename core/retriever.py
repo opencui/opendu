@@ -12,7 +12,7 @@ from llama_index import VectorStoreIndex, SimpleKeywordTableIndex
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode, NodeWithScore
 from llama_index import QueryBundle
-from core.commons import DatasetFactory, SkillInfo, LugConfig
+from finetune.commons import DatasetFactory, SkillSpec, LugConfig
 from core.embedding import EmbeddingStore
 
 # Retrievers
@@ -45,7 +45,7 @@ def build_nodes_from_dataset(dataset: Dataset):
     return nodes
 
 
-def build_nodes_from_skills(skills: dict[str, SkillInfo]):
+def build_nodes_from_skills(skills: dict[str, SkillSpec]):
     nodes = []
     for label, skill in skills.items():
         desc = skill["description"]
@@ -222,7 +222,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.CRITICAL)
 
     output = "./index/sgdskill/"
-    from factories.sgd import SGDSkills
+    from finetune.datasets import SGDSkills
     dsc = SGDSkills("/home/sean/src/dstc8-schema-guided-dialogue/")
 
     LugConfig.embedding_device = "cuda"

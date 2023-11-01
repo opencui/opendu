@@ -2,27 +2,46 @@
 # Examples assumes that we have potentially more than one example, the goal
 # is to create a block for examples.
 #
-import sys
+import abc
 from abc import ABC
 import logging
-from langchain.schema import BaseRetriever
-from llama_index.schema import NodeWithScore, TextNode
+from dataclasses import dataclass, field
 
-from factories.sgd import SGDSkills
-from core.commons import Prompt, DatasetFactory, DatasetFactoryWrapper, ModuleSchema
+from langchain.schema import BaseRetriever
+from llama_index.schema import TextNode
+
+from core.annotation import ModuleSpec
+from finetune.datasets import SGDSkills
+from finetune.commons import DatasetFactory, DatasetFactoryWrapper
 from core.embedding import EmbeddingStore
 from core.retriever import HybridRetriever, build_nodes_from_skills, build_nodes_from_dataset, create_index
-from core.prompt import GeneratorPrompts
 from pybars import Compiler
 import random
 
-from factories.viggo import Viggo
+from finetune.datasets.viggo import Viggo
+
+
+#
+# This assumes the dataset has skills, skill_descriptions, slots, slot_descriptions
+# Then user utterance as input, and output.
+#
+@dataclass
+class Prompt:
+    __metaclass__ = abc.ABCMeta
+    extra_tokens: list[str] = field(default_factory=list)
+
+    @abc.abstractmethod
+    def __call__(self, item: dict[str, str]) -> str:
+        # Expecting: utterance, [skills, slots, examples]
+        return
 
 
 #
 # We will use eos: </s> automatically in both train and decode. Prompt can decide whether
 # and how they want to use bos: <s>.
 # We need to have two path: one for training (we need extra_tokens) and one for decoding.
+# In LUG, we call prompt needed by embedding instruction, as they are static. Templated prompt
+# needed by generation will be called as prompt.
 #
 
 
@@ -75,7 +94,7 @@ class FullPrompt(Prompt, ABC):
     def __init__(
             self,
             source: str,
-            module: ModuleSchema,
+            module: ModuleSpec,
             retriever: BaseRetriever = None,
             topk: int = 3,
             train_mode: bool = False,
@@ -102,7 +121,7 @@ class FullPrompt(Prompt, ABC):
             intent = item.metadata["target_intent"]
             if intent not in intents:
                 intents.add(intent)
-                new_item = {"utterance": item.text, "output": item.metadata["target_full"]}
+                new_item = {"template": item.text, "owner": item.metadata["target_full"]}
                 new_results.append(new_item)
             if len(new_results) >= self.topk:
                 break
@@ -132,7 +151,14 @@ class FullPrompt(Prompt, ABC):
         create_index(output, "exemplars", exemplar_nodes, EmbeddingStore.for_exemplar())
 
 
-GeneratorPrompts = {
+#
+# LugPrompts assumes the following prompt template in pybars depending on the following information:
+# skills: List[SkillSpec]
+# slots: List[SlotSpec]
+# exemplars: List[Exemplar]
+# values: ?
+#
+Prompts = {
     "simple_prompt":
         "<s> Convert the input text to structured representation. ### Input: {{utterance}} ### Output:",
     "full_simple_prompt_txt00":
@@ -166,12 +192,45 @@ GeneratorPrompts = {
         The order your list the parameters within the function must follow the order listed above. 
         
         Here are a couple of examples.
-        {{#list_examples examples}} Sentence: {{utterance}} \n Output: {{output}} \n {{/list_examples}}
+        {{#list_examples examples}} Sentence: {{template}} \n Output: {{owner}} \n {{/list_examples}}
         
         ### Input sentence:
         {{utterance}}
         ### Output:
+        """,
+    "exampled_prompt_for_slots":
         """
+        <s> Given the input sentence, construct a function representation of this sentence, including the function name,
+         parameters, and their corresponding values. This function representation should describe the target sentence 
+         accurately and the function must be one of the following 
+        {{#list_skills skills}} {{name}} {{/list_skills}}
+        .
+        For each parameter with its value mentioned in the sentence, enclose the parameter and its corresponding values in
+         brackets. The parameters must be one of the following:
+        {{#list_slots slots}} {{name}} {{/list_slots}}
+        The order your list the parameters within the function must follow the order listed above. 
+        
+        Here are a couple of examples.
+        {{#list_examples examples}} Sentence: {{template}} \n Output: {{owner}} \n {{/list_examples}}
+        
+        ### Input sentence:
+        {{utterance}}
+        ### Output:
+        """,
+    "exampled_prompt_for_skill":
+        """
+        <s> Given the input sentence, construct a function representation of this sentence, including the function name,
+         parameters, and their corresponding values. This function representation should describe the target sentence 
+         accurately and the function must be one of the following 
+        {{#list_skills skills}} {{name}} {{/list_skills}}
+        .    
+        Here are a couple of example templates.
+        {{#list_examples examples}} Sentence: {{template}} \n Output: {{owner}} \n {{/list_examples}}
+        
+        ### Input sentence:
+        {{utterance}}
+        ### Output:
+        """,
 }
 
 
@@ -180,7 +239,7 @@ GeneratorPrompts = {
 #
 def get_prompt(dsc: DatasetFactory, index_path: str) -> Prompt:
     retriever = HybridRetriever(index_path)
-    return FullPrompt(GeneratorPrompts["full_exampled_prompt"], dsc.domain, retriever=retriever)
+    return FullPrompt(Prompts["full_exampled_prompt"], dsc.domain, retriever=retriever)
 
 
 if __name__ == "__main__":

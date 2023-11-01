@@ -1,5 +1,5 @@
-from factories import load_dataset, Dataset
-from core.commons import DatasetFactory, ModuleSchema
+from finetune.datasets import load_dataset, Dataset
+from finetune.commons import DatasetFactory, ModuleSpec
 
 
 # Each raw dataset should be responsible for a couple of things:
@@ -28,7 +28,7 @@ class Viggo(DatasetFactory):
     def __init__(self, mode: str = "full"):
         self.mode = mode
         self.tag = "gem/viggo"
-        self.domain = ModuleSchema(
+        self.domain = ModuleSpec(
             skills=create_info_list(
                 ['inform', 'request', 'give_opinion', 'confirm', 'verify_attribute', 'suggest',
                  'request_explanation', 'recommend', 'request_attribute']),

@@ -1,6 +1,6 @@
 # We include a simple full-parameter finetuning & inference script here. Our V0.1 chat model is finetuned using this script.
 # The FT dataset we use is openassistant-guanaco. For finetuning with less than 4GB RAM, we refer you to the Qlora and bitsandbytes repo.
-# We did not undergone extensive hyperparameter tuning nor choosing more performant FT factories.
+# We did not undergone extensive hyperparameter tuning nor choosing more performant FT datasets.
 # We hope the community can explore on finetuning TinyLlama and come up with better chat models. I will include community-finetuned models in this repo.
 
 python3 finetune/finetune.py \
