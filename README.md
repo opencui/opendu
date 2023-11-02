@@ -1,20 +1,20 @@
 # LUG (language understanding and generation)
 
-For now, LUG is an open source implementation of retrieval augmented generation based unction calling API
-that is designed for dialog understanding in chatbot development and tool-using agent development. 
+LUG is an open source implementation of retrieval augmented generation based function calling API
+that is designed both for dialog understanding in chatbot development and tool-using agent development. 
 
-It is designed to be used with any LLMs with provided finetune script for both embedding model and generation model.
-We will also make efficient inference possible based on excellent project like llama.cpp, vllm, for example. With open
-sourced LLM, you can privately deploy the entire function calling API solution anywhere you want.
+It can be used with any LLMs with provided finetune script for both embedding model and generation model.
+Efficient inference is possible using excellent project like llama.cpp, vllm. With open sourced LLM, you 
+can privately deploy the entire function calling API solution anywhere you want.
 
-There are couple basic goals for this repo:
+There are couple basic goals for this project:
 1. It should use the same return as OpenAI function calling API.
 2. It can be instructed by OpenAPI function specifications.
 3. It should be easy to fix understanding issues, with exemplars defined in OpenCUI format.
 4. It should be easy to utilize the external entity recognizer for slot filling. 
 
-## What signal do you use to define conversion?
-Ralug takes three kind of different signal to shape how conversion is done:
+## What signal can be used to define conversion?
+LUG takes three kind of different signal to shape how conversion is done:
 1. Function specification, particular [OpenAPI](https://spec.openapis.org/oas/latest.html)/[OpenAI](https://platform.openai.com/docs/api-reference/chat/create#chat/create-functions) function specification.
 2. Function exemplar, the utterance template that is associated with function.
 3. Entity recognizer for the slots.
@@ -69,7 +69,7 @@ An example in the json format is as follows:
 
 ### Entity recognizer for the slots.
 It is common that business have some private entity that is not well represented in the public domain text that is
-used during the training of LLMs, so it can be difficult to LLMs to recognize these entities out of box. RaLug allow you
+used during the training of LLMs, so it can be difficult to LLMs to recognize these entities out of box. LUG allow you
 to specify a recognizer for each slot, which recognizer can be a list of entity instance or some pattern.
 
 An example in the json format is as follows:
@@ -93,29 +93,49 @@ An example in the json format is as follows:
 ```
 
 ## Model supported
-The main hypothesis is that functional calling does not need LLM with extreme large parameters. The model
-we based our fine-tuning on is all small models, so it is easy to deploy.
+For now, the embedding model will be SentenceTransformer based.
+
+For generation, the main hypothesis is that functional calling does not need LLM with extreme large parameters.
+The model we based our fine-tuning on will be small models initially, so it is easy to deploy. But there is no
+reason that you can not use larger model. Since it is llama-index based, you should be able to use decoder model 
+available via APIs.  
+
 - [] [TinyLlama-1.1B](https://github.com/jzhang38/TinyLlama)
 
-## Example Usage
+## Caveat
+There are a couple of things that we plan to get to but there are not included in the initial version.
+1. Currently, we only support conversion to functions from single module. The function in the single module are expected to be exclusive
+in the semantic space.
+2. We do not fully support overloaded functions yet, they are considered to be single function.
+3. We do not support multiple functions mentioned in single utterance.
+4. We do not support alternative semantics in parameter value, such as "No spicy, please."
 
 
-```opencui
-from opencui import Structifier, FunctionId, IntentLabel, EntitySpans, SlotMeta, SlotValue
+## Usage
 
-// Setup Structifier.
-structifier = Structifier(huggingface_model_path)
-// One can add more than one specs.
-structifier.addSpecs(api_specs)
-// One can add more than one spaces.
-structifier.addExemplars(exemplars)
-// This should persist to disk. 
-structifier.finalize(path_to_persist).
+To use converter, you just follow a simple three steps:
 
+#### 1. Prepare the signal needed to define the conversation, namely:
+1. Function specification, which can be in OpenAPI or OpenAI format. You can check the corresponding documentation for how to create these
+specification.
+2. Function exemplars, which should be mainly used to list the hard-to-understand utterances. It is important to provide the template instead of raw utterance there.
+3. Entity recognizers, which should be used to help LLM to extract business dependent entities. 
 
-// Inference:
-structifier = Structifier.loadFromDisk(path_to_persist)
-structifier.convert(utterance)
+#### 2. Build index.
+More concretely, we assume that there will be three files in one directory: schema.json, exemplars.json and recognizers.json, 
+one for each kind of signals defined above. 
+```bash
+python3 converter/lug_index.py -i <the directory include these three files>
+```
+By default, the code will not check the format for the function speciation, but it will check the format for the second
+and third input and raise exception when there is issues.
+
+#### 3. Initialize converter and convert.
+
+```python
+from converter.client import Converter
+converter = load_converter(path_to_persist)
+converter.convert(utterance)
 ```
 
 ## Acknowledgements
