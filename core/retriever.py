@@ -103,7 +103,7 @@ def build_desc_index(dsc: ModuleSpec, output: str, embedding: BaseEmbedding):
     create_index(output, "desc", desc_nodes, embedding)
 
 
-def get_retrievers(path: str):
+def load_retrievers(path: str):
     return [
         HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk),
         HybridRetriever(path, "exemplar", LugConfig.exemplar_retrieve_topk)]
