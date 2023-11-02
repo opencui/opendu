@@ -7,21 +7,10 @@ from sentence_transformers.readers import InputExample
 from datasets import Dataset
 from torch.utils.data import DataLoader
 
-from core.annotation import SkillSpec
+from core.annotation import FrameSchema
 from converter.lug_config import LugConfig
 from core.embedding import EmbeddingStore
 from core.retriever import has_no_intent
-
-
-
-# There are many different flavor of embedding we need to support to chatbot building
-# For example:
-# 1. To support matching user utterance with function description, we need a pair of different embedding
-# 2. To support matching user utterance with templated exemplars, we need a pair of difference embedding.
-# 3. To support matching user utterance with spelled out exemplars, we need a pair of same embedding.
-# 4. To support matching user utterance with answers, we need a pair of different embedding.
-#
-# To use the same model to create different embedding, the embedding can use with a pair of instructions.
 
 
 def train(model: SentenceTransformer, dataset: Dataset, model_save_path: str):
@@ -42,7 +31,7 @@ def train(model: SentenceTransformer, dataset: Dataset, model_save_path: str):
         show_progress_bar=True)
 
 
-def create_sentence_pair_for_description(skills: dict[str, SkillSpec], dataset: Dataset, retriever: BaseRetriever, num_neg=1):
+def create_sentence_pair_for_description(skills: dict[str, FrameSchema], dataset: Dataset, retriever: BaseRetriever, num_neg=1):
     embedding = EmbeddingStore.get_embedding_by_task("desc")
     results = []
     for item in dataset:
@@ -99,9 +88,6 @@ def create_sentence_pair_for_exemplars(dataset: Dataset, retriever: BaseRetrieve
                     neg += 1
                     results.append(InputExample(texts=[query, content], label=0.0))
     return results
-
-
-
 
 
 if __name__ == "__main__":

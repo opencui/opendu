@@ -8,9 +8,9 @@ from collections import defaultdict
 
 from datasets import IterableDataset
 
-from core.annotation import ModuleSpec, SkillSpec, SlotSpec
+from core.annotation import ModuleSchema, FrameSchema, SlotSchema
 from core.embedding import EmbeddingStore
-from finetune.commons import DatasetFactory, Expression
+from finetune.commons import DatasetFactory, FullExemplar
 from core.retriever import build_desc_index, build_dataset_index
 
 
@@ -33,7 +33,7 @@ class SGD:
 # the same service.
 #
 def load_schema_as_dict(full_path, suffix: str = "_1"):
-    domain = ModuleSpec(skills={}, slots={})
+    domain = ModuleSchema(skills={}, slots={})
     with open(f"{full_path}/schema.json", encoding='utf-8') as f:
         f = json.load(f)
 
@@ -52,14 +52,14 @@ def load_schema_as_dict(full_path, suffix: str = "_1"):
                 optional_slots = intent["optional_slots"].keys()
                 slots.extend(list(optional_slots))
                 slots = [f"{slot}" for slot in slots]
-                domain.skills[intent_name] = SkillSpec(intent_name, intent_desc, slots).to_dict()
+                domain.skills[intent_name] = FrameSchema(intent_name, intent_desc, slots).to_dict()
             slots = service["slots"]
             for slot in slots:
                 slot_name = slot['name']
                 is_categorical = slot['is_categorical']
                 possible_values = slot['possible_values']
                 slot_description = slot["description"]
-                domain.slots[slot_name] = SlotSpec(slot_name, slot_description).to_dict()
+                domain.slots[slot_name] = SlotSchema(slot_name, slot_description).to_dict()
     return domain
 
 
@@ -145,7 +145,7 @@ class SGDSkills(DatasetFactory):
                             pre_intents = active_intents
                             id = f"sgd.{split}.{dialogue_id}.{idx}"
                             # yield the example
-                            yield Expression(id, utterance, skill_name, local_slots, spans).to_dict()
+                            yield FullExemplar(id, utterance, skill_name, local_slots, spans).to_dict()
 
         return IterableDataset.from_generator(gen)
 

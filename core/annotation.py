@@ -9,16 +9,18 @@ from llama_index.schema import TextNode
 from typing_extensions import Annotated
 from pydantic import BaseModel, Field
 
+
 @dataclass_json
 @dataclass
-class SlotSpec:
+class SlotSchema:
     name: str = field(metadata={"required": True})
     description: str = field(metadata={"required": True})
+    type: str = field(metadata={"required": False})
 
 
 @dataclass_json
 @dataclass
-class SkillSpec:
+class FrameSchema:
     name: str = field(metadata={"required": True})
     description: str = field(metadata={"required": True})
     slots: list[str] = field(default_factory=list)
@@ -26,9 +28,30 @@ class SkillSpec:
 
 @dataclass_json
 @dataclass
-class ModuleSpec:
-    skills: Dict[str, SkillSpec]
-    slots: Dict[str, SlotSpec]
+class ModuleSchema:
+    skills: Dict[str, FrameSchema]
+    slots: Dict[str, SlotSchema]
+
+
+@dataclass_json
+@dataclass
+class FrameValue:
+    name: str
+    arguments: TypedDict
+
+
+@dataclass_json()
+@dataclass
+class FrameState:
+    frame: FrameSchema
+    activated: list[str]
+
+
+# How to present context is strictly state tracking implementation dependent.
+@dataclass_json
+@dataclass
+class DialogExpectation(BaseModel):
+    context: list[FrameState]
 
 
 class EntityInstance(BaseModel):
@@ -81,11 +104,6 @@ def build_nodes_from_exemplar_store(store: ExemplarStore) -> list[TextNode]:
                     metadata={"target_intent": label, "context": exemplar.context},
                     excluded_embed_metadata_keys=["target_intent", "context"]))
     return nodes
-
-
-class SemanticStructure(BaseModel):
-    name: str = Field(description="the name of the function/skill/intent")
-    arguments: TypedDict = Field(description="argument for callable object")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 from converter.schema_parser import load_schema_from_directory, load_specs_and_recognizers_from_directory
-from core.annotation import SemanticStructure, Exemplar, SkillSpec
+from core.annotation import FrameValue, Exemplar, FrameSchema, DialogExpectation
 from core.retriever import load_retrievers
 
 
@@ -17,7 +17,7 @@ class Converter:
         self.recognizers = recognizers
         self.llm = None
 
-    def understand(self, text: str) -> SemanticStructure:
+    def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
         desc_nodes = self.retrievers[0].retrieve(text)
         exemplar_nodes = self.retrievers[1].retrieve(text)
 
@@ -29,16 +29,15 @@ class Converter:
         # Then we need to create the prompt for the parameters.
 
         slot_values = None
-        return SemanticStructure(name = func_name, arguments = slot_values)
+        return FrameValue(name=func_name, arguments=slot_values)
 
-    def generate(self, struct:SemanticStructure) -> str:
+    def generate(self, struct: FrameValue) -> str:
         llm = self.llm
-        # To be defined.
-        return None
+        raise NotImplemented
 
 
-def get_skill_infos(skills, nodes) -> list[SkillSpec]:
-    funcset = { item.node.meta["target_intent"] for item in nodes}
+def get_skill_infos(skills, nodes) -> list[FrameSchema]:
+    funcset = {item.node.meta["target_intent"] for item in nodes}
     return [skills[func] for func in funcset]
 
 

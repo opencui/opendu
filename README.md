@@ -2,6 +2,8 @@
 
 LUG is an open source implementation of retrieval augmented generation based function calling API
 that is designed both for dialog understanding in chatbot development and tool-using agent development. 
+Because of this, the terminology can be a bit confusing, we will use function interchangeably with skill, intent, 
+and parameter with slot. 
 
 It can be used with any LLMs with provided finetune script for both embedding model and generation model.
 Efficient inference is possible using excellent project like llama.cpp, vllm. With open sourced LLM, you 
@@ -9,19 +11,19 @@ can privately deploy the entire function calling API solution anywhere you want.
 
 There are couple basic goals for this project:
 1. It should use the same return as OpenAI function calling API.
-2. It can be instructed by OpenAPI function specifications.
+2. It can be instructed by OpenAPI/OpenAI function schemas.
 3. It should be easy to fix understanding issues, with exemplars defined in OpenCUI format.
 4. It should be easy to utilize the external entity recognizer for slot filling. 
 
 ## What signal can be used to define conversion?
 LUG takes three kind of different signal to shape how conversion is done:
-1. Function specification, particular [OpenAPI](https://spec.openapis.org/oas/latest.html)/[OpenAI](https://platform.openai.com/docs/api-reference/chat/create#chat/create-functions) function specification.
+1. Function schema, particular [OpenAPI](https://spec.openapis.org/oas/latest.html)/[OpenAI](https://platform.openai.com/docs/api-reference/chat/create#chat/create-functions) function schema.
 2. Function exemplar, the utterance template that is associated with function.
 3. Entity recognizer for the slots.
 
-### Function specification
+### Function schema
 For each function that you want to convert from natural language into structured representation, we first need its
-specification, which include:
+schema, which include:
 - description: A description of what the function does, used by the model to choose when and how to call the function.
 - name: The name of the function to be called. Must be a-z, A-Z, 0-9, or contain underscores and dashes, with a maximum length of 64.
 - parameters: The parameters the functions accepts, described as a JSON Schema object. See the guide for examples, and the JSON Schema reference for documentation about the format.
@@ -96,7 +98,7 @@ An example in the json format is as follows:
 For now, the embedding model will be SentenceTransformer based.
 
 For generation, the main hypothesis is that functional calling does not need LLM with extreme large parameters.
-The model we based our fine-tuning on will be small models initially, so it is easy to deploy. But there is no
+The model we based our fine-tuning on will be small models mostly, so it is easy to deploy. But there is no
 reason that you can not use larger model. Since it is llama-index based, you should be able to use decoder model 
 available via APIs.  
 
@@ -108,16 +110,16 @@ There are a couple of things that we plan to get to but there are not included i
 in the semantic space.
 2. We do not fully support overloaded functions yet, they are considered to be single function.
 3. We do not support multiple functions mentioned in single utterance.
-4. We do not support alternative semantics in parameter value, such as "No spicy, please."
-
+4. We do not support alternative semantics in parameter value, such as "No spice, please."
+5. We do not pay special attention to implicature calculation yet. 
 
 ## Usage
 
 To use converter, you just follow a simple three steps:
 
 #### 1. Prepare the signal needed to define the conversation, namely:
-1. Function specification, which can be in OpenAPI or OpenAI format. You can check the corresponding documentation for how to create these
-specification.
+1. Function schema, which can be in OpenAPI or OpenAI format. You can check the corresponding documentation for how to create these
+schema.
 2. Function exemplars, which should be mainly used to list the hard-to-understand utterances. It is important to provide the template instead of raw utterance there.
 3. Entity recognizers, which should be used to help LLM to extract business dependent entities. 
 
