@@ -1,5 +1,6 @@
-from core.annotation import SemanticStructure, Exemplar
-from finetune.commons import SkillSpec
+from converter.schema_parser import load_schema_from_directory, load_specs_and_recognizers_from_directory
+from core.annotation import SemanticStructure, Exemplar, SkillSpec
+from core.retriever import load_retrievers
 
 
 #
@@ -16,14 +17,12 @@ class Converter:
         self.recognizers = recognizers
         self.llm = None
 
-    def to_structure(self, text: str) -> SemanticStructure:
+    def understand(self, text: str) -> SemanticStructure:
         desc_nodes = self.retrievers[0].retrieve(text)
         exemplar_nodes = self.retrievers[1].retrieve(text)
 
         selected_skills = get_skill_infos(self.schema, desc_nodes + exemplar_nodes)
         selected_exemplars = get_examplars(exemplar_nodes)
-
-
 
         # Now we need to create prompt for the function first.
         func_name = None
@@ -32,7 +31,7 @@ class Converter:
         slot_values = None
         return SemanticStructure(name = func_name, arguments = slot_values)
 
-    def to_text(self, struct:SemanticStructure) -> str:
+    def generate(self, struct:SemanticStructure) -> str:
         llm = self.llm
         # To be defined.
         return None
@@ -45,3 +44,10 @@ def get_skill_infos(skills, nodes) -> list[SkillSpec]:
 
 def get_examplars(nodes) -> list[Exemplar]:
     return [Exemplar(owner=item.node.meta["target_intent"]) for item in nodes]
+
+
+def load_converter(specs: str, index: str) -> Converter:
+    # We assume
+    specs, recognizers = load_specs_and_recognizers_from_directory(specs)
+    retrievers = load_retrievers(index)
+    return Converter(specs, retrievers, recognizers)
