@@ -7,7 +7,7 @@ from dataclasses_json import dataclass_json
 from datasets import Dataset, concatenate_datasets
 
 from converter.lug_config import LugConfig
-from core.annotation import ModuleSpec
+from core.annotation import ModuleSchema
 from core.embedding import EmbeddingStore
 from core.prompt import Prompt
 from core.retriever import build_nodes_from_skills, build_nodes_from_dataset, create_index, HybridRetriever
@@ -16,51 +16,41 @@ from finetune.embedding import create_sentence_pair_for_description, create_sent
 
 @dataclass
 @dataclass_json
-class Expression:
+class FullExemplar:
     """
     expression examples
     """
     id: str = field(metadata={"required": True})
     utterance: str = field(metadata={"required": True})
-    target_intent: str = field(metadata={"required": True})
-    target_slots: dict[str, str] = field(metadata={"required": True})
-    spans: list[tuple[int, int]] = field(metadata={"required": True})
-    exemplar: str = field(metadata={"required": True})
+    template: str = field(metadata={"required": True})
+    target_name: str = field(metadata={"required": True})
+    target_arguments: dict[str, str] = field(metadata={"required": False})
 
-    def __init__(self, id, utterance, intent, slots, spans):
-        self.id = id
-        self.utterance = utterance
-        self.target_intent = intent
-        self.target_slots = slots  # dict to store slot, value pairs
-        self.spans = spans
-        self.exemplar = Expression.generate_expression_template(utterance, slots, spans)
 
-    @classmethod
-    def generate_expression_template(cls, utterance, slot_dict, spans):
-        '''
-        replacing the slot val with the slot name,to avoid match the short slot val which may be included in other
-        long slot val, we need sort by the length of the slot val
-        '''
-        if spans == []:
-            return utterance
-        single_dict = dict()
+def create_full_exemplar(id, utterance, intent, slots, spans) -> FullExemplar:
+    '''
+    replacing the slot val with the slot name,to avoid match the short slot val which may be included in other
+    long slot val, we need sort by the length of the slot val
+    '''
+    if not spans:
+        return utterance
+    single_dict = dict()
 
-        for key, values in slot_dict.items():
-            for value in values:
-                single_dict[value] = key
+    for key, values in slots.items():
+        for value in values:
+            single_dict[value] = key
 
-        spans = sorted(spans, key=lambda x: x[0])
-        res_utterance = utterance[:spans[0][0]]
-        for i, (cur_start, cur_end) in enumerate(spans):
-            # if len(string_list) >=2:
-            #     print("sub string",utterance[cur_start:cur_end])
-            res_utterance = res_utterance + ' < ' + single_dict[utterance[cur_start:cur_end]] + ' > '
-            if i == len(spans) - 1:
-                res_utterance = res_utterance + utterance[cur_end:]
-            else:
-                res_utterance = res_utterance + utterance[cur_end:spans[i + 1][0]]
-
-        return res_utterance
+    spans = sorted(spans, key=lambda x: x[0])
+    res_utterance = utterance[:spans[0][0]]
+    for i, (cur_start, cur_end) in enumerate(spans):
+        # if len(string_list) >=2:
+        #     print("sub string",utterance[cur_start:cur_end])
+        res_utterance = res_utterance + ' < ' + single_dict[utterance[cur_start:cur_end]] + ' > '
+        if i == len(spans) - 1:
+            res_utterance = res_utterance + utterance[cur_end:]
+        else:
+            res_utterance = res_utterance + utterance[cur_end:spans[i + 1][0]]
+    return FullExemplar(id, utterance, res_utterance, intent, slots)
 
 
 #
@@ -70,7 +60,7 @@ class Expression:
 @dataclass
 class DatasetFactory(ABC):
     __metaclass__ = abc.ABCMeta
-    domain: ModuleSpec
+    domain: ModuleSchema
 
     @abc.abstractmethod
     def build(self, split: str = "train") -> Dataset:
@@ -83,9 +73,9 @@ class DatasetsCreator(DatasetFactory):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, dscs=list[DatasetFactory]):
-        self.domain = ModuleSpec(
+        self.domain = ModuleSchema(
             skills=reduce(lambda x, y: {**x, **y}, [dsc.domain.skills for dsc in dscs]),
-            slots=reduce(lambda x, y: {**x, **y}, [dsc.domain.target_slots for dsc in dscs])
+            slots=reduce(lambda x, y: {**x, **y}, [dsc.domain.target_arguments for dsc in dscs])
         )
         self.dscs = dscs
 

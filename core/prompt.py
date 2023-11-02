@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from langchain.schema import BaseRetriever
 from llama_index.schema import TextNode
 
-from core.annotation import ModuleSpec
+from core.annotation import ModuleSchema
 from core.retriever import HybridRetriever
 from pybars import Compiler
 import random
@@ -89,7 +89,7 @@ class FullPrompt(Prompt, ABC):
     def __init__(
             self,
             source: str,
-            module: ModuleSpec,
+            module: ModuleSchema,
             retriever: BaseRetriever = None,
             topk: int = 3,
             train_mode: bool = False,
@@ -226,7 +226,7 @@ Prompts = {
 #
 # Assume the node id_ is the same as dataset id.
 #
-def get_prompt(domain: ModuleSpec, index_path: str) -> Prompt:
+def get_prompt(domain: ModuleSchema, index_path: str) -> Prompt:
     retriever = HybridRetriever(index_path)
     return FullPrompt(Prompts["full_exampled_prompt"], domain, retriever=retriever)
 

@@ -14,7 +14,7 @@ from llama_index.schema import TextNode, NodeWithScore
 from llama_index import QueryBundle
 from converter.lug_config import LugConfig
 from core.embedding import EmbeddingStore
-from core.annotation import SkillSpec, ModuleSpec
+from core.annotation import FrameSchema, ModuleSchema
 
 # Retrievers
 from llama_index.retrievers import (
@@ -46,7 +46,7 @@ def build_nodes_from_dataset(dataset: Dataset):
     return nodes
 
 
-def build_nodes_from_skills(skills: dict[str, SkillSpec]):
+def build_nodes_from_skills(skills: dict[str, FrameSchema]):
     nodes = []
     for label, skill in skills.items():
         desc = skill["description"]
@@ -98,7 +98,7 @@ def build_dataset_index(dsc: Dataset, output: str, embedding: BaseEmbedding):
     create_index(output, "exemplar", exemplar_nodes, embedding)
 
 
-def build_desc_index(dsc: ModuleSpec, output: str, embedding: BaseEmbedding):
+def build_desc_index(dsc: ModuleSchema, output: str, embedding: BaseEmbedding):
     desc_nodes = build_nodes_from_skills(dsc.skills)
     create_index(output, "desc", desc_nodes, embedding)
 

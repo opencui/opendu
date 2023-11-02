@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import json
-from core.annotation import ExemplarStore, SlotRecognizers, SkillSpec, SlotSpec, ModuleSpec
+from core.annotation import ExemplarStore, SlotRecognizers, FrameSchema, SlotSchema, ModuleSchema
 
 
 #
@@ -9,7 +9,7 @@ from core.annotation import ExemplarStore, SlotRecognizers, SkillSpec, SlotSpec,
 #
 # We assume that in each domain, the slot name are unique, and skill name are unique.
 #
-def from_openai(functions) -> ModuleSpec:
+def from_openai(functions) -> ModuleSchema:
     skillInfos = {}
     slotInfos = {}
     for func in functions:
@@ -27,12 +27,12 @@ def from_openai(functions) -> ModuleSpec:
             else:
                 slot_name = key
                 slot_description = slot["description"]
-                slotInfos[slot_name] = SlotSpec(slot_name, slot_description)
-        skillInfos[f_name] = SkillSpec(f_name, f_description, f_slots)
-    return ModuleSpec(skillInfos, slotInfos)
+                slotInfos[slot_name] = SlotSchema(slot_name, slot_description)
+        skillInfos[f_name] = FrameSchema(f_name, f_description, f_slots)
+    return ModuleSchema(skillInfos, slotInfos)
 
 
-def from_openapi(specs) -> ModuleSpec:
+def from_openapi(specs) -> ModuleSchema:
     skills = {}
     slots = {}
     for path, v in specs.get("paths", {}).items():
@@ -48,10 +48,10 @@ def from_openapi(specs) -> ModuleSpec:
                 slot_name = _p.get("name", "")
                 slot_description = _p.get("description", "")
                 if slot_name not in slots:
-                    slots[slot_name] = SlotSpec(slot_name, slot_description)
+                    slots[slot_name] = SlotSchema(slot_name, slot_description)
                 parameters.append(slot_name)
-            skills[label] = SkillSpec(name, description, parameters)
-    return ModuleSpec(skills, slots)
+            skills[label] = FrameSchema(name, description, parameters)
+    return ModuleSchema(skills, slots)
 
 
 # This assumes that in a directory we have schemas.json in openai/openapi format, and then exemplars
