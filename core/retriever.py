@@ -27,25 +27,6 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
 
-def has_no_intent(label: str):
-    return label in {"NONE"}
-
-
-def build_nodes_from_dataset(dataset: Dataset):
-    nodes = []
-    for item in dataset:
-        utterance = item['exemplar']
-        label = item["target_intent"]
-        if has_no_intent(label):
-            nodes.append(
-                TextNode(
-                    text=utterance,
-                    id_=item['id'],
-                    metadata={"target_slots": item["target_slots"], "target_intent": label},
-                    excluded_embed_metadata_keys=["target_slots", "target_intent"]))
-    return nodes
-
-
 def build_nodes_from_skills(skills: dict[str, FrameSchema]):
     nodes = []
     for label, skill in skills.items():
@@ -55,8 +36,8 @@ def build_nodes_from_skills(skills: dict[str, FrameSchema]):
             TextNode(
                 text=desc,
                 id_=label,
-                metadata={"target_intent": name},
-                excluded_embed_metadata_keys=["target_intent"]))
+                metadata={"owner": name},
+                excluded_embed_metadata_keys=["owner"]))
     return nodes
 
 
@@ -91,11 +72,6 @@ def create_index(base: str, tag: str, nodes: list[TextNode], embedding: BaseEmbe
     except Exception as e:
         print(str(e))
         shutil.rmtree(path, ignore_errors=True)
-
-
-def build_dataset_index(dsc: Dataset, output: str, embedding: BaseEmbedding):
-    exemplar_nodes = build_nodes_from_dataset(dsc)
-    create_index(output, "exemplar", exemplar_nodes, embedding)
 
 
 def build_desc_index(dsc: ModuleSchema, output: str, embedding: BaseEmbedding):
@@ -174,14 +150,14 @@ def compute_k(dataset: Dataset, output: str, tag: str, topk: int = 3):
         intents = set()
         lintents = []
         for result in nodes:
-            intent = result.node.metadata["target_intent"]
+            intent = result.node.metadata["owner"]
             if intent not in intents:
                 intents.add(intent)
                 lintents.append(intent)
             if len(lintents) >= topk:
                 break
         counts[0] += 1
-        if item["target_intent"] in lintents[0:topk]:
+        if item["owner"] in lintents[0:topk]:
             counts[1] += 1
 
     return counts
@@ -192,9 +168,9 @@ def compute_hits(dataset: Dataset, output: str, topk: int):
     counts = [0, 0]
     for item in dataset:
         nodes = retriever.retrieve(item["utterance"])
-        intents = {result.node.metadata["target_intent"] for result in nodes}
+        intents = {result.node.metadata["owner"] for result in nodes}
         counts[0] += 1
-        name = item["target_intent"]
+        name = item["owner"]
         if name in intents or name == "NONE":
             counts[1] += 1
         else:

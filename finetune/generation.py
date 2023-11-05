@@ -1,12 +1,10 @@
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
-
+from abc import ABC, abstractmethod, ABCMeta
 import copy
 import json
 import os
 from os.path import exists, join, isdir
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Sequence
+from typing import Optional, Dict, Sequence, Any
 import numpy as np
 import logging
 import torch
@@ -21,13 +19,70 @@ from transformers import (
 )
 from datasets import Dataset, concatenate_datasets
 
-
-from core.prompt import get_prompt
-from finetune.commons import DatasetFactoryWrapper
+from core.annotation import ModuleSchema
+from core.embedding import EmbeddingStore
+from core.prompt import get_prompt, Prompt
+from core.retriever import build_nodes_from_skills, create_index
+from finetune.commons import AnnotatedExemplar, DatasetFactory, build_nodes_from_dataset
 
 logger = logging.getLogger(__name__)
 
 IGNORE_INDEX = -100
+
+
+class Converter(ABC):
+    extra_tokens: list[str]
+
+    @abstractmethod
+    def __call__(self, input):
+        return
+
+
+class OneSlotConverter(Converter):
+    def __init__(self, module: ModuleSchema, func_prompt: Prompt, slot_prompt: Prompt):
+        self.func_prompt = func_prompt
+        self.slot_prompt = slot_prompt
+        self.extra_tokens = list(set(slot_prompt.extra_tokens + func_prompt.extra_tokens))
+
+    def special_tokens(self):
+        tokens = self.slot_prompt.extra_tokens + self.func_prompt.extra_tokens
+
+    def __call__(self, input: AnnotatedExemplar):
+        # We assume the input is dict version of AnnotatedExemplar
+        ins = []
+        outs = []
+        input_dict = input.to_dict()
+
+        ins.append(self.func_prompt(input_dict))
+        outs.append(input.owner)
+
+        for slot, value in input.arguments:
+            input_dict["name"] = slot
+            input_dict["description"] = self.module.slots[slot].description
+            ins.append(self.slot_prompt(input))
+            outs.append(value)
+        return {"input": ins, "output": outs}
+
+
+@dataclass
+class ConvertedFactory(DatasetFactory):
+    __metaclass__ = ABCMeta
+
+    def __init__(self, dsf: DatasetFactory, convert: Converter):
+        self.domain = dsf.domain
+        self.convert: Converter = convert
+
+    def build(self, split: str) -> Dataset:
+        dataset = self.creator.build(split)
+        return dataset.map(self.convert, batched=True, remove_columns=dataset.column_names)
+
+    @classmethod
+    def build_index(cls, dsc: DatasetFactory, output: str = "./output/"):
+        desc_nodes = build_nodes_from_skills(dsc.domain.skills)
+        exemplar_nodes = build_nodes_from_dataset(dsc.build("train"))
+
+        create_index(output, "desc", desc_nodes, EmbeddingStore.for_description())
+        create_index(output, "exemplars", exemplar_nodes, EmbeddingStore.for_exemplar())
 
 
 @dataclass
@@ -151,7 +206,7 @@ class GenerationArguments:
     no_repeat_ngram_size: Optional[int] = field(default=0)
 
 
-def get_accelerate_model(args, converters):
+def get_accelerate_model(args, extra_special_tokens: set[str]):
     device_map = "auto"
 
     # if we are in a distributed setting, we need to set the device map and max memory per device
@@ -178,10 +233,6 @@ def get_accelerate_model(args, converters):
     if tokenizer._pad_token is None:
         DEFAULT_PAD_TOKEN = "[PAD]"
         special_tokens_dict = dict(pad_token=DEFAULT_PAD_TOKEN)
-
-    extra_special_tokens = set()
-    for converter in converters:
-        extra_special_tokens.update(converter.prompt.extra_tokens)
 
     special_tokens_dict.update(additional_special_tokens=list(extra_special_tokens))
 
@@ -244,7 +295,7 @@ class DataCollatorForCausalLM(object):
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
         # Extract elements
         sources = [f"{example['input']}" for example in instances]
-        targets = [f"{example['output']}{self.tokenizer.eos_token}" for example in instances]
+        targets = [f"{example['output']} {self.tokenizer.eos_token}" for example in instances]
 
         # Tokenize
         tokenized_sources_with_prompt = self.tokenizer(
@@ -354,7 +405,7 @@ def get_last_checkpoint(checkpoint_dir):
     return None, False  # first training
 
 
-def train(converters):
+def train(converted_factories: list[ConvertedFactory]):
     hfparser = transformers.HfArgumentParser((
         ModelArguments, DataArguments, TrainingArguments, GenerationArguments
     ))
@@ -372,7 +423,8 @@ def train(converters):
     if completed_training:
         print('Detected that training was already completed!')
 
-    model, tokenizer = get_accelerate_model(args, converters)
+    extra_tokens = set([token for factory in converted_factories for token in factory.convert])
+    model, tokenizer = get_accelerate_model(args, extra_tokens)
 
     model.config.use_cache = False
     print('loaded model')
@@ -386,7 +438,7 @@ def train(converters):
         predict_with_generate=args.predict_with_generate,
     )
 
-    data_module = make_data_module(data_collator=data_collator, args=args, converters=converters)
+    data_module = make_data_module(data_collator=data_collator, args=args, converters=converted_factories)
 
     trainer = Seq2SeqTrainer(
         model=model,
@@ -458,13 +510,11 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
-    from finetune.viggo import Viggo
+    from finetune.sgd import SGD
 
-    viggo = Viggo()
-    output = "./index/viggo/"
-    prompt = get_prompt(viggo, output)
+    sgd = SGD()
+    output = "./index/sgd/"
+    prompt = get_prompt(sgd, output)
 
-    #print(prompt({"utterance": "let us try this"}))
-
-    converters = [DatasetFactoryWrapper(Viggo(), prompt, mode="intent")]
+    converters = [ConvertedFactory(sgd, prompt, mode="intent")]
     train(converters)

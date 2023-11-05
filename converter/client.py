@@ -37,12 +37,12 @@ class Converter:
 
 
 def get_skill_infos(skills, nodes) -> list[FrameSchema]:
-    funcset = {item.node.meta["target_intent"] for item in nodes}
+    funcset = {item.node.meta["owner"] for item in nodes}
     return [skills[func] for func in funcset]
 
 
 def get_examplars(nodes) -> list[Exemplar]:
-    return [Exemplar(owner=item.node.meta["target_intent"]) for item in nodes]
+    return [Exemplar(owner=item.node.meta["owner"]) for item in nodes]
 
 
 def load_converter(specs: str, index: str) -> Converter:

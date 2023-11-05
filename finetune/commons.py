@@ -1,33 +1,63 @@
 import json
 from abc import ABC
 import abc
+from typing import Any
+
+import gin
 from dataclasses import dataclass, field
 from functools import reduce
 from dataclasses_json import dataclass_json
 from datasets import Dataset, concatenate_datasets
+from llama_index.embeddings.base import BaseEmbedding
+from llama_index.schema import TextNode
 
 from converter.lug_config import LugConfig
 from core.annotation import ModuleSchema
 from core.embedding import EmbeddingStore
 from core.prompt import Prompt
-from core.retriever import build_nodes_from_skills, build_nodes_from_dataset, create_index, HybridRetriever
+from core.retriever import build_nodes_from_skills, create_index, HybridRetriever
 from finetune.embedding import create_sentence_pair_for_description, create_sentence_pair_for_exemplars
 
 
 @dataclass
 @dataclass_json
-class FullExemplar:
+class AnnotatedExemplar:
     """
-    expression examples
+    expression examples, if the expected_slots is empty, this can be used for both skills and slots.
     """
     id: str = field(metadata={"required": True})
     utterance: str = field(metadata={"required": True})
     template: str = field(metadata={"required": True})
-    target_name: str = field(metadata={"required": True})
-    target_arguments: dict[str, str] = field(metadata={"required": False})
+    owner: str = field(metadata={"required": False})
+    arguments: dict[str, Any] = field(metadata={"required": False})
+    expectations: list[str] = field(metadata={"required": False})
 
 
-def create_full_exemplar(id, utterance, intent, slots, spans) -> FullExemplar:
+def has_no_intent(label: str):
+    return label in {"NONE"}
+
+
+def build_nodes_from_dataset(dataset: Dataset):
+    nodes = []
+    for item in dataset:
+        utterance = item['exemplar']
+        label = item["owner"]
+        if has_no_intent(label):
+            nodes.append(
+                TextNode(
+                    text=utterance,
+                    id_=item['id'],
+                    metadata={"arguments": item["arguments"], "owner": label},
+                    excluded_embed_metadata_keys=["arguments", "owner"]))
+    return nodes
+
+
+def build_dataset_index(dsc: Dataset, output: str, embedding: BaseEmbedding):
+    exemplar_nodes = build_nodes_from_dataset(dsc)
+    create_index(output, "exemplar", exemplar_nodes, embedding)
+
+
+def create_full_exemplar(id, utterance, intent, slots, spans, expectations=[]) -> AnnotatedExemplar:
     '''
     replacing the slot val with the slot name,to avoid match the short slot val which may be included in other
     long slot val, we need sort by the length of the slot val
@@ -50,7 +80,7 @@ def create_full_exemplar(id, utterance, intent, slots, spans) -> FullExemplar:
             res_utterance = res_utterance + utterance[cur_end:]
         else:
             res_utterance = res_utterance + utterance[cur_end:spans[i + 1][0]]
-    return FullExemplar(id, utterance, res_utterance, intent, slots)
+    return AnnotatedExemplar(id, utterance, res_utterance, intent, slots, expectations)
 
 
 #
@@ -75,34 +105,13 @@ class DatasetsCreator(DatasetFactory):
     def __init__(self, dscs=list[DatasetFactory]):
         self.domain = ModuleSchema(
             skills=reduce(lambda x, y: {**x, **y}, [dsc.domain.skills for dsc in dscs]),
-            slots=reduce(lambda x, y: {**x, **y}, [dsc.domain.target_arguments for dsc in dscs])
+            slots=reduce(lambda x, y: {**x, **y}, [dsc.domain.arguments for dsc in dscs])
         )
         self.dscs = dscs
 
     def build(self, split):
         datasets = [dsc.build(split) for dsc in self.dscs]
         return concatenate_datasets(**datasets)
-
-
-@dataclass
-class DatasetFactoryWrapper(DatasetFactory):
-    __metaclass__ = abc.ABCMeta
-
-    def __init__(self, dsf: DatasetFactory, prompt: Prompt):
-        self.domain = dsf.domain
-        self.prompt = prompt
-
-    def build(self, split: str) -> Dataset:
-        dataset = self.creator.build(split)
-        return dataset.map(lambda x: {"input": self.prompt(x)})
-
-    @classmethod
-    def build_index(cls, dsc: DatasetFactory, output: str = "./output/"):
-        desc_nodes = build_nodes_from_skills(dsc.domain.skills)
-        exemplar_nodes = build_nodes_from_dataset(dsc.build("train"))
-
-        create_index(output, "desc", desc_nodes, EmbeddingStore.for_description())
-        create_index(output, "exemplars", exemplar_nodes, EmbeddingStore.for_exemplar())
 
 
 @dataclass
@@ -130,12 +139,12 @@ def generate_sentence_pairs(dataset_infos: list[DatasetCreatorWithIndex]) -> Dat
                 dataset_info.desc_retriever
             ))
         generators.extend(
-           create_sentence_pair_for_exemplars(
+            create_sentence_pair_for_exemplars(
                 dataset,
                 dataset_info.exemplar_retriever
             ))
     return generators
 
+
 if __name__ == "__main__":
     print(LugConfig.embedding_model)
-
