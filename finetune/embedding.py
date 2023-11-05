@@ -37,7 +37,7 @@ def create_sentence_pair_for_description(skills: dict[str, FrameSchema], dataset
     for item in dataset:
         utterance = item["utterance"]
         query = embedding.expand_for_query(utterance)
-        label = item["target_intent"]
+        label = item["owner"]
 
         # For random utterance, we do not have information to use it as anchor.
         if has_no_intent(label):
@@ -51,7 +51,7 @@ def create_sentence_pair_for_description(skills: dict[str, FrameSchema], dataset
         count = 0
         for node in nodes:
             content = embedding.expand_for_content(node.text)
-            node_label = node.metadata["target_intent"]
+            node_label = node.metadata["owner"]
             if count < num_neg and label != node_label:
                 count += 1
                 results.append(InputExample(texts=[query, content], label=0.0))
@@ -64,7 +64,7 @@ def create_sentence_pair_for_exemplars(dataset: Dataset, retriever: BaseRetrieve
     for item in dataset:
         utterance = item["utterance"]
         query = embedding.expand_for_query(utterance)
-        label = item["target_intent"]
+        label = item["owner"]
         id = item["id"]
         nodesWithScore = retriever.retrieve(utterance)
         nodes : list[TextNode] = [item.node for item in nodesWithScore]
@@ -72,7 +72,7 @@ def create_sentence_pair_for_exemplars(dataset: Dataset, retriever: BaseRetrieve
         neg = 0
         for node in nodes:
             content = embedding.expand_for_content(node.text)
-            node_label = node.metadata["target_intent"]
+            node_label = node.metadata["owner"]
             if pos == num_examples and neg == num_examples:
                 break
             # We should never create pair with identical

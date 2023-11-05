@@ -101,8 +101,8 @@ def build_nodes_from_exemplar_store(store: ExemplarStore) -> list[TextNode]:
                 TextNode(
                     text=exemplar.template,
                     id_=str(hash(exemplar.template))[1:13],
-                    metadata={"target_intent": label, "context": exemplar.context},
-                    excluded_embed_metadata_keys=["target_intent", "context"]))
+                    metadata={"owner": label, "context": exemplar.context},
+                    excluded_embed_metadata_keys=["owner", "context"]))
     return nodes
 
 

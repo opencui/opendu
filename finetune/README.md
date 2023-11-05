@@ -21,14 +21,15 @@ fine-tune for now.
 
 Fine-tuning the generator is an extra step needed for understanding. One still need to define the schema first. When
 you have a schema, the main thing you need to do is: 
-1. Prepare the labeled examples in form of FullExemplar.
+1. Prepare the labeled examples in form of AnnotatedExemplar.
 2. Trigger the fine-tuning for generator, so that you can use the model for inference.
 
-For now, we assume that the labeled examples in form of Expression for generator fine-tuning requires a couple of things:
+####: Prepare exemplars
+For now, we assume that the labeled examples for fine-tuning generator requires a couple of things:
 - user utterance, for example: "I like to get a ticket to New York"
-- exemplar, for templated utterance, for example: "I like to get <quantity> ticket to <destination>".
-- target name, function (also known as intent, skill) name, for example "buy_airline_ticket"
-- target value, parameter (or slot) values, for example: {"quantity" : 1, "destination" : "new york"} 
+- template, a value normalized utterance, for example: "I like to get <quantity> ticket to <destination>".
+- target_name, function (also known as intent, skill) name, for example "buy_airline_ticket"
+- target_arguments, parameter (or slot) values, for example: {"quantity" : 1, "destination" : "new york"} 
 
 Notice, with just user utterance and slot values, we might not be able to recover corresponding exemplar, if some
 slot value occurs more than one time in the utterance. So in general, the label process need to explicitly provider
@@ -40,6 +41,31 @@ state tracking implementation.
 Per standard practices, it will be good if you prepare three datasets, for training, validation and testing. The first
 datasets that we are using is based on [schema-guided dialogue dataset](https://github.com/google-research-datasets/dstc8-schema-guided-dialogue).
 
+To create the training examples from the supplied schemas and exemplars, it is possible that we need to generate
+negative examples, this requires that the functions from each module is mutually exclusive in the semantic space,
+and there is no overloaded functions. Overloaded functions need to handled in the state tracking. At beginning, we only
+support the single module, but there is plan to support multiple modules.
+
+## Special considerations
+Fine-tuning generator for RAG applications bring some new considerations. 
+
+### Determine the hyperparameters
+One of the main consideration for fine-tuning generation for RAG is what dynamic information are needed by prompt.
+So special care need to be taken to make sure that instantiated prompt meet the criteria you had when you design the 
+prompt templated. For example, if you assume that the correct answer should be included in the prompt, then you will
+need to make sure that is indeed is the case. So you need to run some experiments to make sure that you choose the
+correct value for hyperparameters.
+
+### How to model the conversion
+There are many potential system architecture to model the conversation. For example, we can do one-shot model, or using
+single model or prompt to predict both function name and its arguments. We can also have two models, one for predicting
+function name, and one for predicting arguments. In this latter approach, we have two approaches:
+1. Only extract value for one slot at each time,
+2. Extract value for all slot in one shot. 
+
+We will focus on using two models to solve the conversion, and focus on extracting value for one slot each time. Of
+course, since we are using decoder-only model, two models are really just two different prompt templates typically
+using the same model. 
 
 
 Reference:
