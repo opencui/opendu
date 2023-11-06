@@ -269,30 +269,3 @@ OneSlotPrompts = {
         ### Output:
         """,
 }
-
-#
-# Assume the node id_ is the same as dataset id.
-#
-def get_prompt(domain: ModuleSchema, index_path: str) -> Prompt:
-    retriever = HybridRetriever(index_path)
-    return FullPrompt(Prompts["full_exampled_prompt"], domain, retriever=retriever)
-
-
-if __name__ == "__main__":
-    logger = logging.getLogger()
-    logger.setLevel(logging.CRITICAL)
-
-    from finetune.sgd import SGDSkills
-    from finetune.viggo import Viggo
-    viggo = SGDSkills()
-    output = "./index/viggo/"
-    #print(compute_k(viggo.build("validation"), output, retriever))
-
-    prompt = get_prompt(viggo,  output)
-
-    from finetune.commons import DatasetFactory, PromptedFactory
-    dsc = PromptedFactory(Viggo("full"), prompt)
-    dataset = dsc.build("train")
-    for item in dataset:
-        print(item)
-        print("\n\n")

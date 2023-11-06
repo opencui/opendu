@@ -23,9 +23,6 @@ from llama_index.retrievers import (
     KeywordTableSimpleRetriever,
 )
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
-
 
 def build_nodes_from_skills(skills: dict[str, FrameSchema]):
     nodes = []
@@ -77,12 +74,6 @@ def create_index(base: str, tag: str, nodes: list[TextNode], embedding: BaseEmbe
 def build_desc_index(dsc: ModuleSchema, output: str, embedding: BaseEmbedding):
     desc_nodes = build_nodes_from_skills(dsc.skills)
     create_index(output, "desc", desc_nodes, embedding)
-
-
-def load_retrievers(path: str):
-    return [
-        HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk),
-        HybridRetriever(path, "exemplar", LugConfig.exemplar_retrieve_topk)]
 
 
 #
@@ -142,13 +133,59 @@ class HybridRetriever(BaseRetriever):
         return retrieve_nodes
 
 
+def dedup_nodes(old_results: list[TextNode]):
+    new_results = []
+    intents = set()
+    for item in old_results:
+        intent = item.metadata["owner"]
+        if intent not in intents:
+            intents.add(intent)
+            new_results.append(item)
+    return new_results
+
+
+class CombinedRetriever:
+    def __init__(self, module: ModuleSchema, d_retrievers, e_retriever):
+        self.module = module
+        self.desc_retriever = d_retrievers
+        self.exemplar_retriever = e_retriever
+        self.nones = ["NONE"]
+
+    def search(self, query):
+        # The goal here is to find the combined descriptions and exemplars.
+        desc_nodes = [item.node for item in self.desc_retriever.retrieve(query)]
+        exemplar_nodes = [item.node for item in self.exemplar_retriever.retrieve(query)]
+
+        #print(desc_nodes)
+        #print(exemplar_nodes)
+
+        exemplar_nodes = dedup_nodes(exemplar_nodes)
+
+        all_nodes = exemplar_nodes
+
+        owners = set([item.metadata["owner"] for item in all_nodes])
+        for none in self.nones:
+            owners.discard(none)
+
+        skills = [self.module.skills[owner] for owner in owners]
+        return skills
+
+
+def load_retrievers(module, path: str):
+    return CombinedRetriever(
+        module,
+        HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk),
+        HybridRetriever(path, "exemplar", LugConfig.exemplar_retrieve_topk))
+
+
 if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
     output = "./index/sgdskill/"
-    from finetune.sgd import SGDSkills
-    dsc = SGDSkills("/home/sean/src/dstc8-schema-guided-dialogue/")
+    from finetune.sgd import SGD
+
+    dsc = SGD("/home/sean/src/dstc8-schema-guided-dialogue/")
 
     LugConfig.embedding_device = "cuda"
     dataset = dsc.build("train")

@@ -19,45 +19,30 @@ from transformers import (
 
 from datasets import Dataset, concatenate_datasets
 
+from converter.lug_config import LugConfig
 from core.embedding import EmbeddingStore
-from core.retriever import build_desc_index, HybridRetriever, load_retrievers
+from core.retriever import build_desc_index, HybridRetriever, load_retrievers, CombinedRetriever
 from finetune.commons import build_dataset_index
 from finetune.sgd import SGD
 
 
-def compute_k(dataset: Dataset, output: str, tag: str, topk: int = 3):
-    retriever = HybridRetriever(output, tag, topk=8)
+def compute_k(dataset: Dataset, retriever: CombinedRetriever):
     counts = [0, 0]
     for item in dataset:
-        nodes = retriever.retrieve(item["utterance"])
+        nodes = retriever.search(item["utterance"])
         intents = set()
         lintents = []
-        for result in nodes:
-            intent = result.node.metadata["owner"]
+        for node in nodes:
+            intent = node["name"]
             if intent not in intents:
                 intents.add(intent)
                 lintents.append(intent)
-            if len(lintents) >= topk:
-                break
+
         counts[0] += 1
-        if item["owner"] in lintents[0:topk]:
-            counts[1] += 1
-
-    return counts
-
-
-def compute_hits(dataset: Dataset, output: str, topk: int):
-    retriever = HybridRetriever(output, "desc", topk=topk)
-    counts = [0, 0]
-    for item in dataset:
-        nodes = retriever.retrieve(item["utterance"])
-        intents = {result.node.metadata["owner"] for result in nodes}
-        counts[0] += 1
-        name = item["owner"]
-        if name in intents or name == "NONE":
+        if item["owner"] in lintents:
             counts[1] += 1
         else:
-            print(f'{name}:{item["utterance"]} not in {intents}')
+            print(f"{item}: {nodes}")
 
     return counts
 
@@ -76,17 +61,26 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
+    LugConfig.embedding_device = "cuda"
+
     factories = [
         SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]
 
     # For now, just use the fix path.
     output = "./output"
 
+    build_index = False
+    if build_index:
+        for factory in factories:
+            build_desc_index(factory.domain, f"{output}/index/{factory.tag}", EmbeddingStore.for_description())
+            build_dataset_index(factory.build("train"), f"{output}/index/{factory.tag}", EmbeddingStore.for_exemplar())
+
+    retrievers = []
     for factory in factories:
-        build_desc_index(factory.domain, f"{output}/index/{factory.tag}", EmbeddingStore.for_description())
-        build_dataset_index(factory.build("train"), f"{output}/index/{factory.tag}", EmbeddingStore.for_exemplar())
+        retrievers.append(load_retrievers(factory.domain, f"{output}/index/{factory.tag}"))
 
-    retrievers_list = []
-    for factor in factories:
-        retrievers_list.append(load_retrievers(f"{output}/index/{factory.tag}"))
-
+    for index in range(len(factories)):
+        factory = factories[index]
+        searcher = retrievers[index]
+        ds = factory.build("validation")
+        print(compute_k(ds, searcher))

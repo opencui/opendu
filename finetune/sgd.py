@@ -10,7 +10,7 @@ from datasets import IterableDataset
 
 from core.annotation import ModuleSchema, FrameSchema, SlotSchema
 from core.embedding import EmbeddingStore
-from finetune.commons import DatasetFactory, AnnotatedExemplar
+from finetune.commons import DatasetFactory, AnnotatedExemplar, build_dataset_index, create_full_exemplar
 from core.retriever import build_desc_index
 
 
@@ -22,7 +22,6 @@ from core.retriever import build_desc_index
 # the same service.
 #
 class SGD(DatasetFactory):
-    limited_to_first_service: bool = True
 
     # Which schema do we use? Default to train.
     def __init__(self, base_path, domain="train", suffix: str = "_1"):
@@ -83,7 +82,7 @@ class SGD(DatasetFactory):
                                 continue
 
                             frame = turn['frames'][0]
-                            if SGD.limited_to_first_service and frame["service"].endswith(self.suffix):
+                            if frame["service"].endswith(self.suffix):
                                 continue
 
                             if frame['state']['active_intent'] not in (active_intents - pre_intents):
@@ -105,8 +104,9 @@ class SGD(DatasetFactory):
                             # remember the active intents from last user turn.
                             pre_intents = active_intents
                             id = f"sgd.{split}.{dialogue_id}.{idx}"
+                            exemplar = create_full_exemplar(id, utterance, skill_name, local_slots, spans)
                             # yield the example
-                            yield AnnotatedExemplar(id, utterance, skill_name, local_slots, spans).to_dict()
+                            yield exemplar.to_dict()
         return IterableDataset.from_generator(gen_skills)
 
     @classmethod
@@ -118,7 +118,7 @@ class SGD(DatasetFactory):
             for service in f:
                 service_name = service["service_name"]
 
-                if SGD.limited_to_first_service and service_name.endswith(suffix):
+                if service_name.endswith(suffix):
                     continue
 
                 # handle intents

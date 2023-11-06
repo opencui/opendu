@@ -7,5 +7,5 @@ class LugConfig:
     embedding_exemplar_prompt = "irda"
     retriever_mode = "embedding"
     desc_retrieve_topk = 8
-    exemplar_retrieve_topk = 16
+    exemplar_retrieve_topk = 32
     llm_device = "cpu"

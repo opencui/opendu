@@ -61,6 +61,11 @@ class EmbeddingStore:
             return model
 
     @classmethod
+    def get_embedding_by_task(cls, kind):
+        model = EmbeddingStore.get_model(LugConfig.embedding_model)
+        return InstructedEmbeddings(model, EmbeddingStore.INSTRUCTIONS[kind])
+
+    @classmethod
     def for_description(cls) -> BaseEmbedding:
         model = EmbeddingStore.get_model(LugConfig.embedding_model)
         kind = LugConfig.embedding_desc_prompt
