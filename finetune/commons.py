@@ -3,7 +3,6 @@ from abc import ABC
 import abc
 from typing import Any
 
-import gin
 from dataclasses import dataclass, field
 from functools import reduce
 from dataclasses_json import dataclass_json
@@ -90,6 +89,7 @@ def create_full_exemplar(id, utterance, intent, slots, spans, expectations=[]) -
 @dataclass
 class DatasetFactory(ABC):
     __metaclass__ = abc.ABCMeta
+    tag: str
     domain: ModuleSchema
 
     @abc.abstractmethod

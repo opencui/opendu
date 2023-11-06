@@ -1,9 +1,9 @@
-# LUG (language understanding and generation)
+# LUG 
 
-LUG is an open source implementation of retrieval augmented generation based function calling API
-that is designed both for dialog understanding in chatbot development and tool-using agent development. 
-Because of this, the terminology can be a bit confusing, we will use function interchangeably with skill, intent, 
-and parameter with slot. 
+LUG, short for Language Understanding and Generation, is an open source, retrieval augmented generation
+(RAG) based function calling API implementation. It is designed both for dialog understanding in chatbot development
+and tool-using agent development. Because of this, the terminology can be a bit confusing, we will use function
+interchangeably with skill, intent, and parameter with slot. 
 
 It can be used with any LLMs with provided finetune script for both embedding model and generation model.
 Efficient inference is possible using excellent project like llama.cpp, vllm. With open sourced LLM, you 
