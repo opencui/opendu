@@ -1,6 +1,5 @@
 import json
 from dataclasses import field
-from enum import Enum
 from typing import Union, List, TypedDict, Optional, Dict, Literal
 from dataclasses import dataclass
 
@@ -15,7 +14,7 @@ from pydantic import BaseModel, Field
 class SlotSchema:
     name: str = field(metadata={"required": True})
     description: str = field(metadata={"required": True})
-    type: str = field(metadata={"required": False})
+    type: str = field(metadata={"required": False}, default=None)
 
 
 @dataclass_json

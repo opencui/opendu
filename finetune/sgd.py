@@ -11,7 +11,7 @@ from datasets import IterableDataset
 from core.annotation import ModuleSchema, FrameSchema, SlotSchema
 from core.embedding import EmbeddingStore
 from finetune.commons import DatasetFactory, AnnotatedExemplar
-from core.retriever import build_desc_index, build_dataset_index
+from core.retriever import build_desc_index
 
 
 # pip install -U gin-config faiss-cpu scikit-learn sentence-transformers
@@ -27,7 +27,7 @@ class SGD(DatasetFactory):
     # Which schema do we use? Default to train.
     def __init__(self, base_path, domain="train", suffix: str = "_1"):
         self.base_path = base_path
-        self.tag = "sgd/skill"
+        self.tag = "sgd"
         self.suffix = suffix
         self.counts = [0, 0, 0, 0]
         self.domain = SGD.load_schema_as_dict(f"{base_path}/{domain}/")

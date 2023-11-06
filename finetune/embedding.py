@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from core.annotation import FrameSchema
 from converter.lug_config import LugConfig
 from core.embedding import EmbeddingStore
-from core.retriever import has_no_intent
+
 
 
 def train(model: SentenceTransformer, dataset: Dataset, model_save_path: str):
@@ -93,7 +93,7 @@ def create_sentence_pair_for_exemplars(dataset: Dataset, retriever: BaseRetrieve
 if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
-    from finetune.commons import DatasetCreatorWithIndex, generate_sentence_pairs
+    from finetune.commons import DatasetCreatorWithIndex, generate_sentence_pairs, has_no_intent
 
     from finetune.sgd import SGDSkills
     print(LugConfig.embedding_model)
