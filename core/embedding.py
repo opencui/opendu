@@ -57,7 +57,7 @@ class EmbeddingStore:
         },
         "baai_exemplars": {
             "query": "",
-            "key": "Represent this sentence for searching relevant passages:"
+            "key": ""
         }
     }
 

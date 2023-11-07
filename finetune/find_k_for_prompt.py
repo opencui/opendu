@@ -72,7 +72,7 @@ if __name__ == "__main__":
     # For now, just use the fix path.
     output = "./output"
 
-    build_index = False
+    build_index = True
     if build_index:
         for factory in factories:
             build_desc_index(factory.domain, f"{output}/index/{factory.tag}", EmbeddingStore.for_description())
