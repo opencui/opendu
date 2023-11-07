@@ -30,6 +30,9 @@ def compute_k(dataset: Dataset, retriever: CombinedRetriever):
     counts = [0, 0]
     for item in dataset:
         nodes = retriever.search(item["utterance"])
+        if item["owner"] == "NONE":
+            continue
+
         intents = set()
         lintents = []
         for node in nodes:
@@ -37,12 +40,12 @@ def compute_k(dataset: Dataset, retriever: CombinedRetriever):
             if intent not in intents:
                 intents.add(intent)
                 lintents.append(intent)
-
+        print(f"{item}  -> {intents}\n")
         counts[0] += 1
         if item["owner"] in lintents:
             counts[1] += 1
         else:
-            print(f"{item}: {nodes}")
+            print(f">>>>>{item}: {nodes}\n\n\n")
 
     return counts
 
@@ -79,6 +82,9 @@ if __name__ == "__main__":
     for factory in factories:
         retrievers.append(load_retrievers(factory.domain, f"{output}/index/{factory.tag}"))
 
+    #searcher = retrievers[0]
+    #nodes = searcher.search("i want to go out to eat somewhere")
+    exit()
     for index in range(len(factories)):
         factory = factories[index]
         searcher = retrievers[index]

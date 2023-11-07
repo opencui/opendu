@@ -1,10 +1,13 @@
+from abc import ABC
 from typing import Any, List
 
 from llama_index.embeddings.base import BaseEmbedding
 from sentence_transformers import SentenceTransformer
 from llama_index.bridge.pydantic import PrivateAttr
+from llama_index.embeddings import HuggingFaceEmbedding
 
 from converter.lug_config import LugConfig
+from transformers import AutoTokenizer, AutoModel
 
 
 # We reuse the underlying embedding when we can.
@@ -48,6 +51,14 @@ class EmbeddingStore:
             "query": "Encode this query and context for searching relevant passages: ",
             "key": "Encode this passage for retrieval: ",
         },
+        "baai_desc": {
+            "query": "",
+            "key": "Represent this sentence for searching relevant passages:"
+        },
+        "baai_exemplars": {
+            "query": "",
+            "key": "Represent this sentence for searching relevant passages:"
+        }
     }
 
     @classmethod
@@ -55,7 +66,6 @@ class EmbeddingStore:
         if model_name in EmbeddingStore._models:
             return EmbeddingStore._models[model_name]
         else:
-            print(model_name)
             model = SentenceTransformer(model_name, device=LugConfig.embedding_device)
             EmbeddingStore._models[model_name] = model
             return model
@@ -120,3 +130,49 @@ class InstructedEmbeddings(BaseEmbedding):
         texts = [self._instructions["key"] + key for key in texts]
         embeddings = self._model.encode(texts)
         return embeddings.tolist()
+
+
+class HFEmbeddingStore:
+    query_encoder = HuggingFaceEmbedding(model_name="facebook/dragon-plus-query-encoder", device=LugConfig.embedding_device)
+    context_encoder = HuggingFaceEmbedding(model_name="facebook/dragon-plus-context-encoder", device=LugConfig.embedding_device)
+
+    @classmethod
+    def get_embedding_by_task(cls, kind):
+        return EmbeddingStore.for_exemplar() if kind != "desc" else EmbeddingStore.for_description()
+
+    @classmethod
+    def for_description(cls) -> BaseEmbedding:
+        return DualHFEmbedding(EmbeddingStore.query_encoder, EmbeddingStore.context_encoder)
+
+    @classmethod
+    def for_exemplar(cls) -> BaseEmbedding:
+        return DualHFEmbedding(EmbeddingStore.query_encoder, EmbeddingStore.query_encoder)
+
+
+class DualHFEmbedding(BaseEmbedding):
+    _query_encoder: HuggingFaceEmbedding = PrivateAttr()
+    _context_encoder: HuggingFaceEmbedding = PrivateAttr()
+
+    def __init__(self, query, context, **kwargs: Any):
+        self._query_encoder = query
+        self._context_encoder = context
+        super().__init__(**kwargs)
+
+    @classmethod
+    def class_name(cls) -> str:
+        return "DualHFEmbedding"
+
+    async def _aget_query_embedding(self, query: str) -> List[float]:
+        return self._get_query_embedding(query)
+
+    async def _aget_text_embedding(self, text: str) -> List[float]:
+        return self._get_text_embedding(text)
+
+    def _get_query_embedding(self, query: str) -> List[float]:
+        return self._query_encoder.get_query_embedding(query)
+
+    def _get_text_embedding(self, text: str) -> List[float]:
+        return self._context_encoder.get_query_embedding(text)
+
+    def _get_text_embeddings(self, texts: List[str]) -> List[List[float]]:
+        return self._context_encoder.get_text_embedding_batch(texts)

@@ -157,11 +157,11 @@ class CombinedRetriever:
         exemplar_nodes = [item.node for item in self.exemplar_retriever.retrieve(query)]
 
         #print(desc_nodes)
-        #print(exemplar_nodes)
+        print([(node.text, node.metadata["owner"]) for node in exemplar_nodes])
 
         exemplar_nodes = dedup_nodes(exemplar_nodes)
 
-        all_nodes = exemplar_nodes
+        all_nodes = desc_nodes + exemplar_nodes
 
         owners = set([item.metadata["owner"] for item in all_nodes])
         for none in self.nones:

@@ -2,10 +2,11 @@
 
 class LugConfig:
     embedding_device = "cpu"
-    embedding_model = 'BAAI/llm-embedder'
-    embedding_desc_prompt = "tool"
-    embedding_exemplar_prompt = "irda"
+    embedding_model = 'BAAI/bge-base-en-v1.5'
+    embedding_desc_model = ""
+    embedding_desc_prompt = "baai-desc"
+    embedding_exemplar_prompt = "baai-exemplar"
     retriever_mode = "embedding"
     desc_retrieve_topk = 8
-    exemplar_retrieve_topk = 32
+    exemplar_retrieve_topk = 16
     llm_device = "cpu"
