@@ -10,6 +10,7 @@ import logging
 import torch
 import transformers
 from torch.nn.utils.rnn import pad_sequence
+from core.prompt import SkillPrompts, OneSlotPrompts
 import argparse
 from transformers import (
     AutoTokenizer,
@@ -19,10 +20,11 @@ from transformers import (
 )
 from datasets import Dataset, concatenate_datasets
 
+
 from core.annotation import ModuleSchema
 from core.embedding import EmbeddingStore
-from core.prompt import get_prompt, Prompt
-from core.retriever import build_nodes_from_skills, create_index
+from core.prompt import Prompt
+from core.retriever import build_nodes_from_skills, create_index, load_context_retrievers, ContextRetriever
 from finetune.commons import AnnotatedExemplar, DatasetFactory, build_nodes_from_dataset
 
 logger = logging.getLogger(__name__)
@@ -30,36 +32,76 @@ logger = logging.getLogger(__name__)
 IGNORE_INDEX = -100
 
 
+# This converter is responsible for convert the exemplars in the original dataset into what is needed
+# by generation fine-tuning. The assumed the columns are input and output, and we added id for debugging
+# purpose.
 class Converter(ABC):
-    extra_tokens: list[str]
+    prompt: Prompt
 
     @abstractmethod
-    def __call__(self, input):
+    def __call__(self, item:AnnotatedExemplar, ins: list[str], outs: list[str], ids: list[str]):
         return
 
 
-class OneSlotConverter(Converter):
-    def __init__(self, module: ModuleSchema, func_prompt: Prompt, slot_prompt: Prompt):
-        self.func_prompt = func_prompt
-        self.slot_prompt = slot_prompt
-        self.extra_tokens = list(set(slot_prompt.extra_tokens + func_prompt.extra_tokens))
+class SkillConverter(Converter):
+    def __init__(self, retriever: ContextRetriever, func_prompt: Prompt):
+        self.prompt = func_prompt
+        self.context_retrieve = retriever
 
-    def special_tokens(self):
-        tokens = self.slot_prompt.extra_tokens + self.func_prompt.extra_tokens
-
-    def __call__(self, input: AnnotatedExemplar):
+    def __call__(self, item: AnnotatedExemplar, ins: list[str], outs: list[str], ids: list[str]):
         # We assume the input is dict version of AnnotatedExemplar
-        ins = []
-        outs = []
-        input_dict = input.to_dict()
+        skills, exemplars = self.context_retrieve(item["utterance"])
+        # remove the identical exemplar
+        exemplars = [exemplar for exemplar in exemplars if exemplars.id != item[':id']]
+        input_dict = item.to_dict()
+        input_dict["examples"] = exemplars
+        input_dict["skills"] = skills
+        ins.append(self.prompt(input_dict))
+        outs.append(item.owner)
+        ids.append(item.id)
 
-        ins.append(self.func_prompt(input_dict))
-        outs.append(input.owner)
 
-        for slot, value in input.arguments:
+#
+# This is for extractive slot value understanding.
+#
+class OneSlotConverter(Converter):
+    def __init__(self, module: ModuleSchema, slot_prompt: Prompt):
+        self.prompt = slot_prompt
+        self.module = module
+
+    def __call__(self, item: AnnotatedExemplar, ins: list[str], outs: list[str], ids: list[str]):
+        # We assume the input is dict version of AnnotatedExemplar
+        input_dict = item.to_dict()
+        for slot, value in item.arguments:
             input_dict["name"] = slot
             input_dict["description"] = self.module.slots[slot].description
-            ins.append(self.slot_prompt(input))
+            ins.append(self.slot_prompt(item))
+            outs.append(value)
+        return {"input": ins, "output": outs}
+
+
+# This is needed to determine the intention, intended function or skill
+
+
+# This converter is needed for cases where users' utterance is response to bot's prompt questions, and
+# needs the abstractive understanding instead of extractive understanding.
+# This is needed to determine the intention, intended function or skill
+class BooleanConverter(Converter):
+    def __init__(self, module: ModuleSchema, func_prompt: Prompt):
+        self.func_prompt = func_prompt
+        self.module = module
+
+    def __call__(self, item: AnnotatedExemplar, ins: list[str], outs: list[str], ids: list[str]):
+        # We assume the input is dict version of AnnotatedExemplar
+        input_dict = item.to_dict()
+
+        ins.append(self.func_prompt(input_dict))
+        outs.append(item.owner)
+
+        for slot, value in item.arguments:
+            input_dict["name"] = slot
+            input_dict["description"] = self.module.slots[slot].description
+            ins.append(self.slot_prompt(item))
             outs.append(value)
         return {"input": ins, "output": outs}
 
@@ -68,21 +110,28 @@ class OneSlotConverter(Converter):
 class ConvertedFactory(DatasetFactory):
     __metaclass__ = ABCMeta
 
-    def __init__(self, dsf: DatasetFactory, convert: Converter):
+    def __init__(self, dsf: DatasetFactory, convert: list[Converter]):
         self.domain = dsf.domain
-        self.convert: Converter = convert
+        self.converters: list[Converter] = convert
+
+    def extra_tokens(self):
+        return set([token for converter in self.converters for token in converter.prompt.extr_tokens]).to_list()
+
+    def convert(self, item):
+        ins = []
+        outs = []
+        ids =[]
+        for convert in self.converters:
+            convert(item, ins, outs, ids)
+        assert len(ins) == len(outs)
+        if len(ins) == len(ids):
+            return {"input": ins, "output": outs, "id": ids}
+        else:
+            return {"input": ins, "output": outs}
 
     def build(self, split: str) -> Dataset:
         dataset = self.creator.build(split)
         return dataset.map(self.convert, batched=True, remove_columns=dataset.column_names)
-
-    @classmethod
-    def build_index(cls, dsc: DatasetFactory, output: str = "./output/"):
-        desc_nodes = build_nodes_from_skills(dsc.domain.skills)
-        exemplar_nodes = build_nodes_from_dataset(dsc.build("train"))
-
-        create_index(output, "desc", desc_nodes, EmbeddingStore.for_description())
-        create_index(output, "exemplars", exemplar_nodes, EmbeddingStore.for_exemplar())
 
 
 @dataclass
@@ -423,7 +472,7 @@ def train(converted_factories: list[ConvertedFactory]):
     if completed_training:
         print('Detected that training was already completed!')
 
-    extra_tokens = set([token for factory in converted_factories for token in factory.convert])
+    extra_tokens = set([token for factory in converted_factories for token in factory.extra_tokens()])
     model, tokenizer = get_accelerate_model(args, extra_tokens)
 
     model.config.use_cache = False
@@ -511,10 +560,25 @@ if __name__ == "__main__":
     logger.setLevel(logging.CRITICAL)
 
     from finetune.sgd import SGD
+    from converter.lug_config import LugConfig
+    LugConfig.embedding_device = "cuda"
 
-    sgd = SGD()
-    output = "./index/sgd/"
-    prompt = get_prompt(sgd, output)
+    factories = [
+        SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]
 
-    converters = [ConvertedFactory(sgd, prompt, mode="intent")]
-    train(converters)
+        # For now, just use the fix path.
+    output = "./output"
+    retrievers = []
+    for factory in factories:
+        retrievers.append(load_context_retrievers(factory.domain, f"{output}/index/{factory.tag}"))
+
+
+    converted_factories = []
+    for index, factory in enumerate(factories):
+        context_retriever = retrievers[index]
+        skill_converter = SkillConverter(context_retriever, SkillPrompts["exampled_prompt_for_skill00"])
+        slot_converter = OneSlotConverter(factory.domain, OneSlotPrompts["basic"])
+        converted_factory = ConvertedFactory(factory, [skill_converter, slot_converter])
+
+    # Now we need to create the converters.
+    train(converted_factories)

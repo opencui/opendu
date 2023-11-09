@@ -24,7 +24,7 @@ you have a schema, the main thing you need to do is:
 1. Prepare the labeled examples in form of AnnotatedExemplar.
 2. Trigger the fine-tuning for generator, so that you can use the model for inference.
 
-####: Prepare exemplars
+### Prepare exemplars
 For now, we assume that the labeled examples for fine-tuning generator requires a couple of things:
 - user utterance, for example: "I like to get a ticket to New York"
 - template, a value normalized utterance, for example: "I like to get <quantity> ticket to <destination>".
@@ -46,15 +46,33 @@ negative examples, this requires that the functions from each module is mutually
 and there is no overloaded functions. Overloaded functions need to handled in the state tracking. At beginning, we only
 support the single module, but there is plan to support multiple modules.
 
-## Special considerations
-Fine-tuning generator for RAG applications bring some new considerations. 
 
-### Determine the hyperparameters
+### Determine the hyperparameters for retrieval
 One of the main consideration for fine-tuning generation for RAG is what dynamic information are needed by prompt.
 So special care need to be taken to make sure that instantiated prompt meet the criteria you had when you design the 
 prompt templated. For example, if you assume that the correct answer should be included in the prompt, then you will
 need to make sure that is indeed is the case. So you need to run some experiments to make sure that you choose the
 correct value for hyperparameters.
+
+The script you can use to determine the hyperparameter for retrieval:
+```bash
+python3 funetune/finetune/find_k_for_prompt.py 
+```
+Assuming that you have schema-guided dialogue dataset at <dir for lug>/../dstc8-schema-guided-dialogue/
+
+### Fine-tune the generation model
+
+```bash
+python3 finetune/fine_tune_generation.sh
+```
+
+## Special considerations
+Fine-tuning generator for RAG applications bring some new considerations. 
+
+### How to retrieve
+The description can be retrieved using embedding only. The exemplar should be retrieved in hybrid mode, with both
+embedding and  keyword search. The vector search for description should use asymmetrical dual embedding, while for 
+exemplar, vector search should use symmetrical embedding, using the same model for both user utterance and exemplars.
 
 ### How to model the conversion
 There are many potential system architecture to model the conversation. For example, we can do one-shot model, or using

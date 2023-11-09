@@ -29,7 +29,7 @@ class SGD(DatasetFactory):
         self.base_path = base_path
         self.tag = "sgd"
         self.suffix = suffix
-        self.counts = [0, 0, 0, 0]
+        self.counts = [0, 0, 0, 0, 0, 0, 0]
         self.domain = SGD.load_schema_as_dict(f"{base_path}/{domain}/")
         self.known_skills = set()
         self.bad_turns = set([

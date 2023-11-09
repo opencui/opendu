@@ -1,6 +1,6 @@
 from converter.schema_parser import load_schema_from_directory, load_specs_and_recognizers_from_directory
 from core.annotation import FrameValue, Exemplar, FrameSchema, DialogExpectation
-from core.retriever import load_retrievers
+from core.retriever import load_context_retrievers
 
 
 #
@@ -48,5 +48,5 @@ def get_exemplars(nodes) -> list[Exemplar]:
 def load_converter(specs: str, index: str) -> Converter:
     # We assume
     specs, recognizers = load_specs_and_recognizers_from_directory(specs)
-    retrievers = load_retrievers(index)
+    retrievers = load_context_retrievers(index)
     return Converter(specs, retrievers, recognizers)
