@@ -37,7 +37,7 @@ def has_no_intent(label: str):
 def build_nodes_from_dataset(dataset: Dataset):
     nodes = []
     for item in dataset:
-        utterance = item['utterance']
+        utterance = item['template']
         label = item["owner"]
         if has_no_intent(label): continue
         nodes.append(
@@ -51,6 +51,7 @@ def build_nodes_from_dataset(dataset: Dataset):
 
 def build_dataset_index(dsc: Dataset, output: str, embedding: BaseEmbedding):
     exemplar_nodes = build_nodes_from_dataset(dsc)
+    print(f"There are {len(exemplar_nodes)} exemplars.")
     create_index(output, "exemplar", exemplar_nodes, embedding)
 
 

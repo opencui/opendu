@@ -1,5 +1,7 @@
+import math
 from abc import ABC
 from typing import Any, List
+import numpy as np
 
 from llama_index.embeddings.base import BaseEmbedding
 from sentence_transformers import SentenceTransformer
@@ -176,3 +178,41 @@ class DualHFEmbedding(BaseEmbedding):
 
     def _get_text_embeddings(self, texts: List[str]) -> List[List[float]]:
         return self._context_encoder.get_text_embedding_batch(texts)
+
+
+def similarity(u0, u1, encoder):
+    em0 = encoder.get_query_embedding(u0)
+    em1 = encoder.get_query_embedding(u1)
+    return np.dot(em0, em1)/math.sqrt(np.dot(em0, em0)*np.dot(em1, em1))
+
+
+class Comparer:
+    def __init__(self):
+        self.encoder0 = HuggingFaceEmbedding(model_name="facebook/dragon-plus-query-encoder", device=LugConfig.embedding_device)
+        self.encoder1 = HuggingFaceEmbedding(model_name='BAAI/bge-large-en-v1.5', device=LugConfig.embedding_device)
+
+    def __call__(self, u0, t0):
+        print(similarity(u0, t0, self.encoder0))
+        print(similarity(u0, t0, self.encoder1))
+
+
+if __name__ == "__main__":
+
+    compare = Comparer()
+
+    u0 = "okay, i'd like to make a transfer of 370 dollars from checking to khadija"
+    t0 = "okay, i'd like to make a transfer of  < transfer_amount >  from checking to  < recipient_name > ."
+
+    compare(u0, t0)
+
+    u0 = "okay, i'd like to make a transfer of 370 dollars from checking to khadija."
+    t0 = 'i also need a bus from  < origin >  for 2.'
+    compare(u0, t0)
+
+    u0 = "let's transfer 610 dollars to their savings account please."
+    t0 = 'you could find me a cab to get there for example'
+    compare(u0, t0)
+
+    u0 = "okay, i'd like to make a transfer of 370 dollars from checking to khadija."
+    t0 = 'that one works. i would like to buy a bus ticket.'
+    compare(u0, t0)

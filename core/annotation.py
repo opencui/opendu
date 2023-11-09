@@ -79,9 +79,9 @@ class SlotRecognizers(BaseModel):
 
 # owner is not needed if exemplars are listed insider function specs.
 class Exemplar(BaseModel):
-    owner: Optional[str] = Field(description="onwer of this exemplar.")
-    context: Optional[str] = Field(description="the context under which this exemplar works.")
+    owner: str = Field(description="onwer of this exemplar.")
     template: str = Field(description="the example utterance that should trigger the given skill")
+    context: Optional[str] = Field(description="the context under which this exemplar works.", default=None)
 
 
 # There are two different use cases for exemplars:

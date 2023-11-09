@@ -22,6 +22,7 @@ from core.retriever import build_desc_index
 # the same service.
 #
 class SGD(DatasetFactory):
+    intent_taboo_word = ["SearchOnewayFlight", "BookHouse", "SearchHouse"]
 
     # Which schema do we use? Default to train.
     def __init__(self, base_path, domain="train", suffix: str = "_1"):
@@ -30,6 +31,24 @@ class SGD(DatasetFactory):
         self.suffix = suffix
         self.counts = [0, 0, 0, 0]
         self.domain = SGD.load_schema_as_dict(f"{base_path}/{domain}/")
+        self.known_skills = set()
+        self.bad_turns = set([
+            'sgd.train.95_00094.4',
+            'sgd.train.95_00065.8',
+            'sgd.train.95_00066.12',
+            'sgd.train.93_00083.8',
+            'sgd.train.8_00121.8',
+            'sgd.train.54_00096.6',
+            'sgd.train.121_00036.10',
+            'sgd.train.52_00020.18',
+            'sgd.train.74_00081.16',
+            'sgd.train.90_00018.16',
+            'sgd.train.27_00113.10',
+            'sgd.train.75_00023.20',
+            'sgd.train.96_00048.4',
+            'sgd.train.96_00019.10',
+            'sgd.train.42_00002.6',
+        ])
 
     def build(self, split):
         if split == "validation":
@@ -44,8 +63,8 @@ class SGD(DatasetFactory):
             :return: expression examples
             """
             files = os.listdir(base_path)
-            sentence_set = defaultdict(set)
-            # For all files.
+            s_set = defaultdict(set)
+            # Fentenceor all files.
             for file in files:
                 if file[:6] != 'dialog':
                     continue
@@ -58,55 +77,79 @@ class SGD(DatasetFactory):
 
                         # For each session with multiple turns.
                         pre_intents = set()
+                        existing_intents = set()
                         actions = None
                         for idx, turn in enumerate(turns):
-                            # Getting actions.
-                            if turn['speaker'] != 'USER':
-                                actions = SGD.extract_actions(turn)
-                                continue
+                            try:
+                                # Getting actions.
+                                if turn['speaker'] != 'USER':
+                                    actions = SGD.extract_actions(turn)
+                                    continue
 
-                            active_intents = set()
-                            for frame in turn['frames']:
-                                active_intents.add(frame['state']['active_intent'])
+                                id = f"sgd.{split}.{dialogue_id}.{idx}"
+                                if id in self.bad_turns:
+                                    continue
+                                
+                                active_intents = set()
+                                for frame in turn['frames']:
+                                    active_intents.add(frame['state']['active_intent'])
 
-                            if idx - 1 >= 0 and turns[idx - 1]["frames"][0]["actions"][0]["act"] == "OFFER_INTENT":
-                                offered_intent = set(turns[idx - 1]["frames"][0]["actions"][0]["values"])
-                            else:
-                                offered_intent = set()
+                                if len(active_intents) > 1:
+                                    continue
 
-                            # if active_intents is carried over, we ignore.
-                            if not (active_intents - pre_intents):
-                                self.counts[0] += 1
-                                # This might be the place where we create slot only examples.
-                                # Particularly assume there are reactive understanding.
-                                continue
+                                # this is offered intent from system.
+                                if idx - 1 >= 0 and turns[idx - 1]["frames"][0]["actions"][0]["act"] == "OFFER_INTENT":
+                                    offered_intent = set(turns[idx - 1]["frames"][0]["actions"][0]["values"])
+                                else:
+                                    offered_intent = set()
 
-                            frame = turn['frames'][0]
-                            if frame["service"].endswith(self.suffix):
-                                continue
+                                # if active_intents is carried over, we ignore.
+                                if not (active_intents - pre_intents):
+                                    self.counts[0] += 1
+                                    # This might be the place where we create slot only examples.
+                                    # Particularly assume there are reactive understanding.
+                                    continue
 
-                            if frame['state']['active_intent'] not in (active_intents - pre_intents):
-                                self.counts[1] += 1
-                                continue
+                                frame = turn['frames'][0]
+                                skill_name = frame['state']['active_intent']
 
-                            if frame['state']['active_intent'] in offered_intent:
-                                self.counts[3] += 1
-                                continue
+                                if skill_name not in self.domain.skills.keys():
+                                    continue
 
-                            skill_name = frame['state']['active_intent']
-                            spans = []
-                            utterance = turn['utterance'].lower()
-                            local_slots = defaultdict(list)
-                            for _slot in frame['slots']:
-                                local_slots[_slot['slot']].append(utterance[_slot['start']:_slot['exclusive_end']])
-                                spans.append((_slot['start'], _slot['exclusive_end']))
+                                if skill_name in existing_intents:
+                                    #print(frame)
+                                    continue
 
-                            # remember the active intents from last user turn.
-                            pre_intents = active_intents
-                            id = f"sgd.{split}.{dialogue_id}.{idx}"
-                            exemplar = create_full_exemplar(id, utterance, skill_name, local_slots, spans)
-                            # yield the example
-                            yield exemplar.to_dict()
+                                if not frame["service"].endswith(self.suffix):
+                                    # Only care the servie with suffix _1
+                                    continue
+
+                                if frame['state']['active_intent'] not in (active_intents - pre_intents):
+                                    self.counts[1] += 1
+                                    continue
+
+                                if frame['state']['active_intent'] in offered_intent:
+                                    self.counts[3] += 1
+                                    continue
+
+                                if frame['state']['active_intent'] in SGD.intent_taboo_word:
+                                    continue
+
+                                spans = []
+                                utterance = turn['utterance'].lower()
+                                local_slots = defaultdict(list)
+                                for _slot in frame['slots']:
+                                    local_slots[_slot['slot']].append(utterance[_slot['start']:_slot['exclusive_end']])
+                                    spans.append((_slot['start'], _slot['exclusive_end']))
+
+                                exemplar = create_full_exemplar(id, utterance, skill_name, local_slots, spans)
+                                # yield the example
+                                yield exemplar.to_dict()
+                            finally:
+                                # remember the active intents from last user turn.
+                                pre_intents = active_intents
+                                existing_intents.update(active_intents)
+
         return IterableDataset.from_generator(gen_skills)
 
     @classmethod
@@ -130,6 +173,8 @@ class SGD(DatasetFactory):
                     optional_slots = intent["optional_slots"].keys()
                     slots.extend(list(optional_slots))
                     slots = [f"{slot}" for slot in slots]
+                    if intent_name in SGD.intent_taboo_word:
+                        continue
                     domain.skills[intent_name] = FrameSchema(intent_name, intent_desc, slots).to_dict()
                 slots = service["slots"]
                 for slot in slots:

@@ -29,23 +29,16 @@ from finetune.sgd import SGD
 def compute_k(dataset: Dataset, retriever: CombinedRetriever):
     counts = [0, 0]
     for item in dataset:
-        nodes = retriever.search(item["utterance"])
+        skills, exemplars = retriever.search(item["utterance"])
         if item["owner"] == "NONE":
             continue
 
-        intents = set()
-        lintents = []
-        for node in nodes:
-            intent = node["name"]
-            if intent not in intents:
-                intents.add(intent)
-                lintents.append(intent)
-        print(f"{item}  -> {intents}\n")
+        intents = set([skill["name"] for skill in skills])
         counts[0] += 1
-        if item["owner"] in lintents:
+        if item["owner"] in intents:
             counts[1] += 1
         else:
-            print(f">>>>>{item}: {nodes}\n\n\n")
+            print(f">>>>>{item}: \n +++++ {skills}\n --------{exemplars} \n\n")
 
     return counts
 
@@ -84,9 +77,8 @@ if __name__ == "__main__":
 
     #searcher = retrievers[0]
     #nodes = searcher.search("i want to go out to eat somewhere")
-    exit()
     for index in range(len(factories)):
         factory = factories[index]
         searcher = retrievers[index]
-        ds = factory.build("validation")
+        ds = factory.build("train")
         print(compute_k(ds, searcher))
