@@ -12,14 +12,12 @@ from llama_index.schema import TextNode
 
 from converter.lug_config import LugConfig
 from core.annotation import ModuleSchema
-from core.embedding import EmbeddingStore
-from core.prompt import Prompt
 from core.retriever import build_nodes_from_skills, create_index, HybridRetriever
 from finetune.embedding import create_sentence_pair_for_description, create_sentence_pair_for_exemplars
 
 
-@dataclass
 @dataclass_json
+@dataclass
 class AnnotatedExemplar:
     """
     expression examples, if the expected_slots is empty, this can be used for both skills and slots.
@@ -29,30 +27,31 @@ class AnnotatedExemplar:
     template: str = field(metadata={"required": True})
     owner: str = field(metadata={"required": False})
     arguments: dict[str, Any] = field(metadata={"required": False})
-    expectations: list[str] = field(metadata={"required": False})
+    expectations: list[str] = field(metadata={"required": False}, default_factory=list)
 
 
 def has_no_intent(label: str):
-    return label in {"NONE"}
+    return label == "NONE"
 
 
 def build_nodes_from_dataset(dataset: Dataset):
     nodes = []
     for item in dataset:
-        utterance = item['exemplar']
+        utterance = item['template']
         label = item["owner"]
-        if has_no_intent(label):
-            nodes.append(
-                TextNode(
-                    text=utterance,
-                    id_=item['id'],
-                    metadata={"arguments": item["arguments"], "owner": label},
-                    excluded_embed_metadata_keys=["arguments", "owner"]))
+        if has_no_intent(label): continue
+        nodes.append(
+            TextNode(
+                text=utterance,
+                id_=item['id'],
+                metadata={"arguments": item["arguments"], "owner": label},
+                excluded_embed_metadata_keys=["arguments", "owner"]))
     return nodes
 
 
 def build_dataset_index(dsc: Dataset, output: str, embedding: BaseEmbedding):
     exemplar_nodes = build_nodes_from_dataset(dsc)
+    print(f"There are {len(exemplar_nodes)} exemplars.")
     create_index(output, "exemplar", exemplar_nodes, embedding)
 
 
@@ -62,7 +61,7 @@ def create_full_exemplar(id, utterance, intent, slots, spans, expectations=[]) -
     long slot val, we need sort by the length of the slot val
     '''
     if not spans:
-        return utterance
+        return AnnotatedExemplar(id, utterance, utterance, intent, slots, expectations)
     single_dict = dict()
 
     for key, values in slots.items():

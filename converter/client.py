@@ -22,7 +22,7 @@ class Converter:
         exemplar_nodes = self.retrievers[1].retrieve(text)
 
         selected_skills = get_skill_infos(self.schema, desc_nodes + exemplar_nodes)
-        selected_exemplars = get_examplars(exemplar_nodes)
+        selected_exemplars = get_exemplars(exemplar_nodes)
 
         # Now we need to create prompt for the function first.
         func_name = None
@@ -41,7 +41,7 @@ def get_skill_infos(skills, nodes) -> list[FrameSchema]:
     return [skills[func] for func in funcset]
 
 
-def get_examplars(nodes) -> list[Exemplar]:
+def get_exemplars(nodes) -> list[Exemplar]:
     return [Exemplar(owner=item.node.meta["owner"]) for item in nodes]
 
 

@@ -18,8 +18,8 @@ def train(model: SentenceTransformer, dataset: Dataset, model_save_path: str):
 
     # We try to use these special tokens for potential roles.
     tokens = ["[DOC]", "[QRY]"]
-    word_embedding_model.tokenizer.add_tokens(tokens, special_tokens=True)
-    word_embedding_model.auto_model.resize_token_embeddings(len(word_embedding_model.tokenizer))
+    word_embedding_model._tokenizer.add_tokens(tokens, special_tokens=True)
+    word_embedding_model.auto_model.resize_token_embeddings(len(word_embedding_model._tokenizer))
 
     train_loss = losses.CosineSimilarityLoss(model)
 
