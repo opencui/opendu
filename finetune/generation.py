@@ -21,7 +21,7 @@ from transformers import (
 from datasets import Dataset, concatenate_datasets
 
 
-from core.annotation import ModuleSchema
+from core.annotation import Schema
 from core.embedding import EmbeddingStore
 from core.prompt import Prompt
 from core.retriever import build_nodes_from_skills, create_index, load_context_retrievers, ContextRetriever
@@ -65,7 +65,7 @@ class SkillConverter(Converter):
 # This is for extractive slot value understanding.
 #
 class OneSlotConverter(Converter):
-    def __init__(self, module: ModuleSchema, slot_prompt: Prompt):
+    def __init__(self, module: Schema, slot_prompt: Prompt):
         self.prompt = slot_prompt
         self.module = module
 
@@ -87,7 +87,7 @@ class OneSlotConverter(Converter):
 # needs the abstractive understanding instead of extractive understanding.
 # This is needed to determine the intention, intended function or skill
 class BooleanConverter(Converter):
-    def __init__(self, module: ModuleSchema, func_prompt: Prompt):
+    def __init__(self, module: Schema, func_prompt: Prompt):
         self.func_prompt = func_prompt
         self.module = module
 
@@ -111,7 +111,7 @@ class ConvertedFactory(DatasetFactory):
     __metaclass__ = ABCMeta
 
     def __init__(self, dsf: DatasetFactory, convert: list[Converter]):
-        self.domain = dsf.domain
+        self.domain = dsf.schema
         self.converters: list[Converter] = convert
 
     def extra_tokens(self):
@@ -408,7 +408,7 @@ def extract_unnatural_instructions_data(examples, extract_reformulations=False):
     return out
 
 
-def get_dataset(creators, split: str) -> Dataset:
+def merge_created_datasets(creators, split: str) -> Dataset:
     datasets = []
     for creator in creators:
         dataset = creator.build(split)
@@ -427,9 +427,9 @@ def make_data_module(data_collator, args, converters) -> Dict:
     """
     # Split train/eval, reduce size
     if args.do_eval or args.do_predict:
-        eval_dataset = get_dataset(converters, "validation")
+        eval_dataset = merge_created_datasets(converters, "validation")
     if args.do_train:
-        train_dataset = get_dataset(converters, "train")
+        train_dataset = merge_created_datasets(converters, "train")
 
     return dict(
         train_dataset=train_dataset if args.do_train else None,
@@ -566,19 +566,26 @@ if __name__ == "__main__":
     factories = [
         SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]
 
-        # For now, just use the fix path.
+    # For now, just use the fix path.
     output = "./output"
     retrievers = []
     for factory in factories:
-        retrievers.append(load_context_retrievers(factory.domain, f"{output}/index/{factory.tag}"))
-
+        retrievers.append(load_context_retrievers(factory.schema, f"{output}/index/{factory.tag}"))
 
     converted_factories = []
     for index, factory in enumerate(factories):
         context_retriever = retrievers[index]
         skill_converter = SkillConverter(context_retriever, SkillPrompts["exampled_prompt_for_skill00"])
-        slot_converter = OneSlotConverter(factory.domain, OneSlotPrompts["basic"])
-        converted_factory = ConvertedFactory(factory, [skill_converter, slot_converter])
+        slot_converter = OneSlotConverter(factory.schema, OneSlotPrompts["basic"])
+        converted_factories.append(ConvertedFactory(factory, [skill_converter, slot_converter]))
+
+    for index in range(len(converted_factories)):
+        print("we are here:")
+        factory = factories[index]
+        ds = factory.build("train")
+        for item in ds:
+            print(item)
+
 
     # Now we need to create the converters.
-    train(converted_factories)
+    # train(converted_factories)

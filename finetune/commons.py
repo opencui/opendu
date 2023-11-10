@@ -11,7 +11,7 @@ from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode
 
 from converter.lug_config import LugConfig
-from core.annotation import ModuleSchema
+from core.annotation import Schema
 from core.retriever import build_nodes_from_skills, create_index, HybridRetriever
 from finetune.embedding import create_sentence_pair_for_description, create_sentence_pair_for_exemplars
 
@@ -89,7 +89,7 @@ def create_full_exemplar(id, utterance, intent, slots, spans, expectations=[]) -
 class DatasetFactory(ABC):
     __metaclass__ = abc.ABCMeta
     tag: str
-    domain: ModuleSchema
+    schema: Schema
 
     @abc.abstractmethod
     def build(self, split: str = "train") -> Dataset:
@@ -102,9 +102,9 @@ class DatasetsCreator(DatasetFactory):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, dscs=list[DatasetFactory]):
-        self.domain = ModuleSchema(
-            skills=reduce(lambda x, y: {**x, **y}, [dsc.domain.skills for dsc in dscs]),
-            slots=reduce(lambda x, y: {**x, **y}, [dsc.domain.arguments for dsc in dscs])
+        self.domain = Schema(
+            skills=reduce(lambda x, y: {**x, **y}, [dsc.schema.skills for dsc in dscs]),
+            slots=reduce(lambda x, y: {**x, **y}, [dsc.schema.slots for dsc in dscs])
         )
         self.dscs = dscs
 
@@ -133,7 +133,7 @@ def generate_sentence_pairs(dataset_infos: list[DatasetCreatorWithIndex]) -> Dat
         dataset = dataset_info.creator.build("train")
         generators.extend(
             create_sentence_pair_for_description(
-                dataset_info.creator.domain.skills,
+                dataset_info.creator.schema.skills,
                 dataset,
                 dataset_info.desc_retriever
             ))

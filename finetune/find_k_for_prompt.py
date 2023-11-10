@@ -68,12 +68,12 @@ if __name__ == "__main__":
     build_index = True
     if build_index:
         for factory in factories:
-            build_desc_index(factory.domain, f"{output}/index/{factory.tag}", EmbeddingStore.for_description())
+            build_desc_index(factory.schema, f"{output}/index/{factory.tag}", EmbeddingStore.for_description())
             build_dataset_index(factory.build("train"), f"{output}/index/{factory.tag}", EmbeddingStore.for_exemplar())
 
     retrievers = []
     for factory in factories:
-        retrievers.append(load_context_retrievers(factory.domain, f"{output}/index/{factory.tag}"))
+        retrievers.append(load_context_retrievers(factory.schema, f"{output}/index/{factory.tag}"))
 
     #searcher = retrievers[0]
     #nodes = searcher.search("i want to go out to eat somewhere")

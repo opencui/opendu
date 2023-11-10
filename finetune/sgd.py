@@ -8,7 +8,7 @@ from collections import defaultdict
 
 from datasets import IterableDataset
 
-from core.annotation import ModuleSchema, FrameSchema, SlotSchema
+from core.annotation import Schema, FrameSchema, SlotSchema
 from core.embedding import EmbeddingStore
 from finetune.commons import DatasetFactory, AnnotatedExemplar, build_dataset_index, create_full_exemplar
 from core.retriever import build_desc_index
@@ -30,7 +30,7 @@ class SGD(DatasetFactory):
         self.tag = "sgd"
         self.suffix = suffix
         self.counts = [0, 0, 0, 0, 0, 0, 0]
-        self.domain = SGD.load_schema_as_dict(f"{base_path}/{domain}/")
+        self.schema = SGD.load_schema_as_dict(f"{base_path}/{domain}/")
         self.known_skills = set()
         self.bad_turns = set([
             'sgd.train.95_00094.4',
@@ -113,7 +113,7 @@ class SGD(DatasetFactory):
                                 frame = turn['frames'][0]
                                 skill_name = frame['state']['active_intent']
 
-                                if skill_name not in self.domain.skills.keys():
+                                if skill_name not in self.schema.skills.keys():
                                     continue
 
                                 if skill_name in existing_intents:
@@ -154,7 +154,7 @@ class SGD(DatasetFactory):
 
     @classmethod
     def load_schema_as_dict(cls, full_path, suffix: str = "_1"):
-        domain = ModuleSchema(skills={}, slots={})
+        domain = Schema(skills={}, slots={})
         with open(f"{full_path}/schema.json", encoding='utf-8') as f:
             f = json.load(f)
 
@@ -199,6 +199,6 @@ if __name__ == '__main__':
     output = "./index/sgdskill/"
     dsc = SGD("/home/sean/src/dstc8-schema-guided-dialogue/")
 
-    print(f"there are {len(dsc.domain.skills)} skills.")
-    build_desc_index(dsc.domain, output, EmbeddingStore.for_description())
+    print(f"there are {len(dsc.schema.skills)} skills.")
+    build_desc_index(dsc.schema, output, EmbeddingStore.for_description())
     build_dataset_index(dsc.build("train"), output, EmbeddingStore.for_exemplar())

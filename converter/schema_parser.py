@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import json
-from core.annotation import ExemplarStore, SlotRecognizers, FrameSchema, SlotSchema, ModuleSchema
+from core.annotation import ExemplarStore, SlotRecognizers, FrameSchema, SlotSchema, Schema
 
 
 #
@@ -9,7 +9,7 @@ from core.annotation import ExemplarStore, SlotRecognizers, FrameSchema, SlotSch
 #
 # We assume that in each domain, the slot name are unique, and skill name are unique.
 #
-def from_openai(functions) -> ModuleSchema:
+def from_openai(functions) -> Schema:
     skillInfos = {}
     slotInfos = {}
     for func in functions:
@@ -29,10 +29,10 @@ def from_openai(functions) -> ModuleSchema:
                 slot_description = slot["description"]
                 slotInfos[slot_name] = SlotSchema(slot_name, slot_description)
         skillInfos[f_name] = FrameSchema(f_name, f_description, f_slots)
-    return ModuleSchema(skillInfos, slotInfos)
+    return Schema(skillInfos, slotInfos)
 
 
-def from_openapi(specs) -> ModuleSchema:
+def from_openapi(specs) -> Schema:
     skills = {}
     slots = {}
     for path, v in specs.get("paths", {}).items():
@@ -51,7 +51,7 @@ def from_openapi(specs) -> ModuleSchema:
                     slots[slot_name] = SlotSchema(slot_name, slot_description)
                 parameters.append(slot_name)
             skills[label] = FrameSchema(name, description, parameters)
-    return ModuleSchema(skills, slots)
+    return Schema(skills, slots)
 
 
 # This assumes that in a directory we have schemas.json in openai/openapi format, and then exemplars

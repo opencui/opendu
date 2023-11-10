@@ -12,7 +12,7 @@ from llama_index.schema import TextNode, NodeWithScore
 from llama_index import QueryBundle
 from converter.lug_config import LugConfig
 from core.embedding import EmbeddingStore
-from core.annotation import FrameSchema, ModuleSchema, Exemplar
+from core.annotation import FrameSchema, Schema, Exemplar
 
 # Retrievers
 from llama_index.retrievers import (
@@ -69,7 +69,7 @@ def create_index(base: str, tag: str, nodes: list[TextNode], embedding: BaseEmbe
         shutil.rmtree(path, ignore_errors=True)
 
 
-def build_desc_index(dsc: ModuleSchema, output: str, embedding: BaseEmbedding):
+def build_desc_index(dsc: Schema, output: str, embedding: BaseEmbedding):
     print(f"There are {len(dsc.skills)} skills")
     json_formatted_str = json.dumps(dsc.skills, indent=2)
     print(json_formatted_str)
@@ -150,7 +150,7 @@ def dedup_nodes(old_results: list[TextNode], skills):
 # This allows us to use the same logic on both the inference and fine-tuning side.
 # This is used to create the context for prompt needed for generate the solution for skills.
 class ContextRetriever:
-    def __init__(self, module: ModuleSchema, d_retrievers, e_retriever):
+    def __init__(self, module: Schema, d_retrievers, e_retriever):
         self.module = module
         self.desc_retriever = d_retrievers
         self.exemplar_retriever = e_retriever
