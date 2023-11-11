@@ -45,7 +45,9 @@ class SGD(DatasetFactory):
             'sgd.train.90_00018.16',
             'sgd.train.27_00113.10',
             'sgd.train.75_00023.20',
+            'sgd.train.96_00019.12',
             'sgd.train.96_00048.4',
+            'sgd.train.96_00048.6',
             'sgd.train.96_00019.10',
             'sgd.train.42_00002.6',
         ])

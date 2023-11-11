@@ -52,8 +52,8 @@ class Prompt:
         self.template = Compiler().compile(source)
         self.extra_tokens = extra_tokens
         self.helpers = {
-            'list_examples': ObjectLister(item_header="### Examples"),
-            'list_skills': ObjectLister(item_header="### Functions", item_delim=",", block_header="[", block_tail="]"),
+            'list_examples': ObjectLister(item_header="### Example"),
+            'list_skills': ObjectLister(item_header="### Function", item_delim=","),
             'list_slots': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
             'list_values': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]")
         }
@@ -73,10 +73,9 @@ class Prompt:
 #
 SkillPrompts = {
     "simple_prompt":
-        "<s> Convert the input text to structured representation. ### Input: {{utterance}} ### Output:",
+        Prompt("<s> Convert the input text to structured representation. ### Input: {{utterance}} ### Output:"),
     "full_simple_prompt_txt00":
-        """
-        <s> Given the input sentence, construct a function representation of this sentence, including the function name,
+        Prompt("""Given the input sentence, construct a function representation of this sentence, including the function name,
         parameters, and their corresponding values. This function representation should describe the target sentence 
         accurately.  
          
@@ -91,10 +90,9 @@ SkillPrompts = {
         ### Input sentence:
         {{utterance}}
         ### Output:
-        """,
+        """),
     "full_exampled_prompt":
-        """
-        <s> Given the input sentence, construct a function representation of this sentence, including the function name,
+        Prompt("""<s> Given the input sentence, construct a function representation of this sentence, including the function name,
          parameters, and their corresponding values. This function representation should describe the target sentence 
          accurately and the function must be one of the following 
         {{#list_skills skills}} {{name}} {{/list_skills}}
@@ -110,15 +108,14 @@ SkillPrompts = {
         ### Input sentence:
         {{utterance}}
         ### Output:
-        """,
+        """),
     "exampled_prompt_for_skill00":
-        """<s> 
-        Given an input sentence, a set of functions with names and their descriptions, as well as some example templates
+        Prompt("""Given an input sentence, a set of functions with names and their descriptions, as well as some example templates
          of how to express these functions in natural language text, the goal is to determine the function implied by 
         the input sentence. The selected function should accurately describe the target sentence, and it should 
         be one of the following functions:
 
-        {{#list_skills skills}} {{owner}} : {{description}} {{/list_skills}} . 
+        {{#list_skills skills}} {{name}} : {{description}} {{/list_skills}} . 
          
         Here are a couple of example templates:
         {{#list_examples examples}} ### Input template: {{template}} \n ### Output: {{owner}} \n {{/list_examples}}
@@ -126,15 +123,14 @@ SkillPrompts = {
         ### Input sentence: \n
         {{utterance}}
         ### Output: \n
-        """,
+        """),
 
     "exampled_prompt_for_skill01":
-        """<s> 
-        Given an input sentence, a set of functions with names and their descriptions, as well as some example templates
+        Prompt("""<s> Given an input sentence, a set of functions with names and their descriptions, as well as some example templates
          of how to express these functions in natural language text, the goal is to determine the function implied by 
         the input sentence. The selected function should accurately describe the target sentence:
 
-        {{#list_skills skills}} {{owner}} : {{description}} {{/list_skills}} . 
+        {{#list_skills skills}} {{name}} : {{description}} {{/list_skills}} . 
          
         Here are a couple of example templates:
         {{#list_examples examples}} ### Input template: {{template}} \n ### Output: {{owner}} \n {{/list_examples}}
@@ -142,12 +138,23 @@ SkillPrompts = {
         ### Input sentence: \n
         {{utterance}}
         ### Output: \n
-        """,
+        """),
+    "prompt_for_skill01":
+        Prompt("""<s> Given an input sentence, a set of functions with names and their descriptions, as well as some example templates
+         of how to express these functions in natural language text, the goal is to determine the function implied by 
+        the input sentence. The selected function should accurately describe the target sentence:
+
+        {{#list_skills skills}} {{name}} : {{description}} {{/list_skills}} .
+        
+        ### Input sentence: \n
+        {{utterance}}
+        ### Output: \n
+        """),
 }
 
 AllSlotPrompts = {
     "exampled":
-        """
+        Prompt("""
         <s> Given the input sentence, specification of a function, including name and description of the function and 
         its parameters, the task is to extract the values for these parameters from the input sentence (if mentioned) 
         and return the extracted parameters and their values in JSON format. \n
@@ -163,12 +170,13 @@ AllSlotPrompts = {
         ### Input sentence:
         {{utterance}}
         ### Output:
-        """,
+        """),
 }
 
 # For the slots of enum type, we used different prompt in order to improve the
 EnumPrompts = {
-        "default" : """"
+    "default" :
+        Prompt("""
         <s> Given an input sentence, extract the value for parameter {{name}}, {{description}}, from the input sentence.
         
         Here are possible values for this parameter:
@@ -177,13 +185,13 @@ EnumPrompts = {
         ### Input sentence:
         {{utterance}}
         ### Output:
-        """,
+        """),
 }
 
 OneSlotPrompts = {
     "default":
-        """
-        <s> Given an input sentence, extract the value for parameter {{name}}, {{description}}, from the input sentence.
+        Prompt("""
+        <s>From an given input sentence, extract the value for parameter :\n {{name}}, {{description}}.
         
         Here are possible values for this parameter:
         {{#list_values values}} value {{/list_values}}
@@ -191,12 +199,13 @@ OneSlotPrompts = {
         ### Input sentence:
         {{utterance}}
         ### Output:
-        """,
+        """),
     "basic":
-        """
-        <s> Given an input sentence, extract the value for parameter {{name}}: {{description}} from the input sentence.
+        Prompt("""
+        <s> From an given input sentence, extract the value for parameter {{name}}: {{description}}.
+        
         ### Input sentence:
         {{utterance}}
         ### Output:
-        """,
+        """),
 }

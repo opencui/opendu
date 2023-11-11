@@ -171,7 +171,7 @@ class ContextRetriever:
             owners.discard(none)
 
         skills = [self.module.skills[owner] for owner in owners]
-        exemplars = [Exemplar(owner=node.metadata["owner"], template=node.text) for node in exemplar_nodes]
+        exemplars = [node for node in exemplar_nodes]
         return skills, exemplars
 
 
