@@ -3,6 +3,8 @@
 import json
 import shutil
 import logging
+from abc import abstractmethod, ABC
+
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
 from llama_index import VectorStoreIndex, SimpleKeywordTableIndex
 from llama_index.embeddings.base import BaseEmbedding
@@ -10,7 +12,7 @@ from llama_index.schema import TextNode, NodeWithScore
 from llama_index import QueryBundle
 from converter.lug_config import LugConfig
 from core.embedding import EmbeddingStore
-from core.annotation import FrameSchema, ModuleSchema, Exemplar
+from core.annotation import FrameSchema, Schema, Exemplar
 
 # Retrievers
 from llama_index.retrievers import (
@@ -67,7 +69,7 @@ def create_index(base: str, tag: str, nodes: list[TextNode], embedding: BaseEmbe
         shutil.rmtree(path, ignore_errors=True)
 
 
-def build_desc_index(dsc: ModuleSchema, output: str, embedding: BaseEmbedding):
+def build_desc_index(dsc: Schema, output: str, embedding: BaseEmbedding):
     print(f"There are {len(dsc.skills)} skills")
     json_formatted_str = json.dumps(dsc.skills, indent=2)
     print(json_formatted_str)
@@ -145,8 +147,10 @@ def dedup_nodes(old_results: list[TextNode], skills):
     return new_results
 
 
-class CombinedRetriever:
-    def __init__(self, module: ModuleSchema, d_retrievers, e_retriever):
+# This allows us to use the same logic on both the inference and fine-tuning side.
+# This is used to create the context for prompt needed for generate the solution for skills.
+class ContextRetriever:
+    def __init__(self, module: Schema, d_retrievers, e_retriever):
         self.module = module
         self.desc_retriever = d_retrievers
         self.exemplar_retriever = e_retriever
@@ -154,13 +158,11 @@ class CombinedRetriever:
         self.skills = module.skills.keys()
         self.num_exemplars = 4
 
-    def search(self, query):
+    def __call__(self, query):
         # The goal here is to find the combined descriptions and exemplars.
         desc_nodes = [item.node for item in self.desc_retriever.retrieve(query)]
         exemplar_nodes = [item.node for item in self.exemplar_retriever.retrieve(query)]
-        orig_size = len(exemplar_nodes)
         exemplar_nodes = dedup_nodes(exemplar_nodes, self.skills)[0:self.num_exemplars]
-        print(f"from {orig_size} to {len(exemplar_nodes)}")
         all_nodes = dedup_nodes(desc_nodes + exemplar_nodes, self.skills)
         owners = set([item.metadata["owner"] for item in all_nodes])
 
@@ -169,12 +171,12 @@ class CombinedRetriever:
             owners.discard(none)
 
         skills = [self.module.skills[owner] for owner in owners]
-        exemplars = [Exemplar(owner=node.metadata["owner"], template=node.text) for node in exemplar_nodes]
+        exemplars = [node for node in exemplar_nodes]
         return skills, exemplars
 
 
-def load_retrievers(module, path: str):
-    return CombinedRetriever(
+def load_context_retrievers(module, path: str):
+    return ContextRetriever(
         module,
         HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk, LugConfig.desc_retriever_mode),
         HybridRetriever(path, "exemplar", LugConfig.exemplar_retrieve_topk, LugConfig.exemplar_retriever_mode))

@@ -27,7 +27,7 @@ class FrameSchema:
 
 @dataclass_json
 @dataclass
-class ModuleSchema:
+class Schema:
     skills: Dict[str, FrameSchema]
     slots: Dict[str, SlotSchema]
 

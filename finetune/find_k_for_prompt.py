@@ -21,15 +21,15 @@ from datasets import Dataset, concatenate_datasets
 
 from converter.lug_config import LugConfig
 from core.embedding import EmbeddingStore
-from core.retriever import build_desc_index, HybridRetriever, load_retrievers, CombinedRetriever
+from core.retriever import build_desc_index, HybridRetriever, load_context_retrievers, ContextRetriever
 from finetune.commons import build_dataset_index
 from finetune.sgd import SGD
 
 
-def compute_k(dataset: Dataset, retriever: CombinedRetriever):
+def compute_k(dataset: Dataset, retrieve: ContextRetriever):
     counts = [0, 0]
     for item in dataset:
-        skills, exemplars = retriever.search(item["utterance"])
+        skills, exemplars = retrieve(item["utterance"])
         if item["owner"] == "NONE":
             continue
 
@@ -68,12 +68,12 @@ if __name__ == "__main__":
     build_index = True
     if build_index:
         for factory in factories:
-            build_desc_index(factory.domain, f"{output}/index/{factory.tag}", EmbeddingStore.for_description())
+            build_desc_index(factory.schema, f"{output}/index/{factory.tag}", EmbeddingStore.for_description())
             build_dataset_index(factory.build("train"), f"{output}/index/{factory.tag}", EmbeddingStore.for_exemplar())
 
     retrievers = []
     for factory in factories:
-        retrievers.append(load_retrievers(factory.domain, f"{output}/index/{factory.tag}"))
+        retrievers.append(load_context_retrievers(factory.schema, f"{output}/index/{factory.tag}"))
 
     #searcher = retrievers[0]
     #nodes = searcher.search("i want to go out to eat somewhere")

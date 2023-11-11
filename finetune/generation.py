@@ -10,6 +10,7 @@ import logging
 import torch
 import transformers
 from torch.nn.utils.rnn import pad_sequence
+from core.prompt import SkillPrompts, OneSlotPrompts
 import argparse
 from transformers import (
     AutoTokenizer,
@@ -19,70 +20,116 @@ from transformers import (
 )
 from datasets import Dataset, concatenate_datasets
 
-from core.annotation import ModuleSchema
+from core.annotation import Schema, Exemplar
 from core.embedding import EmbeddingStore
-from core.prompt import get_prompt, Prompt
-from core.retriever import build_nodes_from_skills, create_index
-from finetune.commons import AnnotatedExemplar, DatasetFactory, build_nodes_from_dataset
+from core.prompt import Prompt
+from core.retriever import build_nodes_from_skills, create_index, load_context_retrievers, ContextRetriever, \
+    build_desc_index
+from finetune.commons import AnnotatedExemplar, DatasetFactory, build_nodes_from_dataset, build_dataset_index
 
 logger = logging.getLogger(__name__)
 
 IGNORE_INDEX = -100
 
 
+# This converter is responsible for convert the exemplars in the original dataset into what is needed
+# by generation fine-tuning. The assumed the columns are input and output, and we added id for debugging
+# purpose.
 class Converter(ABC):
-    extra_tokens: list[str]
+    prompt: Prompt
 
     @abstractmethod
-    def __call__(self, input):
+    def __call__(self, item: AnnotatedExemplar, ins: list[str], outs: list[str]):
         return
 
 
+# This is needed to determine the intention, intended function or skill
+class SkillConverter(Converter):
+    def __init__(self, retriever: ContextRetriever, func_prompt: Prompt):
+        self.prompt = func_prompt
+        self.context_retrieve = retriever
+
+    def __call__(self, batch, ins: list[str], outs: list[str]):
+        for idx, utterance in enumerate(batch["utterance"]):
+            # We assume the input is dict version of AnnotatedExemplar
+            skills, nodes = self.context_retrieve(utterance)
+            # remove the identical exemplar
+            nodes = [node for node in nodes if node.id_ != batch['id'][idx]]
+            exemplars = [Exemplar(owner=node.metadata["owner"], template=node.text) for node in nodes]
+            input_dict = {"utterance": utterance, "examples": exemplars, "skills": skills}
+            ins.append(self.prompt(input_dict))
+            outs.append(batch["owner"][idx])
+
+
+#
+# This is for extractive slot value understanding.
+# For now, we only get positive example.
 class OneSlotConverter(Converter):
-    def __init__(self, module: ModuleSchema, func_prompt: Prompt, slot_prompt: Prompt):
-        self.func_prompt = func_prompt
-        self.slot_prompt = slot_prompt
-        self.extra_tokens = list(set(slot_prompt.extra_tokens + func_prompt.extra_tokens))
+    def __init__(self, module: Schema, slot_prompt: Prompt):
+        self.prompt = slot_prompt
+        self.module = module
+        self.include_negative = True
+        self.use_json = True
 
-    def special_tokens(self):
-        tokens = self.slot_prompt.extra_tokens + self.func_prompt.extra_tokens
+    def format_value(self, key, value=None):
+        if self.use_json:
+            if value is None:
+                return "{}"
+            else:
+                return f'{{"{key}":"{value}"}}'
+        else:
+            return str(value)
 
-    def __call__(self, input: AnnotatedExemplar):
+    def __call__(self, batch, ins: list[str], outs: list[str]):
         # We assume the input is dict version of AnnotatedExemplar
-        ins = []
-        outs = []
-        input_dict = input.to_dict()
+        for idx, arguments in enumerate(batch["arguments"]):
+            utterance = batch["utterance"][idx]
+            owner = batch["owner"][idx]
+            for slot_label in self.module.skills[owner]["slots"]:
+                slot = self.module.slots[slot_label]
+                slot_name = slot["name"]
+                input_dict = {"utterance": utterance, "name": slot["name"], "description": slot["description"]}
+                if slot_name in arguments:
+                    ins.append(self.prompt(input_dict))
+                    value = arguments[slot_name]
+                    if len(value) == 1:
+                        outs.append(self.format_value(slot_name, arguments[slot_name][0]))
+                    else:
+                        outs.append(self.format_value(slot_name, arguments[slot_name]))
+                else:
+                    if self.include_negative:
+                        ins.append(self.prompt(input_dict))
+                        outs.append(self.format_value(slot_name, None))
 
-        ins.append(self.func_prompt(input_dict))
-        outs.append(input.owner)
 
-        for slot, value in input.arguments:
-            input_dict["name"] = slot
-            input_dict["description"] = self.module.slots[slot].description
-            ins.append(self.slot_prompt(input))
-            outs.append(value)
-        return {"input": ins, "output": outs}
-
+# This converter is needed for cases where users' utterance is response to bot's prompt questions, and
+# needs the abstractive understanding instead of extractive understanding.
+# This is needed to determine the intention, intended function or skill
+# class BooleanConverter
 
 @dataclass
 class ConvertedFactory(DatasetFactory):
     __metaclass__ = ABCMeta
 
-    def __init__(self, dsf: DatasetFactory, convert: Converter):
-        self.domain = dsf.domain
-        self.convert: Converter = convert
+    def __init__(self, dsf: DatasetFactory, convert: list[Converter]):
+        self.creator = dsf
+        self.converters: list[Converter] = convert
+        self.columns = ["id", "utterance", "template", "owner", "arguments", "expectations"]
+
+    def extra_tokens(self):
+        return set([token for converter in self.converters for token in converter.prompt.extr_tokens]).to_list()
+
+    def convert_one(self, item):
+        ins = []
+        outs = []
+        for convert in self.converters:
+            convert(item, ins, outs)
+        assert len(ins) == len(outs)
+        return {"input": ins, "output": outs}
 
     def build(self, split: str) -> Dataset:
         dataset = self.creator.build(split)
-        return dataset.map(self.convert, batched=True, remove_columns=dataset.column_names)
-
-    @classmethod
-    def build_index(cls, dsc: DatasetFactory, output: str = "./output/"):
-        desc_nodes = build_nodes_from_skills(dsc.domain.skills)
-        exemplar_nodes = build_nodes_from_dataset(dsc.build("train"))
-
-        create_index(output, "desc", desc_nodes, EmbeddingStore.for_description())
-        create_index(output, "exemplars", exemplar_nodes, EmbeddingStore.for_exemplar())
+        return dataset.map(self.convert_one, batched=True, remove_columns=self.columns)
 
 
 @dataclass
@@ -359,7 +406,7 @@ def extract_unnatural_instructions_data(examples, extract_reformulations=False):
     return out
 
 
-def get_dataset(creators, split: str) -> Dataset:
+def merge_created_datasets(creators, split: str) -> Dataset:
     datasets = []
     for creator in creators:
         dataset = creator.build(split)
@@ -378,9 +425,9 @@ def make_data_module(data_collator, args, converters) -> Dict:
     """
     # Split train/eval, reduce size
     if args.do_eval or args.do_predict:
-        eval_dataset = get_dataset(converters, "validation")
+        eval_dataset = merge_created_datasets(converters, "validation")
     if args.do_train:
-        train_dataset = get_dataset(converters, "train")
+        train_dataset = merge_created_datasets(converters, "train")
 
     return dict(
         train_dataset=train_dataset if args.do_train else None,
@@ -423,7 +470,7 @@ def train(converted_factories: list[ConvertedFactory]):
     if completed_training:
         print('Detected that training was already completed!')
 
-    extra_tokens = set([token for factory in converted_factories for token in factory.convert])
+    extra_tokens = set([token for factory in converted_factories for token in factory.extra_tokens()])
     model, tokenizer = get_accelerate_model(args, extra_tokens)
 
     model.config.use_cache = False
@@ -511,10 +558,41 @@ if __name__ == "__main__":
     logger.setLevel(logging.CRITICAL)
 
     from finetune.sgd import SGD
+    from converter.lug_config import LugConfig
 
-    sgd = SGD()
-    output = "./index/sgd/"
-    prompt = get_prompt(sgd, output)
+    LugConfig.embedding_device = "cuda"
 
-    converters = [ConvertedFactory(sgd, prompt, mode="intent")]
-    train(converters)
+    factories = [
+        SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]
+
+    # For now, just use the fix path.
+    output = "./output"
+
+    build_index = False
+    if build_index:
+        for factory in factories:
+            build_desc_index(factory.schema, f"{output}/index/{factory.tag}", EmbeddingStore.for_description())
+            build_dataset_index(factory.build("train"), f"{output}/index/{factory.tag}", EmbeddingStore.for_exemplar())
+
+    retrievers = []
+    for factory in factories:
+        retrievers.append(load_context_retrievers(factory.schema, f"{output}/index/{factory.tag}"))
+
+    converted_factories = []
+    for index, factory in enumerate(factories):
+        context_retriever = retrievers[index]
+        skill_converter = SkillConverter(context_retriever, SkillPrompts["exampled_prompt_for_skill00"])
+        slot_converter = OneSlotConverter(factory.schema, OneSlotPrompts["basic"])
+        converted_factories.append(ConvertedFactory(factory, [skill_converter, slot_converter]))
+
+    for index in range(len(converted_factories)):
+        factory = converted_factories[index]
+        ds = factory.build("train")
+        count = 0
+        for item in ds:
+            print(item)
+            count += 1
+        print(count)
+
+    # Now we need to create the converters.
+    # train(converted_factories)
