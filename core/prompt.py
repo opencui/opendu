@@ -40,6 +40,7 @@ class ObjectLister:
                 else:
                     result.append(f'{self.item_header} {self.header_delim}')
             result.extend(options['fn'](thing))
+            result.append(self.item_delim)
         result.append(self.block_tail)
         return result
 
@@ -52,8 +53,8 @@ class Prompt:
         self.template = Compiler().compile(source)
         self.extra_tokens = extra_tokens
         self.helpers = {
-            'list_examples': ObjectLister(item_header="### Example"),
-            'list_skills': ObjectLister(item_header="### Function", item_delim=","),
+            'list_examples': ObjectLister(block_header="### Exemplars\n", item_header="Exemplar"),
+            'list_skills': ObjectLister(block_header="### Functions\n", item_header="Function", item_delim=","),
             'list_slots': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
             'list_values': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]")
         }
@@ -71,10 +72,8 @@ class Prompt:
 # exemplars: List[Exemplar]
 # values: ?
 #
-SkillPrompts = {
-    "simple_prompt":
-        Prompt("<s> Convert the input text to structured representation. ### Input: {{utterance}} ### Output:"),
-    "full_simple_prompt_txt00":
+FullPrompts = {
+    "simple":
         Prompt("""Given the input sentence, construct a function representation of this sentence, including the function name,
         parameters, and their corresponding values. This function representation should describe the target sentence 
         accurately.  
@@ -91,7 +90,7 @@ SkillPrompts = {
         {{utterance}}
         ### Output:
         """),
-    "full_exampled_prompt":
+    "exampled":
         Prompt("""<s> Given the input sentence, construct a function representation of this sentence, including the function name,
          parameters, and their corresponding values. This function representation should describe the target sentence 
          accurately and the function must be one of the following 
@@ -109,7 +108,13 @@ SkillPrompts = {
         {{utterance}}
         ### Output:
         """),
-    "exampled_prompt_for_skill00":
+}
+
+SkillPrompts = {
+    "simple":
+        Prompt("<s> Convert the input text to structured representation. ### Input: {{utterance}} ### Output:"),
+
+    "exclusive_specs_exampled":
         Prompt("""Given an input sentence, a set of functions with names and their descriptions, as well as some example templates
          of how to express these functions in natural language text, the goal is to determine the function implied by 
         the input sentence. The selected function should accurately describe the target sentence, and it should 
@@ -125,7 +130,7 @@ SkillPrompts = {
         ### Output: \n
         """),
 
-    "exampled_prompt_for_skill01":
+    "specs_exampled":
         Prompt("""<s> Given an input sentence, a set of functions with names and their descriptions, as well as some example templates
          of how to express these functions in natural language text, the goal is to determine the function implied by 
         the input sentence. The selected function should accurately describe the target sentence:
@@ -139,7 +144,7 @@ SkillPrompts = {
         {{utterance}}
         ### Output: \n
         """),
-    "prompt_for_skill01":
+    "specs_only":
         Prompt("""<s> Given an input sentence, a set of functions with names and their descriptions, as well as some example templates
          of how to express these functions in natural language text, the goal is to determine the function implied by 
         the input sentence. The selected function should accurately describe the target sentence:

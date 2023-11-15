@@ -25,7 +25,8 @@ from core.embedding import EmbeddingStore
 from core.prompt import Prompt
 from core.retriever import build_nodes_from_skills, create_index, load_context_retrievers, ContextRetriever, \
     build_desc_index
-from finetune.commons import AnnotatedExemplar, DatasetFactory, build_nodes_from_dataset, build_dataset_index
+from finetune.commons import AnnotatedExemplar, DatasetFactory, build_nodes_from_dataset, build_dataset_index, \
+    LoadFactory
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +83,8 @@ class OneSlotConverter(Converter):
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # We assume the input is dict version of AnnotatedExemplar
-        for idx, arguments in enumerate(batch["arguments"]):
+        for idx, sarguments in enumerate(batch["arguments"]):
+            arguments = eval(sarguments)
             utterance = batch["utterance"][idx]
             owner = batch["owner"][idx]
             for slot_label in self.module.skills[owner]["slots"]:
@@ -114,10 +116,11 @@ class ConvertedFactory(DatasetFactory):
     def __init__(self, dsf: DatasetFactory, convert: list[Converter]):
         self.creator = dsf
         self.converters: list[Converter] = convert
+        self.tag = self.creator.tag
         self.columns = ["id", "utterance", "template", "owner", "arguments", "expectations"]
 
     def extra_tokens(self):
-        return set([token for converter in self.converters for token in converter.prompt.extr_tokens]).to_list()
+        return list(set([token for converter in self.converters for token in converter.prompt.extra_tokens]))
 
     def convert_one(self, item):
         ins = []
@@ -412,7 +415,7 @@ def merge_created_datasets(creators, split: str) -> Dataset:
         dataset = creator.build(split)
         if dataset is not None:
             datasets.append(dataset)
-    return concatenate_datasets(datasets)
+    return concatenate_datasets(datasets).shuffle(seed=42)
 
 
 def make_data_module(data_collator, args, converters) -> Dict:
@@ -486,6 +489,7 @@ def train(converted_factories: list[ConvertedFactory]):
     )
 
     data_module = make_data_module(data_collator=data_collator, args=args, converters=converted_factories)
+    print("prepared data.")
 
     trainer = Seq2SeqTrainer(
         model=model,
@@ -565,10 +569,18 @@ if __name__ == "__main__":
     factories = [
         SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]
 
+    for factory in factories:
+        ds = factory.build("train")
+        count = 0
+        for item in ds:
+            count += 1
+        print(f"There are {count} instances in {factory.tag}")
+
     # For now, just use the fix path.
     output = "./output"
 
-    build_index = False
+    # Save the things to disk first.
+    build_index = True
     if build_index:
         for factory in factories:
             build_desc_index(factory.schema, f"{output}/index/{factory.tag}", EmbeddingStore.for_description())
@@ -581,18 +593,11 @@ if __name__ == "__main__":
     converted_factories = []
     for index, factory in enumerate(factories):
         context_retriever = retrievers[index]
-        skill_converter = SkillConverter(context_retriever, SkillPrompts["exampled_prompt_for_skill00"])
+        skill_converter0 = SkillConverter(context_retriever, SkillPrompts["specs_exampled"])
+        skill_converter1 = SkillConverter(context_retriever, SkillPrompts["specs_only"])
         slot_converter = OneSlotConverter(factory.schema, OneSlotPrompts["basic"])
-        converted_factories.append(ConvertedFactory(factory, [skill_converter, slot_converter]))
+        converted_factories.append(ConvertedFactory(factory, [skill_converter0, skill_converter1, slot_converter]))
 
-    for index in range(len(converted_factories)):
-        factory = converted_factories[index]
-        ds = factory.build("train")
-        count = 0
-        for item in ds:
-            print(item)
-            count += 1
-        print(count)
 
     # Now we need to create the converters.
-    # train(converted_factories)
+    train(converted_factories)

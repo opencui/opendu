@@ -42,6 +42,7 @@ class FrameValue:
 @dataclass_json()
 @dataclass
 class FrameState:
+    module: Schema
     frame: FrameSchema
     activated: list[str]
 

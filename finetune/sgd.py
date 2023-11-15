@@ -6,7 +6,7 @@ import logging
 import os
 from collections import defaultdict
 
-from datasets import IterableDataset
+from datasets import IterableDataset, Dataset, Features, Value
 
 from core.annotation import Schema, FrameSchema, SlotSchema
 from core.embedding import EmbeddingStore
@@ -51,6 +51,14 @@ class SGD(DatasetFactory):
             'sgd.train.96_00019.10',
             'sgd.train.42_00002.6',
         ])
+        self.features = Features({
+            'title': Value(dtype='string', id=None),
+            'utterance': Value(dtype='string', id=None),
+            "template": Value(dtype='string', id=None),
+            "owner": Value(dtype='string', id=None),
+            "arguments": Value(dtype='string', id=None),
+            "expectations": Value(dtype='string', id=None)
+        })
 
     def build(self, split):
         if split == "validation":
@@ -144,15 +152,15 @@ class SGD(DatasetFactory):
                                     local_slots[_slot['slot']].append(utterance[_slot['start']:_slot['exclusive_end']])
                                     spans.append((_slot['start'], _slot['exclusive_end']))
 
-                                exemplar = create_full_exemplar(id, utterance, skill_name, local_slots, spans)
+                                exemplar = create_full_exemplar(id, utterance, skill_name, dict(local_slots), spans)
                                 # yield the example
-                                yield exemplar.to_dict()
+                                yield exemplar.flatten()
                             finally:
                                 # remember the active intents from last user turn.
                                 pre_intents = active_intents
                                 existing_intents.update(active_intents)
 
-        return IterableDataset.from_generator(gen_skills)
+        return Dataset.from_generator(gen_skills)
 
     @classmethod
     def load_schema_as_dict(cls, full_path, suffix: str = "_1"):

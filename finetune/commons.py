@@ -1,33 +1,41 @@
 import json
 from abc import ABC
 import abc
-from typing import Any
+from typing import Optional
+from dataclasses import dataclass
 
-from dataclasses import dataclass, field
-from functools import reduce
-from dataclasses_json import dataclass_json
-from datasets import Dataset, concatenate_datasets
+import datasets
+from datasets import Dataset
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode
 
 from converter.lug_config import LugConfig
 from core.annotation import Schema
-from core.retriever import build_nodes_from_skills, create_index, HybridRetriever
+from core.retriever import create_index, HybridRetriever
 from finetune.embedding import create_sentence_pair_for_description, create_sentence_pair_for_exemplars
 
 
-@dataclass_json
 @dataclass
 class AnnotatedExemplar:
     """
     expression examples, if the expected_slots is empty, this can be used for both skills and slots.
     """
-    id: str = field(metadata={"required": True})
-    utterance: str = field(metadata={"required": True})
-    template: str = field(metadata={"required": True})
-    owner: str = field(metadata={"required": False})
-    arguments: dict[str, Any] = field(metadata={"required": False})
-    expectations: list[str] = field(metadata={"required": False}, default_factory=list)
+    id: str
+    utterance: str
+    template: str
+    owner: str
+    arguments: Optional[dict] = None
+    expectations: Optional[list] = None
+
+    def flatten(self):
+        return {
+            "id": self.id,
+            "utterance": self.utterance,
+            "template": self.template,
+            'owner': self.owner,
+            "arguments": str(self.arguments),
+            "expectations": str(self.expectations)
+        }
 
 
 def has_no_intent(label: str):
@@ -39,7 +47,8 @@ def build_nodes_from_dataset(dataset: Dataset):
     for item in dataset:
         utterance = item['template']
         label = item["owner"]
-        if has_no_intent(label): continue
+        if has_no_intent(label):
+            continue
         nodes.append(
             TextNode(
                 text=utterance,
@@ -97,20 +106,14 @@ class DatasetFactory(ABC):
         return
 
 
-@dataclass
-class DatasetsCreator(DatasetFactory):
-    __metaclass__ = abc.ABCMeta
+class LoadFactory(DatasetFactory):
+    def __init__(self, dsf: DatasetFactory, path: str):
+        self.path = path
+        self.tag = dsf.tag
+        self.schema = dsf.schema
 
-    def __init__(self, dscs=list[DatasetFactory]):
-        self.domain = Schema(
-            skills=reduce(lambda x, y: {**x, **y}, [dsc.schema.skills for dsc in dscs]),
-            slots=reduce(lambda x, y: {**x, **y}, [dsc.schema.slots for dsc in dscs])
-        )
-        self.dscs = dscs
-
-    def build(self, split):
-        datasets = [dsc.build(split) for dsc in self.dscs]
-        return concatenate_datasets(**datasets)
+    def build(self, split: str = "train") -> Dataset:
+        return datasets.load_from_disk(f"{self.path}/datasets/{self.tag}/{split}")
 
 
 @dataclass
