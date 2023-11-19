@@ -36,15 +36,15 @@ if __name__ == "__main__":
 
     try:
         # We assume that there are schema.json, exemplars.json and recognizers.json under the directory
+        desc_nodes = []
+        exemplar_nodes = []
         for module in modules:
             module_schema, examplers, recognizers = load_all_from_directory(module)
+            build_nodes_from_skills(module, module_schema.skills, desc_nodes)
+            build_nodes_from_exemplar_store(module, examplers, exemplar_nodes)
 
-            desc_nodes = build_nodes_from_skills(module_schema.skills)
-            create_index(output_path, "desc", desc_nodes)
-
-            exemplar_nodes = build_nodes_from_exemplar_store(examplers)
-            create_index(output_path, "exemplar", exemplar_nodes)
-
+        create_index(output_path, "exemplar", exemplar_nodes)
+        create_index(output_path, "desc", desc_nodes)
     except Exception as e:
         print(str(e))
         shutil.rmtree(output_path, ignore_errors=True)

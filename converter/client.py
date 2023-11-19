@@ -1,6 +1,12 @@
-from converter.schema_parser import load_schema_from_directory, load_specs_and_recognizers_from_directory
+import torch
+import transformers
+from transformers import AutoTokenizer
+
+from converter.lug_config import LugConfig
+from converter.schema_parser import load_specs_and_recognizers_from_directory
 from core.annotation import FrameValue, Exemplar, FrameSchema, DialogExpectation
-from core.retriever import load_context_retrievers
+from core.prompt import SkillPrompts, SlotPrompts
+from core.retriever import load_context_retrievers, ContextRetriever
 
 
 #
@@ -11,21 +17,43 @@ from core.retriever import load_context_retrievers
 # 3. stitch together the result.
 #
 class Converter:
-    def __init__(self, retrievers, schema, recognizers):
-        self.schema = schema
-        self.retrievers = retrievers
+    def __init__(self, retriever: ContextRetriever, recognizers, model):
+        self.retrieve = retriever
         self.recognizers = recognizers
-        self.llm = None
+
+        self.tokenizer = AutoTokenizer.from_pretrained(model)
+        self.pipeline = transformers.pipeline(
+            "text-generation",
+            model=model,
+            torch_dtype=torch.float16,
+            device_map="auto",
+        )
+
+        self.skill_prompt = SkillPrompts[LugConfig.skill_prompt]
+        self.slot_prompt = SlotPrompts[LugConfig.slot_prompt]
 
     def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
-        desc_nodes = self.retrievers[0].retrieve(text)
-        exemplar_nodes = self.retrievers[1].retrieve(text)
+        # first we figure out what is the
+        skills, nodes = self.retrieve(text)
+        exemplars = [Exemplar(owner=node.metadata["owner"], template=node.text) for node in nodes]
+        input_dict = {"utterance": text, "examples": exemplars, "skills": skills}
+        formatted_prompt = self.skill_prompt(input_dict)
 
-        selected_skills = get_skill_infos(self.schema, desc_nodes + exemplar_nodes)
-        selected_exemplars = get_exemplars(exemplar_nodes)
+        skill_outputs = self.pipeline(
+            formatted_prompt,
+            do_sample=True,
+            top_k=50,
+            top_p = 0.9,
+            num_return_sequences=1,
+            repetition_penalty=1.1,
+            max_new_tokens=1024,
+        )
 
-        # Now we need to create prompt for the function first.
-        func_name = None
+        for seq in skill_outputs:
+            print(f"Result: {seq['generated_text']}")
+
+        func_name = skill_outputs[0]["generated_text"]
+
         # Then we need to create the prompt for the parameters.
 
         slot_values = None

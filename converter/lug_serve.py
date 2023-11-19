@@ -34,8 +34,8 @@ def get_retriever(app, mode):
 @routes.post("/query")
 async def query(request: web.Request):
     req = await request.json()
-    turns = req.get("turns", [])
-    prompt = req.get("prompt", "")
+    turns = req.get_skills("turns", [])
+    prompt = req.get_skills("prompt", "")
 
     if len(prompt) == 0:
         prompt = request.app['prompt']
@@ -43,12 +43,12 @@ async def query(request: web.Request):
     if len(turns) == 0:
         return web.json_response({"errMsg": f'input type is not str'})
 
-    if turns[0].get("role", "") != "user":
+    if turns[0].get_skills("role", "") != "user":
         return web.json_response({"errMsg": f'first turn is not from user'})
-    if turns[-1].get("role", "") != "user":
+    if turns[-1].get_skills("role", "") != "user":
         return web.json_response({"errMsg": f'last turn is not from user'})
 
-    user_input = turns[-1].get("content", "")
+    user_input = turns[-1].get_skills("content", "")
 
     retriever = get_retriever(request.app)
 
@@ -70,16 +70,16 @@ async def query(request: web.Request):
 @routes.post("/retrieve")
 async def retrieve(request: web.Request):
     req = await request.json()
-    turns = req.get("turns", [])
-    prompt = req.get("prompt", "")
+    turns = req.get_skills("turns", [])
+    prompt = req.get_skills("prompt", "")
     if len(prompt) == 0:
         prompt = request.app['prompt']
     if len(turns) == 0:
         return web.json_response({"errMsg": f'input type is not str'})
-    if turns[-1].get("role", "") != "user":
+    if turns[-1].get_skills("role", "") != "user":
         return web.json_response({"errMsg": f'last turn is not from user'})
 
-    user_input = turns[-1].get("content", "")
+    user_input = turns[-1].get_skills("content", "")
 
     retriever = get_retriever(request.app)
 

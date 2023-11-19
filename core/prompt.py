@@ -131,7 +131,8 @@ SkillPrompts = {
         """),
 
     "specs_exampled":
-        Prompt("""<s> Given an input sentence, a set of functions with names and their descriptions, as well as some example templates
+        Prompt("""<s> Given an input sentence, a set of functions with names and their descriptions, as well as 
+        some example templates
          of how to express these functions in natural language text, the goal is to determine the function implied by 
         the input sentence. The selected function should accurately describe the target sentence:
 
@@ -145,7 +146,8 @@ SkillPrompts = {
         ### Output: \n
         """),
     "specs_only":
-        Prompt("""<s> Given an input sentence, a set of functions with names and their descriptions, as well as some example templates
+        Prompt("""<s> Given an input sentence, a set of functions with names and their descriptions, as well as some
+         example templates
          of how to express these functions in natural language text, the goal is to determine the function implied by 
         the input sentence. The selected function should accurately describe the target sentence:
 
@@ -154,27 +156,6 @@ SkillPrompts = {
         ### Input sentence: \n
         {{utterance}}
         ### Output: \n
-        """),
-}
-
-AllSlotPrompts = {
-    "exampled":
-        Prompt("""
-        <s> Given the input sentence, specification of a function, including name and description of the function and 
-        its parameters, the task is to extract the values for these parameters from the input sentence (if mentioned) 
-        and return the extracted parameters and their values in JSON format. \n
-       
-        Here is the function: \n
-        {{#list_skills skills}} {{name}} : {{description}} {{/list_skills}}
-        .
-        
-        For each parameter with its value mentioned in the sentence, extract the mentioned value for these parameters.
-        The parameters must be one of the following:
-        {{#list_slots slots}} {{name}}: {{description}} {{/list_slots}}
-        
-        ### Input sentence:
-        {{utterance}}
-        ### Output:
         """),
 }
 
@@ -193,7 +174,7 @@ EnumPrompts = {
         """),
 }
 
-OneSlotPrompts = {
+SlotPrompts = {
     "default":
         Prompt("""
         <s>From an given input sentence, extract the value for parameter :\n {{name}}, {{description}}.

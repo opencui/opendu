@@ -42,8 +42,7 @@ def has_no_intent(label: str):
     return label == "NONE"
 
 
-def build_nodes_from_dataset(dataset: Dataset):
-    nodes = []
+def build_nodes_from_dataset(module: str, dataset: Dataset, nodes):
     for item in dataset:
         utterance = item['template']
         label = item["owner"]
@@ -53,13 +52,13 @@ def build_nodes_from_dataset(dataset: Dataset):
             TextNode(
                 text=utterance,
                 id_=item['id'],
-                metadata={"arguments": item["arguments"], "owner": label},
-                excluded_embed_metadata_keys=["arguments", "owner"]))
-    return nodes
+                metadata={"arguments": item["arguments"], "owner": label, "module": module},
+                excluded_embed_metadata_keys=["arguments", "owner", "module"]))
 
 
-def build_dataset_index(dsc: Dataset, output: str, embedding: BaseEmbedding):
-    exemplar_nodes = build_nodes_from_dataset(dsc)
+def build_dataset_index(tag: str, dsc: Dataset, output: str, embedding: BaseEmbedding):
+    exemplar_nodes = []
+    build_nodes_from_dataset(tag, dsc, exemplar_nodes)
     print(f"There are {len(exemplar_nodes)} exemplars.")
     create_index(output, "exemplar", exemplar_nodes, embedding)
 

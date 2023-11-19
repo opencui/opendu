@@ -4,52 +4,52 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import transformers
 import torch
 
-from finetune.viggo import Viggo
-from core.prompt import get_prompt
-
+from core.annotation import build_nodes_from_exemplar_store
+from core.embedding import EmbeddingStore
+from core.prompt import SkillPrompts, SlotPrompts
+from core.retriever import build_desc_index, load_context_retrievers, build_nodes_from_skills, create_index
+from finetune.commons import build_dataset_index, build_nodes_from_dataset
+from finetune.generation import SkillTrainConverter, OneSlotTrainConverter, ConvertedFactory
 
 #
 # Converter is a lower level component of converter. This directly use the model.
+# This assumes there are fine-tune model already, but use the same client code (albeit different code path)
 #
-class Converter:
-    def __init__(self, path):
-        self.tokenizer = AutoTokenizer.from_pretrained(path)
-        model = AutoModelForCausalLM.from_pretrained(
-            path,
-            torch_dtype=torch.float16,
-            trust_remote_code=True,
-            device_map="auto")
-
-        self.pipeline = transformers.pipeline(
-            "text-generation",
-            tokenizer=self.tokenizer,
-            model=model
-        )
-
-    def __call__(self, item, prompt):
-        formatted_prompt = prompt(item)
-        return self.pipeline(
-            formatted_prompt,
-            do_sample=True,
-            top_k=8,
-            top_p = 0.9,
-            num_return_sequences=1,
-            repetition_penalty=1.1,
-            max_new_tokens=256,
-            eos_token_id=self.tokenizer.eos_token_id,
-        )
-
-
-def get_func(x):
-    #return x.split("(")[0]
-    return x
-
-
 if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
-    viggo = Viggo()
+    from finetune.sgd import SGD
+    from converter.lug_config import LugConfig
+
+    LugConfig.embedding_device = "cuda"
+    factories = [
+        SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]
+
+    # For now, just use the fix path.
+    output = "./test"
+
+    # Save the things to disk first.
+    desc_nodes = []
+    exemplar_nodes = []
+    for factory in factories:
+        build_nodes_from_skills(factory.tag, factory.module_schema.skills, desc_nodes)
+        build_nodes_from_dataset(factory.tag, factory.build("test"), exemplar_nodes)
+
+    create_index(f"{output}/index", "exemplar", exemplar_nodes)
+    create_index(f"{output}/index", "desc", desc_nodes)
+
+    schemas = [factory.schema for factory in factories]
+    context_retriever = load_context_retrievers(factory.schema, f"{output}/index")
+    skill_converter0 = SkillTrainConverter(context_retriever, SkillPrompts["specs_exampled"])
+    skill_converter1 = SkillTrainConverter(context_retriever, SkillPrompts["specs_only"])
+    slot_converter = OneSlotTrainConverter(factory.schema, SlotPrompts["basic"])
+
+
+
+    converted_factories.append(ConvertedFactory(factory, [skill_converter0, skill_converter1, slot_converter]))
+
+
     output = "./index/viggo/"
     prompt = get_prompt(viggo, output)
 
