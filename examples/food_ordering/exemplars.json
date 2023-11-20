@@ -1,0 +1,13 @@
+{
+    "FoodOrdering": [
+        {
+            "template": "order food"
+        }, {
+            "template": "Hi, I'd like to place an order for pickup."
+        }, {
+            "template": "I'd like to order some <category>."
+        }, {
+            "template": "I'd like to order <quantity> <name>."
+        }
+    ]
+}
