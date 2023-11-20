@@ -59,7 +59,7 @@ class SkillTrainConverter(TrainConverter):
             exemplars = [Exemplar(owner=node.metadata["owner"], template=node.text) for node in nodes]
             input_dict = {"utterance": utterance, "examples": exemplars, "skills": skills}
             ins.append(self.prompt(input_dict))
-            outs.append(batch["owner"][idx])
+            outs.append(batch["owner"][idx] + " </s>")
 
 
 #
@@ -75,11 +75,11 @@ class OneSlotTrainConverter(TrainConverter):
     def format_value(self, key, value=None):
         if self.use_json:
             if value is None:
-                return "{}"
+                return "{} </s>"
             else:
-                return f'{{"{key}":"{value}"}}'
+                return f'{{"{key}": "{value}"}} </s>'
         else:
-            return str(value)
+            return str(value) + " </s>"
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # We assume the input is dict version of AnnotatedExemplar
