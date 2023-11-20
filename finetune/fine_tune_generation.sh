@@ -4,7 +4,7 @@
 # We hope the community can explore on finetuning TinyLlama and come up with better chat models. I will include community-finetuned models in this repo.
 
 python3 finetune/generation.py \
-    --model_name_or_path PY007/TinyLlama-1.1B-intermediate-step-715k-1.5T\
+    --model_name_or_path TinyLlama/TinyLlama-1.1B-intermediate-step-955k-token-2T \
     --output_dir ./output/715B_FT_lr1e-5_ep5_top1_2023-11-13 \
     --logging_steps 10 \
     --save_strategy epoch \
