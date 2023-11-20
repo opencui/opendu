@@ -35,7 +35,7 @@ if __name__ == "__main__":
     exemplar_nodes = []
     for factory in factories:
         build_nodes_from_skills(factory.tag, factory.schema.skills, desc_nodes)
-        build_nodes_from_dataset(factory.tag, factory.build("test"), exemplar_nodes)
+        build_nodes_from_dataset(factory.tag, factory.build("train"), exemplar_nodes)
 
     # For inference, we only create one index.
     create_index(f"{output}/index", "exemplar", exemplar_nodes, EmbeddingStore.for_exemplar())
