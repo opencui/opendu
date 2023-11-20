@@ -23,10 +23,8 @@ from datasets import Dataset, concatenate_datasets
 from core.annotation import Schema, Exemplar
 from core.embedding import EmbeddingStore
 from core.prompt import Prompt
-from core.retriever import build_nodes_from_skills, create_index, load_context_retrievers, ContextRetriever, \
-    build_desc_index
-from finetune.commons import AnnotatedExemplar, DatasetFactory, build_nodes_from_dataset, build_dataset_index, \
-    LoadFactory
+from core.retriever import load_context_retrievers, ContextRetriever, build_desc_index
+from finetune.commons import AnnotatedExemplar, DatasetFactory, build_dataset_index
 
 logger = logging.getLogger(__name__)
 
