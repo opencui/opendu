@@ -12,7 +12,7 @@ from llama_index.schema import TextNode, NodeWithScore
 from llama_index import QueryBundle
 from converter.lug_config import LugConfig
 from core.embedding import EmbeddingStore
-from core.annotation import FrameSchema, Schema, Exemplar
+from core.annotation import FrameSchema, Schema, Exemplar, SchemaStore, FrameId
 
 # Retrievers
 from llama_index.retrievers import (
@@ -22,8 +22,7 @@ from llama_index.retrievers import (
 )
 
 
-def build_nodes_from_skills(skills: dict[str, FrameSchema]):
-    nodes = []
+def build_nodes_from_skills(module: str, skills: dict[str, FrameSchema], nodes):
     for label, skill in skills.items():
         desc = skill["description"]
         name = skill["name"]
@@ -31,9 +30,8 @@ def build_nodes_from_skills(skills: dict[str, FrameSchema]):
             TextNode(
                 text=desc,
                 id_=label,
-                metadata={"owner": name},
-                excluded_embed_metadata_keys=["owner"]))
-    return nodes
+                metadata={"owner": name, "module": module},
+                excluded_embed_metadata_keys=["owner", "module"]))
 
 
 # This is used to create the retriever so that we can get dynamic exemplars into understanding.
@@ -69,11 +67,13 @@ def create_index(base: str, tag: str, nodes: list[TextNode], embedding: BaseEmbe
         shutil.rmtree(path, ignore_errors=True)
 
 
-def build_desc_index(dsc: Schema, output: str, embedding: BaseEmbedding):
+def build_desc_index(module: str, dsc: Schema, output: str, embedding: BaseEmbedding):
     print(f"There are {len(dsc.skills)} skills")
     json_formatted_str = json.dumps(dsc.skills, indent=2)
     print(json_formatted_str)
-    desc_nodes = build_nodes_from_skills(dsc.skills)
+
+    desc_nodes = []
+    build_nodes_from_skills(module, dsc.skills, desc_nodes)
     create_index(output, "desc", desc_nodes, embedding)
 
 
@@ -134,13 +134,11 @@ class HybridRetriever(BaseRetriever):
         return retrieve_nodes
 
 
-def dedup_nodes(old_results: list[TextNode], skills):
+def dedup_nodes(old_results: list[TextNode]):
     new_results = []
     intents = set()
     for item in old_results:
         intent = item.metadata["owner"]
-        if intent not in skills:
-            continue
         if intent not in intents:
             intents.add(intent)
             new_results.append(item)
@@ -150,36 +148,33 @@ def dedup_nodes(old_results: list[TextNode], skills):
 # This allows us to use the same logic on both the inference and fine-tuning side.
 # This is used to create the context for prompt needed for generate the solution for skills.
 class ContextRetriever:
-    def __init__(self, module: Schema, d_retrievers, e_retriever):
+    def __init__(self, module: SchemaStore, d_retrievers, e_retriever):
         self.module = module
         self.desc_retriever = d_retrievers
         self.exemplar_retriever = e_retriever
         self.nones = ["NONE"]
-        self.skills = module.skills.keys()
         self.num_exemplars = 4
 
     def __call__(self, query):
         # The goal here is to find the combined descriptions and exemplars.
         desc_nodes = [item.node for item in self.desc_retriever.retrieve(query)]
         exemplar_nodes = [item.node for item in self.exemplar_retriever.retrieve(query)]
-        exemplar_nodes = dedup_nodes(exemplar_nodes, self.skills)[0:self.num_exemplars]
-        all_nodes = dedup_nodes(desc_nodes + exemplar_nodes, self.skills)
-        owners = set([item.metadata["owner"] for item in all_nodes])
+        exemplar_nodes = dedup_nodes(exemplar_nodes)[0:self.num_exemplars]
+        all_nodes = dedup_nodes(desc_nodes + exemplar_nodes)
+        owners = [FrameId(item.metadata["module"], item.metadata["owner"]) for item in all_nodes if item.metadata["owner"] not in self.nones]
 
         # Need to remove the bad owner/func/skill/intent.
-        for none in self.nones:
-            owners.discard(none)
-
-        skills = [self.module.skills[owner] for owner in owners]
+        skills = [self.module.get_skills(owner) for owner in owners]
         exemplars = [node for node in exemplar_nodes]
         return skills, exemplars
 
 
-def load_context_retrievers(module, path: str):
+def load_context_retrievers(module_dict: dict[str, Schema], path: str):
     return ContextRetriever(
-        module,
+        SchemaStore(module_dict),
         HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk, LugConfig.desc_retriever_mode),
         HybridRetriever(path, "exemplar", LugConfig.exemplar_retrieve_topk, LugConfig.exemplar_retriever_mode))
+
 
 
 if __name__ == "__main__":

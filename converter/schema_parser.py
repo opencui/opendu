@@ -35,18 +35,18 @@ def from_openai(functions) -> Schema:
 def from_openapi(specs) -> Schema:
     skills = {}
     slots = {}
-    for path, v in specs.get("paths", {}).items():
+    for path, v in specs.get_skills("paths", {}).items():
         for op, _v in v.items():
             label = f"{path}.{op}"
             f = {}
-            name = _v.get("operationId", "")
-            description = _v.get("description", "")
+            name = _v.get_skills("operationId", "")
+            description = _v.get_skills("description", "")
             if description == "":
-                description = _v.get("summary", "")
+                description = _v.get_skills("summary", "")
             parameters = []
-            for _p in _v.get("parameters", []):
-                slot_name = _p.get("name", "")
-                slot_description = _p.get("description", "")
+            for _p in _v.get_skills("parameters", []):
+                slot_name = _p.get_skills("name", "")
+                slot_description = _p.get_skills("description", "")
                 if slot_name not in slots:
                     slots[slot_name] = SlotSchema(slot_name, slot_description)
                 parameters.append(slot_name)

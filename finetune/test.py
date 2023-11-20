@@ -4,72 +4,61 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import transformers
 import torch
 
-from finetune.viggo import Viggo
-from core.prompt import get_prompt
-
+from converter.client import Converter
+from core.annotation import build_nodes_from_exemplar_store
+from core.embedding import EmbeddingStore
+from core.prompt import SkillPrompts, SlotPrompts
+from core.retriever import build_desc_index, load_context_retrievers, build_nodes_from_skills, create_index
+from finetune.commons import build_dataset_index, build_nodes_from_dataset
+from finetune.generation import SkillTrainConverter, OneSlotTrainConverter, ConvertedFactory
 
 #
 # Converter is a lower level component of converter. This directly use the model.
+# This assumes there are fine-tune model already, but use the same client code (albeit different code path)
 #
-class Converter:
-    def __init__(self, path):
-        self.tokenizer = AutoTokenizer.from_pretrained(path)
-        model = AutoModelForCausalLM.from_pretrained(
-            path,
-            torch_dtype=torch.float16,
-            trust_remote_code=True,
-            device_map="auto")
-
-        self.pipeline = transformers.pipeline(
-            "text-generation",
-            tokenizer=self.tokenizer,
-            model=model
-        )
-
-    def __call__(self, item, prompt):
-        formatted_prompt = prompt(item)
-        return self.pipeline(
-            formatted_prompt,
-            do_sample=True,
-            top_k=8,
-            top_p = 0.9,
-            num_return_sequences=1,
-            repetition_penalty=1.1,
-            max_new_tokens=256,
-            eos_token_id=self.tokenizer.eos_token_id,
-        )
-
-
-def get_func(x):
-    #return x.split("(")[0]
-    return x
-
-
 if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
-    viggo = Viggo()
-    output = "./index/viggo/"
-    prompt = get_prompt(viggo, output)
+    from finetune.sgd import SGD
+    from converter.lug_config import LugConfig
 
-    convert = Converter("./output/503B_FT_lr1e-5_ep5_top1_2023-09-26/checkpoint-3190/")
+    LugConfig.embedding_device = "cuda"
+    factories = [
+        SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]
 
-    dataset = Viggo("full").build("test")
+    # For now, just use the fix path.
+    output = "./test"
+
+    # Save the things to disk first.
+    desc_nodes = []
+    exemplar_nodes = []
+    for factory in factories:
+        build_nodes_from_skills(factory.tag, factory.schema.skills, desc_nodes)
+        build_nodes_from_dataset(factory.tag, factory.build("test"), exemplar_nodes)
+
+    # For inference, we only create one index.
+    create_index(f"{output}/index", "exemplar", exemplar_nodes, EmbeddingStore.for_exemplar())
+    create_index(f"{output}/index", "desc", desc_nodes, EmbeddingStore.for_description())
+
+    schemas = {factory.tag: factory.schema for factory in factories}
+
+    print(schemas)
+
+    context_retriever = load_context_retrievers(schemas, f"{output}/index")
+
+    converter = Converter(context_retriever)
+
     counts = [0, 0]
-    marker = "### Output:"
-    for item in dataset:
-        sequences = convert(item, prompt)
-        counts[0] += 1
-        seq = sequences[0]
-        text = seq['generated_text']
-        idx = text.index(marker)
-        result = text[idx+len(marker):].strip()
-        item_id = item["id"]
-        result = get_func(result)
-        target = get_func(item['target_full'])
-        if result == target:
-            counts[1] += 1
-        else:
-            print(f"{result} != {target}\n")
+    for factory in factories:
+        dataset = factory.build("test")
+        marker = "### Output:"
+        for item in dataset:
+            result = converter.understand(item["utterance"])
+            target = item['owner']
+            arguments = item["arguments"]
+            if result.name == target:
+                counts[1] += 1
+            else:
+                print(f"{result} != {target}\n")
     print(counts)

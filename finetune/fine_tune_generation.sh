@@ -3,9 +3,9 @@
 # We did not undergone extensive hyperparameter tuning nor choosing more performant FT datasets.
 # We hope the community can explore on finetuning TinyLlama and come up with better chat models. I will include community-finetuned models in this repo.
 
-python3 finetune/finetune.py \
-    --model_name_or_path PY007/TinyLlama-1.1B-intermediate-step-480k-1T \
-    --output_dir ./output/503B_FT_lr1e-5_ep5_top1_2023-09-27 \
+python3 finetune/generation.py \
+    --model_name_or_path PY007/TinyLlama-1.1B-intermediate-step-715k-1.5T\
+    --output_dir ./output/715B_FT_lr1e-5_ep5_top1_2023-11-13 \
     --logging_steps 10 \
     --save_strategy epoch \
     --data_seed 42 \
@@ -25,10 +25,10 @@ python3 finetune/finetune.py \
     --lr_scheduler_type constant \
     --source_max_len 512 \
     --target_max_len 128 \
-    --per_device_train_batch_size 8 \
+    --per_device_train_batch_size 16 \
     --max_steps 0 \
     --num_train_epochs 5 \
-    --learning_rate 1e-5 \
+    --learning_rate 2e-6 \
     --adam_beta2 0.999 \
     --max_grad_norm 1.0 \
     --weight_decay 0.0 \

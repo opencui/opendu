@@ -1,27 +1,9 @@
-import copy
-import json
-import os
-from os.path import exists, join, isdir
-from dataclasses import dataclass, field
-from typing import Optional, Dict, Sequence
-import numpy as np
+
 import logging
-import torch
-import transformers
-from torch.nn.utils.rnn import pad_sequence
-import argparse
-from transformers import (
-    AutoTokenizer,
-    AutoModelForCausalLM,
-    set_seed,
-    Seq2SeqTrainer,
-)
-
-from datasets import Dataset, concatenate_datasets
-
+from datasets import Dataset
 from converter.lug_config import LugConfig
 from core.embedding import EmbeddingStore
-from core.retriever import build_desc_index, HybridRetriever, load_context_retrievers, ContextRetriever
+from core.retriever import build_desc_index, load_context_retrievers, ContextRetriever
 from finetune.commons import build_dataset_index
 from finetune.sgd import SGD
 
@@ -68,15 +50,13 @@ if __name__ == "__main__":
     build_index = True
     if build_index:
         for factory in factories:
-            build_desc_index(factory.schema, f"{output}/index/{factory.tag}", EmbeddingStore.for_description())
-            build_dataset_index(factory.build("train"), f"{output}/index/{factory.tag}", EmbeddingStore.for_exemplar())
+            build_desc_index(factory.tag, factory.schema, f"{output}/index/{factory.tag}", EmbeddingStore.for_description())
+            build_dataset_index(factory.tag, factory.build("train"), f"{output}/index/{factory.tag}", EmbeddingStore.for_exemplar())
 
     retrievers = []
     for factory in factories:
-        retrievers.append(load_context_retrievers(factory.schema, f"{output}/index/{factory.tag}"))
+        retrievers.append(load_context_retrievers({factory.tag: factory.schema}, f"{output}/index/{factory.tag}"))
 
-    #searcher = retrievers[0]
-    #nodes = searcher.search("i want to go out to eat somewhere")
     for index in range(len(factories)):
         factory = factories[index]
         searcher = retrievers[index]

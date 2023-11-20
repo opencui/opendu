@@ -135,7 +135,8 @@ and third input and raise exception when there is issues.
 #### 3. Initialize converter and convert.
 
 ```python
-from converter.client import Converter
+from converter.client
+import Converter
 converter = load_converter(directory_you_read_specs_from, directory_you_write_index_to)
 converter.understand(utterance)
 ```

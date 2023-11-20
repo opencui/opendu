@@ -1,5 +1,10 @@
-# This is used for configure the project.
+# This is used for configure the project during the index and training.
+from dataclasses import dataclass
+from dataclasses_json import dataclass_json
 
+
+@dataclass_json
+@dataclass
 class LugConfig:
     embedding_device = "cpu"
     embedding_model = 'BAAI/bge-base-en-v1.5'
@@ -12,3 +17,7 @@ class LugConfig:
     desc_retrieve_topk = 4
     exemplar_retrieve_topk = 16
     llm_device = "cpu"
+    specs_prompt = "specs_only"
+    skill_prompt = "specs_exampled"
+    slot_prompt = "basic"
+    inference_model="./output/715B_FT_lr1e-5_ep5_top1_2023-11-13/checkpoint-13075/"

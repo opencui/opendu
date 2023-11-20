@@ -27,9 +27,35 @@ class FrameSchema:
 
 @dataclass_json
 @dataclass
+class FrameId:
+    module: str
+    name: str
+
+
+# This name inside the FrameSchema and SlotSchema is semantic bearing.
+# So there should not be overlapping between schema names.
+# the key for skills and slots does not need to be.
+@dataclass_json
+@dataclass
 class Schema:
     skills: Dict[str, FrameSchema]
     slots: Dict[str, SlotSchema]
+
+
+@dataclass_json
+@dataclass
+class SchemaStore:
+    schemas: Dict[str, Schema]
+
+    def __init__(self, schemas: dict[str, Schema]):
+        self.schemas = schemas
+        self.func_to_module = {skill["name"]: schema for schema in schemas.values() for skill in schema.skills.values()}
+
+    def get_skills(self, frame_id: FrameId):
+        return self.schemas[frame_id.module].skills[frame_id.name]
+
+    def get_module(self, func_name):
+        return self.func_to_module[func_name]
 
 
 @dataclass_json
@@ -42,6 +68,7 @@ class FrameValue:
 @dataclass_json()
 @dataclass
 class FrameState:
+    module: Schema
     frame: FrameSchema
     activated: list[str]
 
@@ -74,7 +101,9 @@ class PatternRecognizer(BaseModel):
 
 class SlotRecognizers(BaseModel):
     slots: Dict[str, str] = Field(description="the mapping from slot name to entity name")
-    recognizers: Dict[str, Annotated[Union[ListRecognizer, PatternRecognizer], Field(discriminator='rec_type')]] = Field(description="the name to recognizer")
+    recognizers: Dict[
+        str, Annotated[Union[ListRecognizer, PatternRecognizer], Field(discriminator='rec_type')]] = Field(
+        description="the name to recognizer")
 
 
 # owner is not needed if exemplars are listed insider function specs.
@@ -92,17 +121,15 @@ class ExemplarStore(TypedDict):
     exemplars: List[Exemplar]
 
 
-def build_nodes_from_exemplar_store(store: ExemplarStore) -> list[TextNode]:
-    nodes = []
+def build_nodes_from_exemplar_store(module: str, store: ExemplarStore, nodes: List[TextNode]):
     for label, exemplars in store.items():
         for exemplar in exemplars:
             nodes.append(
                 TextNode(
                     text=exemplar.template,
                     id_=str(hash(exemplar.template))[1:13],
-                    metadata={"owner": label, "context": exemplar.context},
-                    excluded_embed_metadata_keys=["owner", "context"]))
-    return nodes
+                    metadata={"owner": label, "context": exemplar.context, "module": module},
+                    excluded_embed_metadata_keys=["owner", "context", "module"]))
 
 
 if __name__ == "__main__":
