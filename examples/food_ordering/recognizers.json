@@ -1,0 +1,164 @@
+{
+    "recognizers": {
+        "Category": {
+            "name": "Dish category",
+            "rec_type": "list",
+            "description": "The category of dish",
+            "instances": [
+                {
+                    "label": "Pizza",
+                    "expressions": [
+                        "Pizza"
+                    ]
+                },
+                {
+                    "label": "Appetizer",
+                    "expressions": [
+                        "Appetizer"
+                    ]
+                },
+                {
+                    "label": "Drink",
+                    "expressions": [
+                        "Drink"
+                    ]
+                }
+            ]
+        },
+        "DishName": {
+            "name": "Dish name",
+            "rec_type": "list",
+            "description": "The name of dish",
+            "instances": [
+                {
+                    "label": "PepperoniPizza",
+                    "expressions": [
+                        "Pepperoni Pizza"
+                    ]
+                },
+                {
+                    "label": "CheesePizza",
+                    "expressions": [
+                        "Cheese Pizza"
+                    ]
+                },
+                {
+                    "label": "EggplantPizza",
+                    "expressions": [
+                        "Eggplant Pizza"
+                    ]
+                },
+                {
+                    "label": "Fries",
+                    "expressions": [
+                        "Fries"
+                    ]
+                },
+                {
+                    "label": "GreekSalad",
+                    "expressions": [
+                        "Greek Salad"
+                    ]
+                },
+                {
+                    "label": "Coke",
+                    "expressions": [
+                        "Coke"
+                    ]
+                },
+                {
+                    "label": "Sprite",
+                    "expressions": [
+                        "Sprite"
+                    ]
+                },
+                {
+                    "label": "BottledWater",
+                    "expressions": [
+                        "Bottled Water"
+                    ]
+                }
+            ]
+        },
+        "Size": {
+            "name": "Dish size",
+            "rec_type": "list",
+            "description": "The size of dish",
+            "instances": [
+                {
+                    "label": "Small",
+                    "expressions": [
+                        "Small"
+                    ]
+                },
+                {
+                    "label": "Medium",
+                    "expressions": [
+                        "Medium"
+                    ]
+                },
+                {
+                    "label": "Large",
+                    "expressions": [
+                        "Large"
+                    ]
+                },
+                {
+                    "label": "Regular",
+                    "expressions": [
+                        "Regular"
+                    ]
+                }
+            ]
+        },
+        "Option": {
+            "name": "Dish option",
+            "rec_type": "list",
+            "description": "The option of dish",
+            "instances": [
+                {
+                    "label": "ExtraCheese",
+                    "expressions": [
+                        "Extra Cheese"
+                    ]
+                },
+                {
+                    "label": "Mushrooms",
+                    "expressions": [
+                        "Mushrooms"
+                    ]
+                },
+                {
+                    "label": "Sausage",
+                    "expressions": [
+                        "Sausage"
+                    ]
+                },
+                {
+                    "label": "CanadianBacon",
+                    "expressions": [
+                        "Canadian Bacon"
+                    ]
+                },
+                {
+                    "label": "AISauce",
+                    "expressions": [
+                        "AI Sauce"
+                    ]
+                },
+                {
+                    "label": "Peppers",
+                    "expressions": [
+                        "Peppers"
+                    ]
+                }
+            ]
+        }
+    },
+    "slots": {
+        "category": "Category",
+        "name": "DishName",
+        "size": "Size",
+        "options": "Option"
+    }
+}

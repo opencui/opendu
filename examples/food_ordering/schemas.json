@@ -1,0 +1,70 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "FoodOrdering module",
+        "version": "1.0.0"
+      },
+    "paths": {
+        "/skills": {
+          "get": {
+            "description": "FoodOrdering",
+            "responses": {
+                "200": {
+                    "description": "Successful response"
+                }
+            }
+          }
+        }
+      },
+    "components":{
+        "schemas": {
+            "FoodOrdering": {
+                "type": "object",
+                "description":  "Food ordering",
+                "properties": {
+                    "dishes": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Dish"
+                        }
+                    }
+                }
+                
+            },
+            "Dish": {
+                "type": "object",
+                "description":  "A dish ordered by the user",
+                "required": ["category", "name", "quantity"],
+                "properties": {
+                    "category":  {
+                        "type": "string",
+                        "description":  "Dish category"
+                    },
+                    "name": {   
+                        "type": "string",
+                        "description": "Dish name"
+                    },
+                    "size": {   
+                        "type": "string",
+                        "description": "Dish size"
+                    },
+                    "isAddOption": {   
+                        "type": "boolean",
+                        "description": "Indicates whether additional options should be included with the dish"
+                    },
+                    "options": {   
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Dish options"
+                    },
+                    "quantity": {   
+                        "type": "integer",
+                        "description": "Dish quantity"
+                    }
+                }
+            }
+        }
+    }    
+}
