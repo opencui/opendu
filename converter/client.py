@@ -1,7 +1,7 @@
 import torch
 import transformers
 from transformers import AutoTokenizer
-
+import json
 from converter.lug_config import LugConfig
 from converter.schema_parser import load_specs_and_recognizers_from_directory
 from core.annotation import FrameValue, Exemplar, FrameSchema, DialogExpectation
@@ -17,9 +17,11 @@ from core.retriever import load_context_retrievers, ContextRetriever
 # 3. stitch together the result.
 #
 class Converter:
-    def __init__(self, retriever: ContextRetriever, recognizers, model):
+    def __init__(self, retriever: ContextRetriever, recognizers=None):
         self.retrieve = retriever
         self.recognizers = recognizers
+
+        model = LugConfig.inference_model
 
         self.tokenizer = AutoTokenizer.from_pretrained(model)
         self.pipeline = transformers.pipeline(
@@ -36,31 +38,54 @@ class Converter:
         # first we figure out what is the
         skills, nodes = self.retrieve(text)
         exemplars = [Exemplar(owner=node.metadata["owner"], template=node.text) for node in nodes]
-        input_dict = {"utterance": text, "examples": exemplars, "skills": skills}
-        formatted_prompt = self.skill_prompt(input_dict)
+        skill_input_dict = {"utterance": text, "examples": exemplars, "skills": skills}
+        skill_prompt = self.skill_prompt(skill_input_dict)
 
+        print(skill_prompt)
+    
         skill_outputs = self.pipeline(
-            formatted_prompt,
+            skill_prompt,
             do_sample=True,
             top_k=50,
-            top_p = 0.9,
+            top_p=0.9,
             num_return_sequences=1,
             repetition_penalty=1.1,
             max_new_tokens=1024,
         )
 
+        print(f"There are {len(skill_outputs)} generated text.")
         for seq in skill_outputs:
             print(f"Result: {seq['generated_text']}")
 
+        # We assume the function_name is global unique for now. From UI perspective, I think
+        #
         func_name = skill_outputs[0]["generated_text"]
-
+        module = self.retrieve.module.get_module(func_name)
+        slots_of_func = module.skills[func_name]
         # Then we need to create the prompt for the parameters.
+        slot_prompts = []
+        for slot in slots_of_func:
+            slot_input_dict = {"utterance": text, "slot": slot}
+            slot_prompts.append(self.slot_prompt(slot_input_dict))
 
-        slot_values = None
+        slot_outputs = self.pipeline(
+            skill_prompt,
+            do_sample=True,
+            top_k=50,
+            top_p=0.9,
+            num_return_sequences=1,
+            repetition_penalty=1.1,
+            max_new_tokens=1024,
+        )
+
+        for seq in slot_outputs:
+            print(f"Result: {seq['generated_text']}")
+
+        slot_jsons = [json.load(seq['generated_text']) for seq in slot_outputs]
+        slot_values = {key: value for slot_obj in slot_jsons for key, value in slot_obj.items()}
         return FrameValue(name=func_name, arguments=slot_values)
 
     def generate(self, struct: FrameValue) -> str:
-        llm = self.llm
         raise NotImplemented
 
 

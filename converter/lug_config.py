@@ -20,3 +20,4 @@ class LugConfig:
     specs_prompt = "specs_only"
     skill_prompt = "specs_exampled"
     slot_prompt = "basic"
+    inference_model="./output/715B_FT_lr1e-5_ep5_top1_2023-11-13/checkpoint-13075/"

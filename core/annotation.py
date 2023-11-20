@@ -47,8 +47,15 @@ class Schema:
 class SchemaStore:
     schemas: Dict[str, Schema]
 
+    def __init__(self, schemas: dict[str, Schema]):
+        self.schemas = schemas
+        self.func_to_module = {skill["name"]: schema for schema in schemas.values() for skill in schema.skills.values()}
+
     def get_skills(self, frame_id: FrameId):
         return self.schemas[frame_id.module].skills[frame_id.name]
+
+    def get_module(self, func_name):
+        return self.func_to_module[func_name]
 
 
 @dataclass_json
@@ -94,7 +101,9 @@ class PatternRecognizer(BaseModel):
 
 class SlotRecognizers(BaseModel):
     slots: Dict[str, str] = Field(description="the mapping from slot name to entity name")
-    recognizers: Dict[str, Annotated[Union[ListRecognizer, PatternRecognizer], Field(discriminator='rec_type')]] = Field(description="the name to recognizer")
+    recognizers: Dict[
+        str, Annotated[Union[ListRecognizer, PatternRecognizer], Field(discriminator='rec_type')]] = Field(
+        description="the name to recognizer")
 
 
 # owner is not needed if exemplars are listed insider function specs.
