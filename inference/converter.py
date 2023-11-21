@@ -3,7 +3,7 @@ import transformers
 from transformers import AutoTokenizer
 import json
 from core.lug_config import LugConfig
-from core.annotation import FrameValue, Exemplar,DialogExpectation
+from core.annotation import FrameValue, Exemplar, DialogExpectation
 from core.prompt import SkillPrompts, SlotPrompts
 from core.retriever import ContextRetriever
 

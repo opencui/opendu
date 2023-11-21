@@ -12,7 +12,6 @@ from core.lug_config import LugConfig
 from core.embedding import EmbeddingStore
 
 
-
 def train(model: SentenceTransformer, dataset: Dataset, model_save_path: str):
     word_embedding_model = model._first_module()
 

@@ -6,11 +6,11 @@ import logging
 import os
 from collections import defaultdict
 
-from datasets import IterableDataset, Dataset, Features, Value
+from datasets import Dataset, Features, Value
 
-from core.annotation import Schema, FrameSchema, SlotSchema, CamelToSnake
+from core.annotation import Schema, FrameSchema, SlotSchema
 from core.embedding import EmbeddingStore
-from finetune.commons import DatasetFactory, AnnotatedExemplar, build_dataset_index, create_full_exemplar
+from finetune.commons import DatasetFactory, build_dataset_index, create_full_exemplar
 from core.retriever import build_desc_index
 
 
@@ -65,7 +65,6 @@ class SGD(DatasetFactory):
             split = "dev"
 
         base_path = f"{self.base_path}/{split}/"
-        name_transformer = CamelToSnake()
         def gen_skills():
             """
             load original sgd data and create expression examples
@@ -151,7 +150,6 @@ class SGD(DatasetFactory):
                                 for _slot in frame['slots']:
                                     local_slots[_slot['slot']].append(utterance[_slot['start']:_slot['exclusive_end']])
                                     spans.append((_slot['start'], _slot['exclusive_end']))
-                                skill_name = name_transformer.to_snake(skill_name)
                                 exemplar = create_full_exemplar(id, utterance, skill_name, dict(local_slots), spans)
                                 # yield the example
                                 yield exemplar.flatten()
@@ -165,7 +163,6 @@ class SGD(DatasetFactory):
     @classmethod
     def load_schema_as_dict(cls, full_path, suffix: str = "_1"):
         domain = Schema(skills={}, slots={})
-        name_transformer = CamelToSnake()
         with open(f"{full_path}/schema.json", encoding='utf-8') as f:
             f = json.load(f)
 
@@ -178,16 +175,15 @@ class SGD(DatasetFactory):
                 # handle intents
                 intents = service["intents"]
                 for intent in intents:
-                    intent_name = intent['name']
+                    skill_name = intent['name']
                     intent_desc = intent["description"]
                     slots = intent["required_slots"]
                     optional_slots = intent["optional_slots"].keys()
                     slots.extend(list(optional_slots))
                     slots = [f"{slot}" for slot in slots]
-                    if intent_name in SGD.intent_taboo_word:
+                    if skill_name in SGD.intent_taboo_word:
                         continue
-                    intent_name = name_transformer.to_snake(intent_name)
-                    domain.skills[intent_name] = FrameSchema(intent_name, intent_desc, slots).to_dict()
+                    domain.skills[skill_name] = FrameSchema(skill_name, intent_desc, slots).to_dict()
                 slots = service["slots"]
                 for slot in slots:
                     slot_name = slot['name']

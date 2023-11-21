@@ -8,7 +8,7 @@ import gin
 
 from aiohttp import web
 from pybars import Compiler
-from llama_index import StorageContext, ServiceContext, load_index_from_storage
+from llama_index import StorageContext, load_index_from_storage
 
 from core.retriever import HybridRetriever
 

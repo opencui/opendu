@@ -14,7 +14,6 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
 
-
 def get_skill_infos(skills, nodes) -> list[FrameSchema]:
     funcset = {item.node.meta["owner"] for item in nodes}
     return [skills[func] for func in funcset]
@@ -29,7 +28,6 @@ def load_converter(specs: str, index: str) -> Converter:
     specs, recognizers = load_specs_and_recognizers_from_directory(specs)
     retrievers = load_context_retrievers(index)
     return Converter(specs, retrievers, recognizers)
-
 
 
 # python lug-index path_for_store_index module_specs_paths_intr
