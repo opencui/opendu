@@ -29,6 +29,7 @@ class Converter:
             model=model,
             torch_dtype=torch.float16,
             device_map="auto",
+            return_full_text=False,
         )
 
         self.skill_prompt = SkillPrompts[LugConfig.skill_prompt]
@@ -38,7 +39,7 @@ class Converter:
         # first we figure out what is the
         skills, nodes = self.retrieve(text)
         exemplars = [Exemplar(owner=node.metadata["owner"], template=node.text) for node in nodes]
-        skill_input_dict = {"utterance": text, "examples": exemplars, "skills": skills}
+        skill_input_dict = {"utterance": text.strip(), "examples": exemplars, "skills": skills}
         skill_prompt = self.skill_prompt(skill_input_dict)
 
         print(skill_prompt)
@@ -50,7 +51,9 @@ class Converter:
             top_p=0.9,
             num_return_sequences=1,
             repetition_penalty=1.1,
-            max_new_tokens=1024,
+            max_new_tokens=16,
+            return_full_text=False,
+            eos_token_id=self.tokenizer.eos_token_id
         )
 
         print(f"There are {len(skill_outputs)} generated text.")
@@ -59,7 +62,7 @@ class Converter:
 
         # We assume the function_name is global unique for now. From UI perspective, I think
         #
-        func_name = skill_outputs[0]["generated_text"]
+        func_name = skill_outputs[0]["generated_text"].strip()
         module = self.retrieve.module.get_module(func_name)
         slots_of_func = module.skills[func_name]
         # Then we need to create the prompt for the parameters.
@@ -75,7 +78,9 @@ class Converter:
             top_p=0.9,
             num_return_sequences=1,
             repetition_penalty=1.1,
-            max_new_tokens=1024,
+            max_new_tokens=128,
+            return_full_text=False,
+            eos_token_id=self.tokenizer.eos_token_id
         )
 
         for seq in slot_outputs:

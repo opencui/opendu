@@ -1,4 +1,5 @@
 import json
+import re
 from dataclasses import field
 from typing import Union, List, TypedDict, Optional, Dict, Literal
 from dataclasses import dataclass
@@ -119,6 +120,15 @@ class Exemplar(BaseModel):
 class ExemplarStore(TypedDict):
     name: str
     exemplars: List[Exemplar]
+
+
+# This is need to convert the camel casing to snake casing.
+class CamelToSnake:
+    pattern = re.compile(r'(?<!^)(?=[A-Z])')
+
+    @classmethod
+    def __call__(cls, text):
+        return CamelToSnake.pattern.sub('_', text).lower()
 
 
 def build_nodes_from_exemplar_store(module: str, store: ExemplarStore, nodes: List[TextNode]):
