@@ -1,0 +1,43 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "TableReservation module",
+        "version": "1.0.0"
+      },
+    "paths": {
+        "/skills": {
+          "get": {
+            "description": "MakeReservation",
+            "responses": {
+                "200": {
+                    "description": "Successful response"
+                }
+            }
+          }
+        }
+      },
+    "components":{
+        "schemas": {
+            "MakeReservation": {
+                "type": "object",
+                "description":  "Make reservation",
+                "required": ["number", "date", "time"],
+                "properties": {
+                    "number":  {
+                        "type": "number",
+                        "description":  "Number of people"
+                    },
+                    "date": {   
+                        "type": "string",
+                        "description": "Date"
+                    },
+                    "time": {   
+                        "type": "string",
+                        "description": "Time"
+                    }
+                }
+                
+            }
+        }
+    }    
+}
