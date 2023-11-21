@@ -7,7 +7,7 @@ from sentence_transformers import SentenceTransformer
 from llama_index.bridge.pydantic import PrivateAttr
 from llama_index.embeddings import HuggingFaceEmbedding
 
-from inference.converter import LugConfig
+from core.lug_config import LugConfig
 
 
 # We reuse the underlying embedding when we can.

@@ -9,7 +9,7 @@ from llama_index import VectorStoreIndex, SimpleKeywordTableIndex
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode, NodeWithScore
 from llama_index import QueryBundle
-from inference.converter import LugConfig
+from core.lug_config import LugConfig
 from core.embedding import EmbeddingStore
 from core.annotation import FrameSchema, Schema, SchemaStore, FrameId
 
