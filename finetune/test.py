@@ -1,19 +1,12 @@
 import logging
 
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import transformers
-import torch
-
-from converter.client import Converter
-from core.annotation import build_nodes_from_exemplar_store
+from inference.converter import Converter
 from core.embedding import EmbeddingStore
-from core.prompt import SkillPrompts, SlotPrompts
-from core.retriever import build_desc_index, load_context_retrievers, build_nodes_from_skills, create_index
-from finetune.commons import build_dataset_index, build_nodes_from_dataset
-from finetune.generation import SkillTrainConverter, OneSlotTrainConverter, ConvertedFactory
+from core.retriever import load_context_retrievers, build_nodes_from_skills, create_index
+from finetune.commons import build_nodes_from_dataset
 
 #
-# Converter is a lower level component of converter. This directly use the model.
+# Converter is a lower level component of inference. This directly use the model.
 # This assumes there are fine-tune model already, but use the same client code (albeit different code path)
 #
 if __name__ == "__main__":
@@ -21,7 +14,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.CRITICAL)
 
     from finetune.sgd import SGD
-    from converter.lug_config import LugConfig
+    from core.lug_config import LugConfig
 
     LugConfig.embedding_device = "cuda"
     factories = [

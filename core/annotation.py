@@ -122,13 +122,22 @@ class ExemplarStore(TypedDict):
     exemplars: List[Exemplar]
 
 
+#
 # This is need to convert the camel casing to snake casing.
+#
 class CamelToSnake:
     pattern = re.compile(r'(?<!^)(?=[A-Z])')
 
-    @classmethod
-    def __call__(cls, text):
-        return CamelToSnake.pattern.sub('_', text).lower()
+    def __init__(self):
+        self.snake_to_camel = {}
+
+    def to_snake(self, text):
+        snake = CamelToSnake.pattern.sub('_', text).lower()
+        self.snake_to_camel[snake] = text
+        return snake
+
+    def recover(self, snake):
+        return self.snake_to_camel[snake]
 
 
 def build_nodes_from_exemplar_store(module: str, store: ExemplarStore, nodes: List[TextNode]):

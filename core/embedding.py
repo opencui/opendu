@@ -1,5 +1,4 @@
 import math
-from abc import ABC
 from typing import Any, List
 import numpy as np
 
@@ -8,8 +7,7 @@ from sentence_transformers import SentenceTransformer
 from llama_index.bridge.pydantic import PrivateAttr
 from llama_index.embeddings import HuggingFaceEmbedding
 
-from converter.lug_config import LugConfig
-from transformers import AutoTokenizer, AutoModel
+from inference.converter import LugConfig
 
 
 # We reuse the underlying embedding when we can.

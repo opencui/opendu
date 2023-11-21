@@ -3,6 +3,7 @@
 # is to create a block for examples.
 #
 from pybars import Compiler
+import html
 
 
 #
@@ -32,8 +33,6 @@ class ObjectLister:
         result = []
         result.append(self.block_header)
         for index, thing in enumerate(items):
-            if index != 0:
-                result.append(self.item_delim)
             if self.item_header:
                 if self.with_index:
                     result.append(f'{self.item_header} {index}) {self.item_header_delim}')
@@ -54,7 +53,7 @@ class Prompt:
         self.extra_tokens = extra_tokens
         self.helpers = {
             'list_examples': ObjectLister(block_header="\nThe expression templates are:\n", item_header="Expression template"),
-            'list_skills': ObjectLister(block_header="\nThe functions are:\n", item_header="Function"),
+            'list_skills': ObjectLister(block_header="\nThe functions are:\n", item_delim="\n"),
             'list_slots': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
             'list_values': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]")
         }
@@ -62,7 +61,7 @@ class Prompt:
 
     def __call__(self, item: dict[str, any]) -> str:
         # First we need to create the example.
-        return self.template(item, helpers=self.helpers, partials=self.partials)
+        return html.unescape(self.template(item, helpers=self.helpers, partials=self.partials))
 
 
 #
@@ -111,32 +110,23 @@ FullPrompts = {
 }
 
 SkillPrompts = {
-    "simple":
-        Prompt("<s> Convert the input text to structured representation. ### Input: {{utterance}} ### Output:"),
-
     "specs_exampled":
-        Prompt("""Given a set of functions with names, descriptions, and example templates for expressing them in 
-        natural language text, determine the function implied by the input sentence.
+        Prompt("""Given a set of functions defined by their names, descriptions, and example templates for expressing them in natural language text, determine the function implied by the input sentence.
         
-        {{#list_skills skills}} {{name}} : {{description}} {{/list_skills}} . 
-         
-        {{#list_examples examples}} ### Input template: {{template}} \n ### Output: {{owner}} \n {{/list_examples}}
+        {{#list_skills skills}} {{name}} : {{description}} {{/list_skills}}
         
-        ### Input sentence: \n
-        {{utterance}}
-        ### Output: \n
-        """),
+        {{#list_examples examples}} ### Input template: {{template}} \n ### Output: {{owner}} </s> \n {{/list_examples}}
+
+### Input sentence: {{utterance}}
+### Output:"""),
 
     "specs_only":
-        Prompt("""Given a set of functions with names, descriptions, and example templates for expressing them in 
-        natural language text, determine the function implied by the input sentence.
+        Prompt("""Given a set of functions defined by their names, descriptions, and example templates for expressing them in natural language text, determine the function implied by the input sentence.
         
-        {{#list_skills skills}} {{name}} : {{description}} {{/list_skills}} .
+        {{#list_skills skills}} {{name}} : {{description}} {{/list_skills}}
         
-        ### Input sentence: \n
-        {{utterance}}
-        ### Output: \n
-        """),
+### Input sentence: {{utterance}} 
+### Output:"""),
 }
 
 # For the slots of enum type, we used different prompt in order to improve the
@@ -157,7 +147,7 @@ EnumPrompts = {
 SlotPrompts = {
     "default":
         Prompt("""
-        From an given input sentence, extract the value for parameter :\n {{name}}, {{description}}.
+        From an given input sentence, extract the value for parameter {{name}}: {{description}}.
         
         Here are possible values for this parameter:
         {{#list_values values}} value {{/list_values}}

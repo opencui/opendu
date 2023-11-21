@@ -1,4 +1,3 @@
-import json
 from abc import ABC
 import abc
 from typing import Optional
@@ -9,7 +8,7 @@ from datasets import Dataset
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode
 
-from converter.lug_config import LugConfig
+from core.lug_config import LugConfig
 from core.annotation import Schema
 from core.retriever import create_index, HybridRetriever
 from finetune.embedding import create_sentence_pair_for_description, create_sentence_pair_for_exemplars

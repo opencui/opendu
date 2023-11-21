@@ -2,11 +2,10 @@ import torch
 import transformers
 from transformers import AutoTokenizer
 import json
-from converter.lug_config import LugConfig
-from converter.schema_parser import load_specs_and_recognizers_from_directory
-from core.annotation import FrameValue, Exemplar, FrameSchema, DialogExpectation
+from core.lug_config import LugConfig
+from core.annotation import FrameValue, Exemplar,DialogExpectation
 from core.prompt import SkillPrompts, SlotPrompts
-from core.retriever import load_context_retrievers, ContextRetriever
+from core.retriever import ContextRetriever
 
 
 #
@@ -39,6 +38,9 @@ class Converter:
         # first we figure out what is the
         skills, nodes = self.retrieve(text)
         exemplars = [Exemplar(owner=node.metadata["owner"], template=node.text) for node in nodes]
+
+        print(exemplars)
+
         skill_input_dict = {"utterance": text.strip(), "examples": exemplars, "skills": skills}
         skill_prompt = self.skill_prompt(skill_input_dict)
 
@@ -53,7 +55,8 @@ class Converter:
             repetition_penalty=1.1,
             max_new_tokens=16,
             return_full_text=False,
-            eos_token_id=self.tokenizer.eos_token_id
+            eos_token_id=self.tokenizer.eos_token_id,
+            pad_token_id=32000
         )
 
         print(f"There are {len(skill_outputs)} generated text.")
@@ -80,7 +83,8 @@ class Converter:
             repetition_penalty=1.1,
             max_new_tokens=128,
             return_full_text=False,
-            eos_token_id=self.tokenizer.eos_token_id
+            eos_token_id=self.tokenizer.eos_token_id,
+            pad_token_id=32000
         )
 
         for seq in slot_outputs:
@@ -94,17 +98,3 @@ class Converter:
         raise NotImplemented
 
 
-def get_skill_infos(skills, nodes) -> list[FrameSchema]:
-    funcset = {item.node.meta["owner"] for item in nodes}
-    return [skills[func] for func in funcset]
-
-
-def get_exemplars(nodes) -> list[Exemplar]:
-    return [Exemplar(owner=item.node.meta["owner"]) for item in nodes]
-
-
-def load_converter(specs: str, index: str) -> Converter:
-    # We assume
-    specs, recognizers = load_specs_and_recognizers_from_directory(specs)
-    retrievers = load_context_retrievers(index)
-    return Converter(specs, retrievers, recognizers)

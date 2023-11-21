@@ -67,22 +67,22 @@ def load_all_from_directory(input_path):
     recognizers = SlotRecognizers(**json.load(open(f"{input_path}/recognizers.json")))
     return module_schema, examplers, recognizers
 
+
 def load_specs_and_recognizers_from_directory(input_path):
     module_schema = load_schema_from_directory(f"{input_path}/schemas.json")
     recognizers = SlotRecognizers(**json.load(open(f"{input_path}/recognizers.json")))
     return module_schema, recognizers
 
 
-
 if __name__ == "__main__":
-    schema = from_openai(json.load(open("./converter/examples/schemas.json")))
+    schema = from_openai(json.load(open("./inference/examples/schemas.json")))
     print(schema)
     print("\n")
 
-    exemplars = ExemplarStore(**json.load(open("./converter/examples/exemplars.json")))
+    exemplars = ExemplarStore(**json.load(open("./inference/examples/exemplars.json")))
     print(exemplars)
     print("\n")
 
-    recognizer = SlotRecognizers(**json.load(open("./converter/examples/recognizers.json")))
+    recognizer = SlotRecognizers(**json.load(open("./inference/examples/recognizers.json")))
     print(recognizer)
     print("\n")

@@ -4,7 +4,7 @@ import json
 import os
 from os.path import exists, join, isdir
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Sequence, Any
+from typing import Optional, Dict, Sequence
 import numpy as np
 import logging
 import torch
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 IGNORE_INDEX = -100
 
 
-# This converter is responsible for convert the exemplars in the original dataset into what is needed
+# This inference is responsible for convert the exemplars in the original dataset into what is needed
 # by generation fine-tuning. The assumed the columns are input and output, and we added id for debugging
 # purpose.
 class TrainConverter(ABC):
@@ -102,7 +102,7 @@ class OneSlotTrainConverter(TrainConverter):
                         outs.append(self.format_value(slot_name, None))
 
 
-# This converter is needed for cases where users' utterance is response to bot's prompt questions, and
+# This inference is needed for cases where users' utterance is response to bot's prompt questions, and
 # needs the abstractive understanding instead of extractive understanding.
 # This is needed to determine the intention, intended function or skill
 # class BooleanConverter
@@ -560,7 +560,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.CRITICAL)
 
     from finetune.sgd import SGD
-    from converter.lug_config import LugConfig
+    from core.lug_config import LugConfig
 
     LugConfig.embedding_device = "cuda"
 

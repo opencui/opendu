@@ -3,16 +3,15 @@
 import json
 import shutil
 import logging
-from abc import abstractmethod, ABC
 
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
 from llama_index import VectorStoreIndex, SimpleKeywordTableIndex
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode, NodeWithScore
 from llama_index import QueryBundle
-from converter.lug_config import LugConfig
+from inference.converter import LugConfig
 from core.embedding import EmbeddingStore
-from core.annotation import FrameSchema, Schema, Exemplar, SchemaStore, FrameId
+from core.annotation import FrameSchema, Schema, SchemaStore, FrameId
 
 # Retrievers
 from llama_index.retrievers import (
