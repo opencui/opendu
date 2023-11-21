@@ -5,7 +5,7 @@
 
 python3 finetune/generation.py \
     --model_name_or_path TinyLlama/TinyLlama-1.1B-intermediate-step-955k-token-2T \
-    --output_dir ./output/715B_FT_lr1e-5_ep5_top1_2023-11-13 \
+    --output_dir ./output/lr1e-5_ep5_top1_2023-11-20 \
     --logging_steps 10 \
     --save_strategy epoch \
     --data_seed 42 \
