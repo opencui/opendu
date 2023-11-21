@@ -8,7 +8,7 @@ from datasets import Dataset
 from torch.utils.data import DataLoader
 
 from core.annotation import FrameSchema
-from core.lug_config import LugConfig
+from core.config import LugConfig
 from core.embedding import EmbeddingStore
 
 

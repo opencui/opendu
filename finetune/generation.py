@@ -560,7 +560,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.CRITICAL)
 
     from finetune.sgd import SGD
-    from core.lug_config import LugConfig
+    from core.config import LugConfig
 
     LugConfig.embedding_device = "cuda"
 

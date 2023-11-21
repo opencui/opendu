@@ -1,7 +1,7 @@
 
 import logging
 from datasets import Dataset
-from core.lug_config import LugConfig
+from core.config import LugConfig
 from core.embedding import EmbeddingStore
 from core.retriever import build_desc_index, load_context_retrievers, ContextRetriever
 from finetune.commons import build_dataset_index

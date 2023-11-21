@@ -38,7 +38,7 @@ if __name__ == "__main__":
     opts, args = getopt.getopt(argv, "hi:o:")
     for opt, arg in opts:
         if opt == '-h':
-            print('lug_index.py -o <output_directory> -i <input_files>')
+            print('index.py -o <output_directory> -i <input_files>')
             sys.exit()
         elif opt == "-i":
             input_paths = arg
@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     # For now, we only support single module
     if len(modules) != 1:
-        print('lug_index.py -o <output_directory> -i <input_files>')
+        print('index.py -o <output_directory> -i <input_files>')
 
     try:
         # We assume that there are schema.json, exemplars.json and recognizers.json under the directory
