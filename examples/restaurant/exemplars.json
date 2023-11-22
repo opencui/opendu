@@ -1,0 +1,35 @@
+{
+    "FoodOrdering": [
+        {
+            "template": "order food"
+        }, {
+            "template": "Hi, I'd like to place an order for pickup."
+        }, {
+            "template": "I'd like to order some <category>."
+        }, {
+            "template": "I'd like to order <quantity> <name>."
+        }
+    ],
+    "MakeReservation": [
+        {
+            "template": "I want to book a table."
+        }, {
+            "template": "Can I make a table reservation for <time>?"
+        }, {
+            "template": "Can you help me reserve a table for <number>?"
+        }, {
+            "template": "Can I reserve a table for <number> at <time>?"
+        }, {
+            "template": "Can I get a table for <number> on <date>?"
+        }, {
+            "template": "Is there a table available for <number> at <time> on <date>?"
+        }
+    ],
+    "ShowHours": [
+        {
+            "template": "When do you open?"
+        }, {
+            "template": "Do you open on <dater>?"
+        }
+    ]
+}

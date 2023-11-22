@@ -1,21 +1,38 @@
 {
     "openapi": "3.1.0",
     "info": {
-        "title": "FoodOrdering module",
+        "title": "Restaurant module",
         "version": "1.0.0"
       },
     "paths": {
-        "/skills": {
-          "get": {
-            "description": "FoodOrdering",
-            "responses": {
-                "200": {
-                    "description": "Successful response"
+        "/FoodOrdering": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    }
                 }
             }
-          }
+        },
+        "/MakeReservation": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    }
+                }
+            }
+        },
+        "/ShowHours": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "Successful response"
+                    }
+                }
+            }
         }
-      },
+    },
     "components":{
         "schemas": {
             "FoodOrdering": {
@@ -64,6 +81,37 @@
                         "description": "Dish quantity"
                     }
                 }
+            },
+            "MakeReservation": {
+                "type": "object",
+                "description":  "Make reservation",
+                "required": ["number", "date", "time"],
+                "properties": {
+                    "number":  {
+                        "type": "number",
+                        "description":  "Number of people"
+                    },
+                    "date": {   
+                        "type": "string",
+                        "description": "Date"
+                    },
+                    "time": {   
+                        "type": "string",
+                        "description": "Time"
+                    }
+                }
+                
+            },
+            "ShowHours": {
+                "type": "object",
+                "description":  "Display business hours",
+                "properties": {
+                    "date": {   
+                        "type": "string",
+                        "description": "Date"
+                    }
+                }
+                
             }
         }
     }    
