@@ -3,7 +3,7 @@ import transformers
 from transformers import AutoTokenizer
 import json
 from core.config import LugConfig
-from core.annotation import FrameValue, Exemplar, DialogExpectation
+from core.annotation import FrameValue, Exemplar, DialogExpectation, CamelToSnake, FrameSchema
 from core.prompt import SkillPrompts, SlotPrompts
 from core.retriever import ContextRetriever
 
@@ -35,11 +35,14 @@ class Converter:
         self.slot_prompt = SlotPrompts[LugConfig.slot_prompt]
 
     def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
+        to_snake = CamelToSnake()
+
         # first we figure out what is the
         skills, nodes = self.retrieve(text)
-        exemplars = [Exemplar(owner=node.metadata["owner"], template=node.text) for node in nodes]
+        exemplars = [Exemplar(owner=to_snake.encode(node.metadata["owner"]), template=node.text) for node in nodes]
 
-        print(exemplars)
+        for skill in skills:
+            skill["name"] = to_snake.encode(skill["name"])
 
         skill_input_dict = {"utterance": text.strip(), "examples": exemplars, "skills": skills}
         skill_prompt = self.skill_prompt(skill_input_dict)

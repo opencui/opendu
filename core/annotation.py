@@ -52,7 +52,7 @@ class SchemaStore:
         self.schemas = schemas
         self.func_to_module = {skill["name"]: schema for schema in schemas.values() for skill in schema.skills.values()}
 
-    def get_skills(self, frame_id: FrameId):
+    def get_skill(self, frame_id: FrameId):
         return self.schemas[frame_id.module].skills[frame_id.name]
 
     def get_module(self, func_name):
@@ -129,15 +129,17 @@ class CamelToSnake:
     pattern = re.compile(r'(?<!^)(?=[A-Z])')
 
     def __init__(self):
-        self.snake_to_camel = {}
+        self.backward = {}
+        self.forward = {}
 
-    def to_snake(self, text):
+    def encode(self, text):
         snake = CamelToSnake.pattern.sub('_', text).lower()
-        self.snake_to_camel[snake] = text
+        self.backward[snake] = text
+        self.forward[text] = snake
         return snake
 
-    def recover(self, snake):
-        return self.snake_to_camel[snake]
+    def decode(self, snake):
+        return self.backward[snake]
 
 
 def build_nodes_from_exemplar_store(module: str, store: ExemplarStore, nodes: List[TextNode]):

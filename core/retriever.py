@@ -67,10 +67,6 @@ def create_index(base: str, tag: str, nodes: list[TextNode], embedding: BaseEmbe
 
 
 def build_desc_index(module: str, dsc: Schema, output: str, embedding: BaseEmbedding):
-    print(f"There are {len(dsc.skills)} skills")
-    json_formatted_str = json.dumps(dsc.skills, indent=2)
-    print(json_formatted_str)
-
     desc_nodes = []
     build_nodes_from_skills(module, dsc.skills, desc_nodes)
     create_index(output, "desc", desc_nodes, embedding)
@@ -163,7 +159,7 @@ class ContextRetriever:
         owners = [FrameId(item.metadata["module"], item.metadata["owner"]) for item in all_nodes if item.metadata["owner"] not in self.nones]
 
         # Need to remove the bad owner/func/skill/intent.
-        skills = [self.module.get_skills(owner) for owner in owners]
+        skills = [self.module.get_skill(owner) for owner in owners]
         exemplars = [node for node in exemplar_nodes]
         return skills, exemplars
 
@@ -173,7 +169,6 @@ def load_context_retrievers(module_dict: dict[str, Schema], path: str):
         SchemaStore(module_dict),
         HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk, LugConfig.desc_retriever_mode),
         HybridRetriever(path, "exemplar", LugConfig.exemplar_retrieve_topk, LugConfig.exemplar_retriever_mode))
-
 
 
 if __name__ == "__main__":
