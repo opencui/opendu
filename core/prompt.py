@@ -71,43 +71,6 @@ class Prompt:
 # exemplars: List[Exemplar]
 # values: ?
 #
-FullPrompts = {
-    "simple":
-        Prompt("""Given the input sentence, construct a function representation of this sentence, including the function name,
-        parameters, and their corresponding values. This function representation should describe the target sentence 
-        accurately.  
-         
-        The function must be one of the following 
-        {{#list_skills skills}} {{name}} {{/list_skills}}
-        .
-        
-        For each parameter with its value mentioned in the sentence, enclose the parameter and its corresponding values in
-         brackets. The parameters must be one of the following:
-        {{#list_slots slots}} {{name}} {{/list_slots}}
-        
-        ### Input sentence:
-        {{utterance}}
-        ### Output:
-        """),
-    "exampled":
-        Prompt("""<s> Given the input sentence, construct a function representation of this sentence, including the function name,
-         parameters, and their corresponding values. This function representation should describe the target sentence 
-         accurately and the function must be one of the following 
-        {{#list_skills skills}} {{name}} {{/list_skills}}
-        .
-        For each parameter with its value mentioned in the sentence, enclose the parameter and its corresponding values in
-         brackets. The parameters must be one of the following:
-        {{#list_slots slots}} {{name}} {{/list_slots}}
-        The order your list the parameters within the function must follow the order listed above. 
-        
-        Here are a couple of examples.
-        {{#list_examples examples}} Sentence: {{template}} \n Output: {{owner}} \n {{/list_examples}}
-        
-        ### Input sentence:
-        {{utterance}}
-        ### Output:
-        """),
-}
 
 SkillPrompts = {
     "specs_exampled":
@@ -138,30 +101,23 @@ EnumPrompts = {
         Here are possible values for this parameter:
         {{#list_values values}} value {{/list_values}}
         
-        ### Input sentence:
-        {{utterance}}
-        ### Output:
-        """),
+### Input sentence:
+{{utterance}}
+### Output:"""),
 }
 
 SlotPrompts = {
     "default":
-        Prompt("""
-        From an given input sentence, extract the value for parameter {{name}}: {{description}}.
+        Prompt("""From an given input sentence, extract the value for parameter {{name}}: {{description}}.
         
         Here are possible values for this parameter:
         {{#list_values values}} value {{/list_values}}
         
-        ### Input sentence:
-        {{utterance}}
-        ### Output:
-        """),
+### Input sentence: {{utterance}}
+### Output:"""),
     "basic":
-        Prompt("""
-        From an given input sentence, extract the value for parameter {{name}}: {{description}}.
+        Prompt("""From an given input sentence, extract the value for parameter {{name}}: {{description}}.
         
-        ### Input sentence:
-        {{utterance}}
-        ### Output:
-        """),
+### Input sentence: {{utterance}}
+### Output:"""),
 }

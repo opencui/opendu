@@ -128,6 +128,10 @@ class ExemplarStore(TypedDict):
 class CamelToSnake:
     pattern = re.compile(r'(?<!^)(?=[A-Z])')
 
+    @classmethod
+    def convert(cls, text):
+        return CamelToSnake.pattern.sub('_', text).lower()
+
     def __init__(self):
         self.backward = {}
         self.forward = {}
