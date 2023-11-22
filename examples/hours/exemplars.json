@@ -1,9 +1,0 @@
-{
-    "ShowHours": [
-        {
-            "template": "When do you open?"
-        }, {
-            "template": "Do you open on <dater>?"
-        }
-    ]
-}
