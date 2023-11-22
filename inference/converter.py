@@ -62,7 +62,8 @@ class Converter:
             pad_token_id=32000
         )
 
-        print(f"There are {len(skill_outputs)} generated text.")
+        print(f"There are {len(skill_outputs)} generated skills.")
+        print(skill_outputs)
         for seq in skill_outputs:
             print(f"Result: {seq['generated_text']}")
 
@@ -78,7 +79,7 @@ class Converter:
             slot_prompts.append(self.slot_prompt(slot_input_dict))
 
         slot_outputs = self.pipeline(
-            skill_prompt,
+            slot_prompts,
             do_sample=True,
             top_k=50,
             top_p=0.9,
@@ -90,6 +91,8 @@ class Converter:
             pad_token_id=32000
         )
 
+        print(f"There are {len(slot_outputs)} generated slots.")
+        print(slot_outputs)
         for seq in slot_outputs:
             print(f"Result: {seq['generated_text']}")
 
