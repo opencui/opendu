@@ -127,7 +127,7 @@ schema.
 More concretely, we assume that there will be three files in one directory: schema.json, exemplars.json and recognizers.json, 
 one for each kind of signals defined above. 
 ```bash
-python3 converter/lug_index.py -i <directory_you_read_specs_from> -o <directory_you_write_index_to>
+python3 inference/index.py -i <directory_you_read_specs_from> -o <directory_you_write_index_to>
 ```
 By default, the code will not check the format for the function speciation, but it will check the format for the second
 and third input and raise exception when there is issues.
@@ -135,8 +135,9 @@ and third input and raise exception when there is issues.
 #### 3. Initialize converter and convert.
 
 ```python
-from converter.client
+from inference.converter
 import Converter
+
 converter = load_converter(directory_you_read_specs_from, directory_you_write_index_to)
 converter.understand(utterance)
 ```

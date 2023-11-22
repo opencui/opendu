@@ -63,7 +63,7 @@ Assuming that you have schema-guided dialogue dataset at <dir for lug>/../dstc8-
 ### Fine-tune the generation model
 
 ```bash
-python3 finetune/fine_tune_generation.sh
+python3 finetune/generation.sh
 ```
 
 ## Special considerations

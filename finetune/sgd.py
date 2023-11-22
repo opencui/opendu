@@ -6,12 +6,10 @@ import logging
 import os
 from collections import defaultdict
 
-from datasets import IterableDataset, Dataset, Features, Value
+from datasets import Dataset, Features, Value
 
-from core.annotation import Schema, FrameSchema, SlotSchema
-from core.embedding import EmbeddingStore
-from finetune.commons import DatasetFactory, AnnotatedExemplar, build_dataset_index, create_full_exemplar
-from core.retriever import build_desc_index
+from core.annotation import Schema, FrameSchema, SlotSchema, CamelToSnake
+from finetune.commons import DatasetFactory, create_full_exemplar
 
 
 # pip install -U gin-config faiss-cpu scikit-learn sentence-transformers
@@ -25,12 +23,16 @@ class SGD(DatasetFactory):
     intent_taboo_word = ["SearchOnewayFlight", "BookHouse", "SearchHouse"]
 
     # Which schema do we use? Default to train.
-    def __init__(self, base_path, domain="train", suffix: str = "_1"):
+    def __init__(self, base_path, schema, forward: dict, backward: dict, suffix: str = "_1"):
         self.base_path = base_path
         self.tag = "sgd"
         self.suffix = suffix
         self.counts = [0, 0, 0, 0, 0, 0, 0]
-        self.schema = SGD.load_schema_as_dict(f"{base_path}/{domain}/")
+        self.schema = schema
+        self.forward = forward
+        self.backward = backward
+        self.forward["NONE"] = "NONE"
+        self.backward["NONE"] = "NONE"
         self.known_skills = set()
         self.bad_turns = set([
             'sgd.train.95_00094.4',
@@ -42,7 +44,7 @@ class SGD(DatasetFactory):
             'sgd.train.121_00036.10',
             'sgd.train.52_00020.18',
             'sgd.train.74_00081.16',
-            'sgd.train.90_00018.16',
+            'sgd.train.90_00018.16', ' '
             'sgd.train.27_00113.10',
             'sgd.train.75_00023.20',
             'sgd.train.96_00019.12',
@@ -65,7 +67,6 @@ class SGD(DatasetFactory):
             split = "dev"
 
         base_path = f"{self.base_path}/{split}/"
-
         def gen_skills():
             """
             load original sgd data and create expression examples
@@ -122,6 +123,7 @@ class SGD(DatasetFactory):
 
                                 frame = turn['frames'][0]
                                 skill_name = frame['state']['active_intent']
+                                skill_name = self.forward[skill_name]
 
                                 if skill_name not in self.schema.skills.keys():
                                     continue
@@ -162,44 +164,63 @@ class SGD(DatasetFactory):
 
         return Dataset.from_generator(gen_skills)
 
-    @classmethod
-    def load_schema_as_dict(cls, full_path, suffix: str = "_1"):
-        domain = Schema(skills={}, slots={})
-        with open(f"{full_path}/schema.json", encoding='utf-8') as f:
-            f = json.load(f)
 
-            for service in f:
-                service_name = service["service_name"]
-
-                if service_name.endswith(suffix):
-                    continue
-
-                # handle intents
-                intents = service["intents"]
-                for intent in intents:
-                    intent_name = intent['name']
-                    intent_desc = intent["description"]
-                    slots = intent["required_slots"]
-                    optional_slots = intent["optional_slots"].keys()
-                    slots.extend(list(optional_slots))
-                    slots = [f"{slot}" for slot in slots]
-                    if intent_name in SGD.intent_taboo_word:
-                        continue
-                    domain.skills[intent_name] = FrameSchema(intent_name, intent_desc, slots).to_dict()
-                slots = service["slots"]
-                for slot in slots:
-                    slot_name = slot['name']
-                    is_categorical = slot['is_categorical']
-                    possible_values = slot['possible_values']
-                    slot_description = slot["description"]
-                    domain.slots[slot_name] = SlotSchema(slot_name, slot_description).to_dict()
-        return domain
 
     @classmethod
     def extract_actions(cls, turn):
         if turn["speaker"] != "SYSTEM":
             return None
         return turn["frames"][0]["actions"]
+
+
+def load_schema_as_dict(full_path, forward, suffix: str = "_1"):
+    domain = Schema(skills={}, slots={})
+    with open(f"{full_path}/schema.json", encoding='utf-8') as f:
+        f = json.load(f)
+
+        for service in f:
+            service_name = service["service_name"]
+
+            if service_name.endswith(suffix):
+                continue
+
+            # handle intents
+            intents = service["intents"]
+            for intent in intents:
+                skill_name = intent['name']
+                intent_desc = intent["description"]
+                slots = intent["required_slots"]
+                optional_slots = intent["optional_slots"].keys()
+                slots.extend(list(optional_slots))
+                slots = [f"{slot}" for slot in slots]
+                if skill_name in SGD.intent_taboo_word:
+                    continue
+                skill_name = forward[skill_name]
+                domain.skills[skill_name] = FrameSchema(skill_name, intent_desc, slots).to_dict()
+            slots = service["slots"]
+            for slot in slots:
+                slot_name = slot['name']
+                is_categorical = slot['is_categorical']
+                possible_values = slot['possible_values']
+                slot_description = slot["description"]
+                domain.slots[slot_name] = SlotSchema(slot_name, slot_description).to_dict()
+    return domain
+
+
+def create_factory(full_path, domain="train"):
+    to_snake = CamelToSnake()
+    with open(f"{full_path}/{domain}/schema.json", encoding='utf-8') as f:
+        f = json.load(f)
+        for service in f:
+            intents = service["intents"]
+            for intent in intents:
+                to_snake.encode(intent['name'])
+
+    print(to_snake.forward)
+    print(to_snake.backward)
+
+    schema = load_schema_as_dict(f"{full_path}/{domain}", to_snake.forward)
+    return SGD(full_path, schema, to_snake.forward, to_snake.backward)
 
 
 if __name__ == '__main__':
@@ -209,6 +230,5 @@ if __name__ == '__main__':
     output = "./index/sgdskill/"
     dsc = SGD("/home/sean/src/dstc8-schema-guided-dialogue/")
 
-    print(f"there are {len(dsc.schema.skills)} skills.")
-    build_desc_index(dsc.schema, output, EmbeddingStore.for_description())
-    build_dataset_index(dsc.build("train"), output, EmbeddingStore.for_exemplar())
+    dataset = dsc.build("train")
+    dataset.save_to_disk("./datasets/sgd")

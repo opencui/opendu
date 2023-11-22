@@ -1,11 +1,11 @@
 
 import logging
 from datasets import Dataset
-from converter.lug_config import LugConfig
+from core.config import LugConfig
 from core.embedding import EmbeddingStore
 from core.retriever import build_desc_index, load_context_retrievers, ContextRetriever
 from finetune.commons import build_dataset_index
-from finetune.sgd import SGD
+import finetune.sgd
 
 
 def compute_k(dataset: Dataset, retrieve: ContextRetriever):
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     LugConfig.embedding_device = "cuda"
 
     factories = [
-        SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]
+        finetune.sgd.create_factory("/home/sean/src/dstc8-schema-guided-dialogue/")]
 
     # For now, just use the fix path.
     output = "./output"

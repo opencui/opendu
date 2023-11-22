@@ -35,18 +35,18 @@ def from_openai(functions) -> Schema:
 def from_openapi(specs) -> Schema:
     skills = {}
     slots = {}
-    for path, v in specs.get_skills("paths", {}).items():
+    for path, v in specs.get_skill("paths", {}).items():
         for op, _v in v.items():
             label = f"{path}.{op}"
             f = {}
-            name = _v.get_skills("operationId", "")
-            description = _v.get_skills("description", "")
+            name = _v.get_skill("operationId", "")
+            description = _v.get_skill("description", "")
             if description == "":
-                description = _v.get_skills("summary", "")
+                description = _v.get_skill("summary", "")
             parameters = []
-            for _p in _v.get_skills("parameters", []):
-                slot_name = _p.get_skills("name", "")
-                slot_description = _p.get_skills("description", "")
+            for _p in _v.get_skill("parameters", []):
+                slot_name = _p.get_skill("name", "")
+                slot_description = _p.get_skill("description", "")
                 if slot_name not in slots:
                     slots[slot_name] = SlotSchema(slot_name, slot_description)
                 parameters.append(slot_name)
@@ -67,22 +67,22 @@ def load_all_from_directory(input_path):
     recognizers = SlotRecognizers(**json.load(open(f"{input_path}/recognizers.json")))
     return module_schema, examplers, recognizers
 
+
 def load_specs_and_recognizers_from_directory(input_path):
     module_schema = load_schema_from_directory(f"{input_path}/schemas.json")
     recognizers = SlotRecognizers(**json.load(open(f"{input_path}/recognizers.json")))
     return module_schema, recognizers
 
 
-
 if __name__ == "__main__":
-    schema = from_openai(json.load(open("./converter/examples/schemas.json")))
+    schema = from_openai(json.load(open("./inference/examples/schemas.json")))
     print(schema)
     print("\n")
 
-    exemplars = ExemplarStore(**json.load(open("./converter/examples/exemplars.json")))
+    exemplars = ExemplarStore(**json.load(open("./inference/examples/exemplars.json")))
     print(exemplars)
     print("\n")
 
-    recognizer = SlotRecognizers(**json.load(open("./converter/examples/recognizers.json")))
+    recognizer = SlotRecognizers(**json.load(open("./inference/examples/recognizers.json")))
     print(recognizer)
     print("\n")

@@ -52,7 +52,7 @@ class SchemaStore:
         self.schemas = schemas
         self.func_to_module = {skill["name"]: schema for schema in schemas.values() for skill in schema.skills.values()}
 
-    def get_skills(self, frame_id: FrameId):
+    def get_skill(self, frame_id: FrameId):
         return self.schemas[frame_id.module].skills[frame_id.name]
 
     def get_module(self, func_name):
@@ -122,13 +122,24 @@ class ExemplarStore(TypedDict):
     exemplars: List[Exemplar]
 
 
+#
 # This is need to convert the camel casing to snake casing.
+#
 class CamelToSnake:
     pattern = re.compile(r'(?<!^)(?=[A-Z])')
 
-    @classmethod
-    def __call__(cls, text):
-        return CamelToSnake.pattern.sub('_', text).lower()
+    def __init__(self):
+        self.backward = {}
+        self.forward = {}
+
+    def encode(self, text):
+        snake = CamelToSnake.pattern.sub('_', text).lower()
+        self.backward[snake] = text
+        self.forward[text] = snake
+        return snake
+
+    def decode(self, snake):
+        return self.backward[snake]
 
 
 def build_nodes_from_exemplar_store(module: str, store: ExemplarStore, nodes: List[TextNode]):

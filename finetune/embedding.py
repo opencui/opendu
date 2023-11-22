@@ -8,9 +8,8 @@ from datasets import Dataset
 from torch.utils.data import DataLoader
 
 from core.annotation import FrameSchema
-from converter.lug_config import LugConfig
+from core.config import LugConfig
 from core.embedding import EmbeddingStore
-
 
 
 def train(model: SentenceTransformer, dataset: Dataset, model_save_path: str):
