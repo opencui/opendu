@@ -23,16 +23,12 @@ class SGD(DatasetFactory):
     intent_taboo_word = ["SearchOnewayFlight", "BookHouse", "SearchHouse"]
 
     # Which schema do we use? Default to train.
-    def __init__(self, base_path, schema, forward: dict, backward: dict, suffix: str = "_1"):
+    def __init__(self, base_path, domain="train", suffix: str = "_1"):
         self.base_path = base_path
         self.tag = "sgd"
         self.suffix = suffix
         self.counts = [0, 0, 0, 0, 0, 0, 0]
-        self.schema = schema
-        self.forward = forward
-        self.backward = backward
-        self.forward["NONE"] = "NONE"
-        self.backward["NONE"] = "NONE"
+        self.schema = load_schema_as_dict(f"{base_path}/{domain}")
         self.known_skills = set()
         self.bad_turns = set([
             'sgd.train.95_00094.4',
@@ -123,7 +119,8 @@ class SGD(DatasetFactory):
 
                                 frame = turn['frames'][0]
                                 skill_name = frame['state']['active_intent']
-                                skill_name = self.forward[skill_name]
+                                #skill_name = self.forward[skill_name]
+                                skill_name = CamelToSnake.convert(skill_name)
 
                                 if skill_name not in self.schema.skills.keys():
                                     continue
@@ -173,7 +170,7 @@ class SGD(DatasetFactory):
         return turn["frames"][0]["actions"]
 
 
-def load_schema_as_dict(full_path, forward, suffix: str = "_1"):
+def load_schema_as_dict(full_path, suffix: str = "_1"):
     domain = Schema(skills={}, slots={})
     with open(f"{full_path}/schema.json", encoding='utf-8') as f:
         f = json.load(f)
@@ -195,7 +192,7 @@ def load_schema_as_dict(full_path, forward, suffix: str = "_1"):
                 slots = [f"{slot}" for slot in slots]
                 if skill_name in SGD.intent_taboo_word:
                     continue
-                skill_name = forward[skill_name]
+                skill_name = CamelToSnake.convert(skill_name)
                 domain.skills[skill_name] = FrameSchema(skill_name, intent_desc, slots).to_dict()
             slots = service["slots"]
             for slot in slots:
@@ -205,22 +202,6 @@ def load_schema_as_dict(full_path, forward, suffix: str = "_1"):
                 slot_description = slot["description"]
                 domain.slots[slot_name] = SlotSchema(slot_name, slot_description).to_dict()
     return domain
-
-
-def create_factory(full_path, domain="train"):
-    to_snake = CamelToSnake()
-    with open(f"{full_path}/{domain}/schema.json", encoding='utf-8') as f:
-        f = json.load(f)
-        for service in f:
-            intents = service["intents"]
-            for intent in intents:
-                to_snake.encode(intent['name'])
-
-    print(to_snake.forward)
-    print(to_snake.backward)
-
-    schema = load_schema_as_dict(f"{full_path}/{domain}", to_snake.forward)
-    return SGD(full_path, schema, to_snake.forward, to_snake.backward)
 
 
 if __name__ == '__main__':

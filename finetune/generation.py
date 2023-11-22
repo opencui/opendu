@@ -26,6 +26,7 @@ from core.prompt import Prompt
 from core.retriever import load_context_retrievers, ContextRetriever, build_desc_index
 from finetune.commons import AnnotatedExemplar, DatasetFactory, build_dataset_index
 
+
 logger = logging.getLogger(__name__)
 
 IGNORE_INDEX = -100
@@ -565,7 +566,8 @@ if __name__ == "__main__":
     LugConfig.embedding_device = "cuda"
 
     factories = [
-        SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]
+        SGD("/home/sean/src/dstc8-schema-guided-dialogue/"),
+    ]
 
     for factory in factories:
         ds = factory.build("train")
