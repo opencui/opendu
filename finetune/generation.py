@@ -269,7 +269,7 @@ class GenerationArguments:
 def get_lora_config():
     lora_alpha = 32 #16
     lora_dropout = 0.05 #0.1
-    lora_rank = 32 #64
+    lora_rank = 16 #64
 
     peft_config = LoraConfig(
         lora_alpha=lora_alpha,
@@ -304,8 +304,13 @@ def get_accelerate_model(args, extra_special_tokens: set[str], peft_config=None)
     )
 
     if peft_config is not None:
+        print("Using lora instead.")
         model = get_peft_model(model, peft_config)
         model.config.use_cache = False
+        # Do not know what this actually does.
+        for name, module in model.named_modules():
+            if "norm" in name:
+                module = module.to(torch.bfloat16)
 
     # Tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
@@ -490,7 +495,7 @@ def get_last_checkpoint(checkpoint_dir):
     return None, False  # first training
 
 
-def train(converted_factories: list[ConvertedFactory], peft=None):
+def train(converted_factories: list[ConvertedFactory], peft_config=None):
     hfparser = transformers.HfArgumentParser((
         ModelArguments, DataArguments, TrainingArguments, GenerationArguments
     ))
@@ -510,9 +515,8 @@ def train(converted_factories: list[ConvertedFactory], peft=None):
 
     extra_tokens = set([token for factory in converted_factories for token in factory.extra_tokens()])
 
-    model, tokenizer = get_accelerate_model(args, extra_tokens, get_lora_config())
+    model, tokenizer = get_accelerate_model(args, extra_tokens, peft_config)
 
-    model.config.use_cache = False
     print('loaded model')
     set_seed(args.seed)
 
@@ -533,10 +537,6 @@ def train(converted_factories: list[ConvertedFactory], peft=None):
         args=training_args,
         **{k: v for k, v in data_module.items() if k != 'predict_dataset'},
     )
-
-    for name, module in trainer.model.named_modules():
-        if "norm" in name:
-            module = module.to(torch.bfloat16)
 
     # Verifying the datatypes and parameter counts before training.
     print_trainable_parameters(args, model)
@@ -641,4 +641,4 @@ if __name__ == "__main__":
         converted_factories.append(ConvertedFactory(factory, [skill_converter0, skill_converter1, slot_converter]))
 
     # Now we need to create the converters.
-    train(converted_factories)
+    train(converted_factories, get_lora_config())
