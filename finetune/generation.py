@@ -624,7 +624,7 @@ if __name__ == "__main__":
         skill_converter0 = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.skill_prompt])
         skill_converter1 = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.specs_prompt])
         slot_converter = OneSlotTrainConverter(factory.schema, SlotPrompts[LugConfig.slot_prompt])
-        converted_factories.append(ConvertedFactory(factory, [skill_converter0, skill_converter1, slot_converter]))
+        converted_factories.append(ConvertedFactory(factory, [skill_converter0, skill_converter1]))
 
     # Now we need to create the converters.
     train(converted_factories, get_lora_config())
