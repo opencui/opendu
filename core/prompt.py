@@ -77,63 +77,32 @@ class Prompt:
 #
 
 SkillPrompts = {
-    "specs_exampled_old":
-        Prompt("""Given a set of functions defined by their names, descriptions, and example templates for expressing them in natural language text, determine the function implied by the input sentence.
-        
-        {{#list_skills skills}} {{name}} : {{description}} {{/list_skills}}
-        
-        {{#list_examples examples}} ### Input template: {{template}} \n ### Output: {{owner}} </s> \n {{/list_examples}}
-
-### Input sentence: {{utterance}}
-### Output:"""),
-
     "specs_only":
-        Prompt("""Infer the function from input sentence:
-        {{#list_skills skills}} [ {{name}} ] : {{description}} {{/list_skills}}
-        
-Classify the input sentence as one of {{#list_skill_names skills}} {{name}} {{/list_skill_names}}.
-
-### Input sentence: {{utterance}}
-### Output:"""),
+        Prompt(
+            "{{#list_skills skills}} [ {{name}} ] : {{description}} {{/list_skills}} \n"
+            "Classify the input sentence as one of {{#list_skill_names skills}} {{name}} {{/list_skill_names}}.\n"
+            "### Input sentence: {{utterance}}"
+            "### Output:"),
     "specs_exampled":
-        Prompt("""Infer the function from input sentence:
-        {{#list_skills skills}} [ {{name}} ] : {{description}} {{/list_skills}}
-        
-        {{#list_examples examples}} ### Input template: {{template}} \n ### Output: [{{owner}}] </s> \n {{/list_examples}}
-
-Classify the input sentence as one of {{#list_skill_names skills}} {{name}} {{/list_skill_names}}.
-        
-### Input sentence: {{utterance}}
-### Output:"""),
-
+        Prompt(
+            "{{#list_skills skills}} [ {{name}} ] : {{description}} {{/list_skills}}\n"
+            "{{#list_examples examples}} ### Input template: {{template}} \n ### Output: [{{owner}}] </s> \n {{/list_examples}}\n"
+            "Classify the input sentence as one of {{#list_skill_names skills}} {{name}} {{/list_skill_names}}."
+            "### Input sentence: {{utterance}}"
+            "### Output:"),
 }
 
 # For the slots of enum type, we used different prompt in order to improve the
-EnumPrompts = {
-    "default":
-        Prompt("""
-        Given an input sentence, extract the value for parameter {{name}}, {{description}}, from the input sentence.
-        
-        Here are possible values for this parameter:
-        {{#list_values values}} value {{/list_values}}
-        
-### Input sentence:
-{{utterance}}
-### Output:"""),
-}
-
 SlotPrompts = {
     "default":
-        Prompt("""From an given input sentence, extract the value for parameter {{name}}: {{description}}.
-        
-        Here are possible values for this parameter:
-        {{#list_values values}} value {{/list_values}}
-        
-### Input sentence: {{utterance}}
-### Output:"""),
+        Prompt(
+            "From an given input sentence, extract the value for parameter {{name}}: {{description}}.\n"
+            "{{#list_values values}} value {{/list_values}}\n"
+            "### Input sentence: {{utterance}}"
+            "### Output:"),
     "basic":
-        Prompt("""From an given input sentence, extract the value for parameter {{name}}: {{description}}.
-        
-### Input sentence: {{utterance}}
-### Output:"""),
+        Prompt(
+            "From an given input sentence, extract the value for parameter {{name}}: {{description}}.\n"
+            "### Input sentence: {{utterance}}"
+            "### Output:"),
 }
