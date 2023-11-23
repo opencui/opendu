@@ -25,17 +25,7 @@ from core.embedding import EmbeddingStore
 from core.prompt import Prompt
 from core.retriever import load_context_retrievers, ContextRetriever, build_desc_index
 from finetune.commons import AnnotatedExemplar, DatasetFactory, build_dataset_index
-from peft import (
-    LoraConfig,
-    get_peft_model,
-    get_peft_model_state_dict,
-    prepare_model_for_int8_training,
-    set_peft_model_state_dict,
-    PrefixTuningConfig,
-    TaskType
-)
-
-
+from peft import LoraConfig, get_peft_model
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +59,7 @@ class SkillTrainConverter(TrainConverter):
             input_dict = {"utterance": utterance, "examples": exemplars, "skills": skills}
             ins.append(self.prompt(input_dict))
             owner = batch["owner"][idx]
-            outs.append(f"[ {owner} ] +  </s>")
+            outs.append(f"[ {owner} ]</s>")
 
 
 #
@@ -267,24 +257,18 @@ class GenerationArguments:
 
 
 def get_lora_config():
-    lora_alpha = 32 #16
-    lora_dropout = 0.05 #0.1
-    lora_rank = 16 #64
+    lora_alpha = 16  # 16
+    lora_dropout = 0.05  # 0.1
+    lora_rank = 8  # 64
 
-    peft_config = LoraConfig(
+    return LoraConfig(
         lora_alpha=lora_alpha,
         lora_dropout=lora_dropout,
         r=lora_rank,
         bias="none",
         task_type="CAUSAL_LM",
-        target_modules=[
-            "query_key_value",
-            "dense",
-            "dense_h_to_4h",
-            "dense_4h_to_h",
-        ]
+        target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj', 'gate_proj', 'down_proj', 'up_proj', 'lm_head']
     )
-    return peft_config
 
 
 def get_accelerate_model(args, extra_special_tokens: set[str], peft_config=None):
@@ -625,8 +609,10 @@ if __name__ == "__main__":
     build_index = True
     if build_index:
         for factory in factories:
-            build_desc_index(factory.tag, factory.schema, f"{output}/index/{factory.tag}", EmbeddingStore.for_description())
-            build_dataset_index(factory.tag, factory.build("train"), f"{output}/index/{factory.tag}", EmbeddingStore.for_exemplar())
+            build_desc_index(factory.tag, factory.schema, f"{output}/index/{factory.tag}",
+                             EmbeddingStore.for_description())
+            build_dataset_index(factory.tag, factory.build("train"), f"{output}/index/{factory.tag}",
+                                EmbeddingStore.for_exemplar())
 
     retrievers = []
     for factory in factories:
@@ -638,7 +624,7 @@ if __name__ == "__main__":
         skill_converter0 = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.skill_prompt])
         skill_converter1 = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.specs_prompt])
         slot_converter = OneSlotTrainConverter(factory.schema, SlotPrompts[LugConfig.slot_prompt])
-        converted_factories.append(ConvertedFactory(factory, [skill_converter0, skill_converter1, slot_converter]))
+        converted_factories.append(ConvertedFactory(factory, [skill_converter0, skill_converter1]))
 
     # Now we need to create the converters.
     train(converted_factories, get_lora_config())

@@ -20,4 +20,4 @@ class LugConfig:
     specs_prompt = "specs_only"
     skill_prompt = "specs_exampled"
     slot_prompt = "basic"
-    inference_model="./output/2T/checkpoint-13075/"
+    inference_model="./output/2T/checkpoint-4010/"
