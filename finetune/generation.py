@@ -25,6 +25,16 @@ from core.embedding import EmbeddingStore
 from core.prompt import Prompt
 from core.retriever import load_context_retrievers, ContextRetriever, build_desc_index
 from finetune.commons import AnnotatedExemplar, DatasetFactory, build_dataset_index
+from peft import (
+    LoraConfig,
+    get_peft_model,
+    get_peft_model_state_dict,
+    prepare_model_for_int8_training,
+    set_peft_model_state_dict,
+    PrefixTuningConfig,
+    TaskType
+)
+
 
 
 logger = logging.getLogger(__name__)
@@ -256,7 +266,28 @@ class GenerationArguments:
     no_repeat_ngram_size: Optional[int] = field(default=0)
 
 
-def get_accelerate_model(args, extra_special_tokens: set[str]):
+def get_lora_config():
+    lora_alpha = 32 #16
+    lora_dropout = 0.05 #0.1
+    lora_rank = 32 #64
+
+    peft_config = LoraConfig(
+        lora_alpha=lora_alpha,
+        lora_dropout=lora_dropout,
+        r=lora_rank,
+        bias="none",
+        task_type="CAUSAL_LM",
+        target_modules=[
+            "query_key_value",
+            "dense",
+            "dense_h_to_4h",
+            "dense_4h_to_h",
+        ]
+    )
+    return peft_config
+
+
+def get_accelerate_model(args, extra_special_tokens: set[str], peft_config=None):
     device_map = "auto"
 
     # if we are in a distributed setting, we need to set the device map and max memory per device
@@ -271,6 +302,10 @@ def get_accelerate_model(args, extra_special_tokens: set[str]):
         trust_remote_code=args.trust_remote_code,
         torch_dtype=torch.bfloat16
     )
+
+    if peft_config is not None:
+        model = get_peft_model(model, peft_config)
+        model.config.use_cache = False
 
     # Tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
@@ -455,7 +490,7 @@ def get_last_checkpoint(checkpoint_dir):
     return None, False  # first training
 
 
-def train(converted_factories: list[ConvertedFactory]):
+def train(converted_factories: list[ConvertedFactory], peft=None):
     hfparser = transformers.HfArgumentParser((
         ModelArguments, DataArguments, TrainingArguments, GenerationArguments
     ))
@@ -474,7 +509,8 @@ def train(converted_factories: list[ConvertedFactory]):
         print('Detected that training was already completed!')
 
     extra_tokens = set([token for factory in converted_factories for token in factory.extra_tokens()])
-    model, tokenizer = get_accelerate_model(args, extra_tokens)
+
+    model, tokenizer = get_accelerate_model(args, extra_tokens, get_lora_config())
 
     model.config.use_cache = False
     print('loaded model')
@@ -497,6 +533,10 @@ def train(converted_factories: list[ConvertedFactory]):
         args=training_args,
         **{k: v for k, v in data_module.items() if k != 'predict_dataset'},
     )
+
+    for name, module in trainer.model.named_modules():
+        if "norm" in name:
+            module = module.to(torch.bfloat16)
 
     # Verifying the datatypes and parameter counts before training.
     print_trainable_parameters(args, model)
