@@ -81,14 +81,14 @@ SkillPrompts = {
         Prompt(
             "{{#list_skills skills}} [ {{name}} ] : {{description}} {{/list_skills}} \n"
             "Classify the input sentence as one of {{#list_skill_names skills}} {{name}} {{/list_skill_names}}.\n"
-            "### Input sentence: {{utterance}}"
+            "### Input sentence: {{utterance}}\n"
             "### Output:"),
     "specs_exampled":
         Prompt(
             "{{#list_skills skills}} [ {{name}} ] : {{description}} {{/list_skills}}\n"
-            "{{#list_examples examples}} ### Input template: {{template}} \n ### Output: [{{owner}}] </s> \n {{/list_examples}}\n"
-            "Classify the input sentence as one of {{#list_skill_names skills}} {{name}} {{/list_skill_names}}."
-            "### Input sentence: {{utterance}}"
+            "{{#list_examples examples}} ### Input template: {{template}}\n### Output:[ {{owner}} ]</s>\n{{/list_examples}}\n"
+            "Classify the input sentence as one of {{#list_skill_names skills}} {{name}} {{/list_skill_names}}.\n"
+            "### Input sentence: {{utterance}}\n"
             "### Output:"),
 }
 
@@ -98,11 +98,11 @@ SlotPrompts = {
         Prompt(
             "From an given input sentence, extract the value for parameter {{name}}: {{description}}.\n"
             "{{#list_values values}} value {{/list_values}}\n"
-            "### Input sentence: {{utterance}}"
+            "### Input sentence: {{utterance}}\n"
             "### Output:"),
     "basic":
         Prompt(
             "From an given input sentence, extract the value for parameter {{name}}: {{description}}.\n"
-            "### Input sentence: {{utterance}}"
+            "### Input sentence: {{utterance}}\n"
             "### Output:"),
 }
