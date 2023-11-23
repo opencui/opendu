@@ -58,7 +58,8 @@ class SkillTrainConverter(TrainConverter):
             exemplars = [Exemplar(owner=node.metadata["owner"], template=node.text) for node in nodes]
             input_dict = {"utterance": utterance, "examples": exemplars, "skills": skills}
             ins.append(self.prompt(input_dict))
-            outs.append(batch["owner"][idx] + " </s>")
+            owner = batch["owner"][idx]
+            outs.append(f"[ {owner} ] +  </s>")
 
 
 #

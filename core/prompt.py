@@ -31,6 +31,9 @@ class ObjectLister:
 
     def __call__(self, this, options, items):
         result = []
+        # If the item list is empty.
+        if len(items) == 0:
+            return result
         result.append(self.block_header)
         for index, thing in enumerate(items):
             if self.item_header:
@@ -53,9 +56,10 @@ class Prompt:
         self.extra_tokens = extra_tokens
         self.helpers = {
             'list_examples': ObjectLister(block_header="\nThe expression templates are:\n", item_header="Expression template"),
-            'list_skills': ObjectLister(block_header="\nThe functions are:\n", item_delim="\n"),
+            'list_skills': ObjectLister(block_header="\nGiven the functions and their descriptions:\n", item_delim="\n"),
+            'list_skill_names': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
             'list_slots': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
-            'list_values': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]")
+            'list_values': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
         }
         self.partials = {}
 
@@ -73,51 +77,32 @@ class Prompt:
 #
 
 SkillPrompts = {
-    "specs_exampled":
-        Prompt("""Given a set of functions defined by their names, descriptions, and example templates for expressing them in natural language text, determine the function implied by the input sentence.
-        
-        {{#list_skills skills}} {{name}} : {{description}} {{/list_skills}}
-        
-        {{#list_examples examples}} ### Input template: {{template}} \n ### Output: {{owner}} </s> \n {{/list_examples}}
-
-### Input sentence: {{utterance}}
-### Output:"""),
-
     "specs_only":
-        Prompt("""Given a set of functions defined by their names, descriptions, and example templates for expressing them in natural language text, determine the function implied by the input sentence.
-        
-        {{#list_skills skills}} {{name}} : {{description}} {{/list_skills}}
-        
-### Input sentence: {{utterance}} 
-### Output:"""),
+        Prompt(
+            "{{#list_skills skills}} [ {{name}} ] : {{description}} {{/list_skills}} \n"
+            "Classify the input sentence as one of {{#list_skill_names skills}} {{name}} {{/list_skill_names}}.\n"
+            "### Input sentence: {{utterance}}"
+            "### Output:"),
+    "specs_exampled":
+        Prompt(
+            "{{#list_skills skills}} [ {{name}} ] : {{description}} {{/list_skills}}\n"
+            "{{#list_examples examples}} ### Input template: {{template}} \n ### Output: [{{owner}}] </s> \n {{/list_examples}}\n"
+            "Classify the input sentence as one of {{#list_skill_names skills}} {{name}} {{/list_skill_names}}."
+            "### Input sentence: {{utterance}}"
+            "### Output:"),
 }
 
 # For the slots of enum type, we used different prompt in order to improve the
-EnumPrompts = {
-    "default":
-        Prompt("""
-        Given an input sentence, extract the value for parameter {{name}}, {{description}}, from the input sentence.
-        
-        Here are possible values for this parameter:
-        {{#list_values values}} value {{/list_values}}
-        
-### Input sentence:
-{{utterance}}
-### Output:"""),
-}
-
 SlotPrompts = {
     "default":
-        Prompt("""From an given input sentence, extract the value for parameter {{name}}: {{description}}.
-        
-        Here are possible values for this parameter:
-        {{#list_values values}} value {{/list_values}}
-        
-### Input sentence: {{utterance}}
-### Output:"""),
+        Prompt(
+            "From an given input sentence, extract the value for parameter {{name}}: {{description}}.\n"
+            "{{#list_values values}} value {{/list_values}}\n"
+            "### Input sentence: {{utterance}}"
+            "### Output:"),
     "basic":
-        Prompt("""From an given input sentence, extract the value for parameter {{name}}: {{description}}.
-        
-### Input sentence: {{utterance}}
-### Output:"""),
+        Prompt(
+            "From an given input sentence, extract the value for parameter {{name}}: {{description}}.\n"
+            "### Input sentence: {{utterance}}"
+            "### Output:"),
 }
