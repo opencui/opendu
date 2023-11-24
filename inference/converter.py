@@ -1,6 +1,7 @@
 import torch
 import transformers
-from transformers import AutoTokenizer
+from peft import PeftConfig, PeftModel
+from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 import json
 from core.config import LugConfig
 from core.annotation import FrameValue, Exemplar, DialogExpectation, CamelToSnake, FrameSchema
@@ -15,24 +16,46 @@ from core.retriever import ContextRetriever
 # 2. use skill and recognizer to build prompt for slot.
 # 3. stitch together the result.
 #
+def generate(peft_model, peft_tokenizer, input_text):
+    peft_encoding = peft_tokenizer(input_text, return_tensors="pt").to("cuda:0")
+    peft_outputs = peft_model.generate(
+        input_ids=peft_encoding.input_ids,
+        generation_config=GenerationConfig(
+            max_new_tokens=256,
+            pad_token_id=peft_tokenizer.eos_token_id,
+            eos_token_id=peft_tokenizer.eos_token_id,
+            attention_mask=peft_encoding.attention_mask,
+            temperature=0.1,
+            top_p=0.1,
+            repetition_penalty=1.2,
+            num_return_sequences=1, ))
+    peft_text_outputs = peft_tokenizer.decode(peft_outputs[0], skip_special_tokens=True)
+    return peft_text_outputs
+
+
 class Converter:
-    def __init__(self, retriever: ContextRetriever, recognizers=None):
+    def __init__(self, retriever: ContextRetriever, recognizers=None, with_arguments=False):
         self.retrieve = retriever
         self.recognizers = recognizers
 
-        model = LugConfig.inference_model
+        skill_config = PeftConfig.from_pretrained(LugConfig.skill_model)
 
-        self.tokenizer = AutoTokenizer.from_pretrained(model)
-        self.pipeline = transformers.pipeline(
-            "text-generation",
-            model=model,
-            torch_dtype=torch.float16,
+        model_path = skill_config.base_model_name_or_path
+
+        base_model = AutoModelForCausalLM.from_pretrained(
+            skill_config.base_model_name_or_path,
+            return_dict=True,
             device_map="auto",
-            return_full_text=False,
+            trust_remote_code=True,
         )
+        print(model_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
 
+        self.skill_model = PeftModel.from_pretrained(base_model, LugConfig.skill_model)
+        self.extract_slot_model = None
         self.skill_prompt = SkillPrompts[LugConfig.skill_prompt]
         self.slot_prompt = SlotPrompts[LugConfig.slot_prompt]
+        self.with_arguments = with_arguments
 
     def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
         to_snake = CamelToSnake()
@@ -48,28 +71,21 @@ class Converter:
         skill_prompt = self.skill_prompt(skill_input_dict)
 
         print(skill_prompt)
-    
-        skill_outputs = self.pipeline(
-            skill_prompt,
-            do_sample=True,
-            top_k=50,
-            top_p=0.9,
-            num_return_sequences=1,
-            repetition_penalty=1.1,
-            max_new_tokens=16,
-            return_full_text=False,
-            eos_token_id=self.tokenizer.eos_token_id,
-            pad_token_id=32000
-        )
 
-        print(f"There are {len(skill_outputs)} generated skills.")
+        skill_outputs = generate(self.skill_model, self.tokenizer, skill_prompt)
+
+        print(f"Generated skills: {skill_outputs}.")
         print(skill_outputs)
         for seq in skill_outputs:
             print(f"Result: {seq['generated_text']}")
 
+        func_name = skill_outputs[0]["generated_text"].strip()
+        if not self.with_arguments:
+            return FrameValue(name=func_name, arguments={})
+
         # We assume the function_name is global unique for now. From UI perspective, I think
         #
-        func_name = skill_outputs[0]["generated_text"].strip()
+
         module = self.retrieve.module.get_module(func_name)
         slots_of_func = module.skills[func_name]
         # Then we need to create the prompt for the parameters.
@@ -102,5 +118,3 @@ class Converter:
 
     def generate(self, struct: FrameValue) -> str:
         raise NotImplemented
-
-
