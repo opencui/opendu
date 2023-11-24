@@ -461,7 +461,7 @@ def get_last_checkpoint(checkpoint_dir):
     return None, False  # first training
 
 
-def train(converted_factories: list[ConvertedFactory], peft_config=None):
+def train(converted_factories: list[ConvertedFactory], tag, peft_config=None):
     hfparser = transformers.HfArgumentParser((
         ModelArguments, DataArguments, TrainingArguments, GenerationArguments
     ))
@@ -475,7 +475,9 @@ def train(converted_factories: list[ConvertedFactory], peft_config=None):
     )
     print(args)
 
-    checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
+    output_dir = f"{args.output_dir}/{tag}"
+
+    checkpoint_dir, completed_training = get_last_checkpoint(output_dir)
     if completed_training:
         print('Detected that training was already completed!')
 
@@ -548,7 +550,7 @@ def train(converted_factories: list[ConvertedFactory], peft_config=None):
         predictions = tokenizer.batch_decode(
             predictions, skip_special_tokens=True, clean_up_tokenization_spaces=True
         )
-        with open(os.path.join(args.output_dir, 'predictions.jsonl'), 'w') as fout:
+        with open(os.path.join(output_dir, 'predictions.jsonl'), 'w') as fout:
             for i, example in enumerate(data_module['predict_dataset']):
                 example['prediction_with_input'] = predictions[i].strip()
                 example['prediction'] = predictions[i].replace(example['input'], '').strip()
@@ -559,7 +561,7 @@ def train(converted_factories: list[ConvertedFactory], peft_config=None):
         all_metrics.update(prediction_metrics)
 
     if args.do_train or args.do_eval or args.do_predict:
-        with open(os.path.join(args.output_dir, "metrics.json"), "w") as fout:
+        with open(os.path.join(output_dir, "metrics.json"), "w") as fout:
             fout.write(json.dumps(all_metrics))
 
 
@@ -600,7 +602,7 @@ if __name__ == "__main__":
     for factory in factories:
         retrievers.append(load_context_retrievers({factory.tag: factory.schema}, f"{output}/index/{factory.tag}"))
 
-    train_skill = False
+    train_skill = True
     train_slot = True
     skill_factories = []
     for index, factory in enumerate(factories):
@@ -611,7 +613,7 @@ if __name__ == "__main__":
 
     # Now we need to create the converters.
     if train_skill:
-        train(skill_factories, get_lora_config())
+        train(skill_factories, "skill", get_lora_config())
 
     slot_factories = []
     for index, factory in enumerate(factories):
@@ -621,4 +623,4 @@ if __name__ == "__main__":
 
     # Now we need to create the converters.
     if train_slot:
-        train(slot_factories, get_lora_config())
+        train(slot_factories, "slot", get_lora_config())
