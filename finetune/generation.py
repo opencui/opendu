@@ -607,15 +607,17 @@ if __name__ == "__main__":
     for factory in factories:
         retrievers.append(load_context_retrievers({factory.tag: factory.schema}, f"{output}/index/{factory.tag}"))
 
-    train_mode = TrainMode.Slot
-    skill_factories = []
+    train_mode = TrainMode.ExtractiveSlot
+    converted_factories = []
     for index, factory in enumerate(factories):
         context_retriever = retrievers[index]
         if train_mode == TrainMode.Skill:
             skill_converter0 = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.skill_prompt])
             skill_converter1 = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.specs_prompt])
+            converted_factories.append(ConvertedFactory(factory, [skill_converter0, skill_converter1]))
         if train_mode == TrainMode.ExtractiveSlot:
-            skill_factories.append(ConvertedFactory(factory, [skill_converter0, skill_converter1]))
+            slot_converter = OneSlotTrainConverter(factory.schema, SlotPrompts[LugConfig.slot_prompt])
+            converted_factories.append(ConvertedFactory(factory, [slot_converter]))
 
     # Now we need to create the converters.
-    train(skill_factories, get_lora_config())
+    train(converted_factories, get_lora_config())
