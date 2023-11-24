@@ -1,5 +1,5 @@
-import torch
-import transformers
+import re
+
 from peft import PeftConfig, PeftModel
 from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 import json
@@ -52,10 +52,19 @@ class Converter:
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
 
         self.skill_model = PeftModel.from_pretrained(base_model, LugConfig.skill_model)
-        self.extract_slot_model = None
+
+        extractive_slot_config = PeftConfig.from_pretrained(LugConfig.extractive_slot_model)
+        if model_path != extractive_slot_config.base_model_name_or_path:
+            raise RuntimeError("Only support same base model")
+
+        self.extractive_slot_model = PeftModel.from_pretrained(base_model, LugConfig.extractive_slot_model)
+
         self.skill_prompt = SkillPrompts[LugConfig.skill_prompt]
         self.slot_prompt = SlotPrompts[LugConfig.slot_prompt]
+
         self.with_arguments = with_arguments
+
+        self.bracket_match = re.compile(r'\[([^]]*)\]')
 
     def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
         to_snake = CamelToSnake()
@@ -74,18 +83,18 @@ class Converter:
 
         skill_outputs = generate(self.skill_model, self.tokenizer, skill_prompt)
 
-        print(f"Generated skills: {skill_outputs}.")
-        print(skill_outputs)
-        for seq in skill_outputs:
-            print(f"Result: {seq['generated_text']}")
+        print(f"Skill model generated: {skill_outputs}.")
 
-        func_name = skill_outputs[0]["generated_text"].strip()
+        func_match = self.bracket_match.search(skill_outputs[len(skill_prompt):])
+        if not func_match:
+            return None
+
+        func_name = func_match.group(1).strip()
+
         if not self.with_arguments:
             return FrameValue(name=func_name, arguments={})
 
         # We assume the function_name is global unique for now. From UI perspective, I think
-        #
-
         module = self.retrieve.module.get_module(func_name)
         slots_of_func = module.skills[func_name]
         # Then we need to create the prompt for the parameters.
@@ -94,21 +103,10 @@ class Converter:
             slot_input_dict = {"utterance": text, "slot": slot}
             slot_prompts.append(self.slot_prompt(slot_input_dict))
 
-        slot_outputs = self.pipeline(
-            slot_prompts,
-            do_sample=True,
-            top_k=50,
-            top_p=0.9,
-            num_return_sequences=1,
-            repetition_penalty=1.1,
-            max_new_tokens=128,
-            return_full_text=False,
-            eos_token_id=self.tokenizer.eos_token_id,
-            pad_token_id=32000
-        )
+        slot_outputs = generate(self.extractive_slot_model, self.tokenizer, slot_prompts)
 
-        print(f"There are {len(slot_outputs)} generated slots.")
-        print(slot_outputs)
+        print(f"Slot model generated: {slot_outputs}")
+
         for seq in slot_outputs:
             print(f"Result: {seq['generated_text']}")
 
