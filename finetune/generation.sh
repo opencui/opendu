@@ -28,7 +28,7 @@ python3 finetune/generation.py \
     --per_device_train_batch_size 16 \
     --max_steps 0 \
     --num_train_epochs 5 \
-    --learning_rate 2e-6 \
+    --learning_rate 2e-5 \
     --adam_beta2 0.999 \
     --max_grad_norm 1.0 \
     --weight_decay 0.0 \

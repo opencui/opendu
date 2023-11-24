@@ -75,11 +75,11 @@ class OneSlotTrainConverter(TrainConverter):
     def format_value(self, key, value=None):
         if self.use_json:
             if value is None:
-                return "{} </s>"
+                return "{}</s>"
             else:
-                return f'{{"{key}": "{value}"}} </s>'
+                return f'{{"{key}": "{value}"}}</s>'
         else:
-            return str(value) + " </s>"
+            return f"{value}</s>"
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # We assume the input is dict version of AnnotatedExemplar
@@ -415,24 +415,6 @@ class DataCollatorForCausalLM(object):
         return data_dict
 
 
-def extract_unnatural_instructions_data(examples, extract_reformulations=False):
-    out = {
-        'input': [],
-        'output': [],
-    }
-    for example_instances in examples['instances']:
-        for instance in example_instances:
-            out['input'].append(instance['instruction_with_input'])
-            out['output'].append(instance['output'])
-    if extract_reformulations:
-        for example_reformulations in examples['reformulations']:
-            if example_reformulations is not None:
-                for instance in example_reformulations:
-                    out['input'].append(instance['instruction_with_input'])
-                    out['output'].append(instance['output'])
-    return out
-
-
 def merge_created_datasets(creators, split: str) -> Dataset:
     datasets = []
     for creator in creators:
@@ -618,13 +600,25 @@ if __name__ == "__main__":
     for factory in factories:
         retrievers.append(load_context_retrievers({factory.tag: factory.schema}, f"{output}/index/{factory.tag}"))
 
-    converted_factories = []
+    train_skill = False
+    train_slot = True
+    skill_factories = []
     for index, factory in enumerate(factories):
         context_retriever = retrievers[index]
         skill_converter0 = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.skill_prompt])
         skill_converter1 = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.specs_prompt])
-        slot_converter = OneSlotTrainConverter(factory.schema, SlotPrompts[LugConfig.slot_prompt])
-        converted_factories.append(ConvertedFactory(factory, [skill_converter0, skill_converter1]))
+        skill_factories.append(ConvertedFactory(factory, [skill_converter0, skill_converter1]))
 
     # Now we need to create the converters.
-    train(converted_factories, get_lora_config())
+    if train_skill:
+        train(skill_factories, get_lora_config())
+
+    slot_factories = []
+    for index, factory in enumerate(factories):
+        context_retriever = retrievers[index]
+        slot_converter = OneSlotTrainConverter(factory.schema, SlotPrompts[LugConfig.slot_prompt])
+        slot_factories.append(ConvertedFactory(factory, [slot_converter]))
+
+    # Now we need to create the converters.
+    if train_slot:
+        train(slot_factories, get_lora_config())

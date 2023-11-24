@@ -79,14 +79,14 @@ class Prompt:
 SkillPrompts = {
     "specs_only":
         Prompt(
-            "{{#list_skills skills}} [ {{name}} ] : {{description}} {{/list_skills}} \n"
+            "{{#list_skills skills}} [ {{name}} ] : {{description}} {{/list_skills}}\n"
             "Classify the input sentence as one of {{#list_skill_names skills}} {{name}} {{/list_skill_names}}.\n"
             "### Input sentence: {{utterance}}\n"
             "### Output:"),
     "specs_exampled":
         Prompt(
             "{{#list_skills skills}} [ {{name}} ] : {{description}} {{/list_skills}}\n"
-            "{{#list_examples examples}} ### Input template: {{template}}\n### Output:[ {{owner}} ]</s>\n{{/list_examples}}\n"
+            "{{#list_examples examples}}### Input template: {{template}}\n### Output:[ {{owner}} ]\n{{/list_examples}}\n"
             "Classify the input sentence as one of {{#list_skill_names skills}} {{name}} {{/list_skill_names}}.\n"
             "### Input sentence: {{utterance}}\n"
             "### Output:"),
