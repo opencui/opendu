@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod, ABCMeta
 import copy
 import json
 import os
+from enum import Enum
 from os.path import exists, join, isdir
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Sequence
@@ -461,7 +462,7 @@ def get_last_checkpoint(checkpoint_dir):
     return None, False  # first training
 
 
-def train(converted_factories: list[ConvertedFactory], tag, peft_config=None):
+def train(converted_factories: list[ConvertedFactory], peft_config=None):
     hfparser = transformers.HfArgumentParser((
         ModelArguments, DataArguments, TrainingArguments, GenerationArguments
     ))
@@ -475,9 +476,7 @@ def train(converted_factories: list[ConvertedFactory], tag, peft_config=None):
     )
     print(args)
 
-    output_dir = f"{args.output_dir}/{tag}"
-
-    checkpoint_dir, completed_training = get_last_checkpoint(output_dir)
+    checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
         print('Detected that training was already completed!')
 
@@ -550,7 +549,7 @@ def train(converted_factories: list[ConvertedFactory], tag, peft_config=None):
         predictions = tokenizer.batch_decode(
             predictions, skip_special_tokens=True, clean_up_tokenization_spaces=True
         )
-        with open(os.path.join(output_dir, 'predictions.jsonl'), 'w') as fout:
+        with open(os.path.join(args.output_dir, 'predictions.jsonl'), 'w') as fout:
             for i, example in enumerate(data_module['predict_dataset']):
                 example['prediction_with_input'] = predictions[i].strip()
                 example['prediction'] = predictions[i].replace(example['input'], '').strip()
@@ -561,8 +560,14 @@ def train(converted_factories: list[ConvertedFactory], tag, peft_config=None):
         all_metrics.update(prediction_metrics)
 
     if args.do_train or args.do_eval or args.do_predict:
-        with open(os.path.join(output_dir, "metrics.json"), "w") as fout:
+        with open(os.path.join(args.output_dir, "metrics.json"), "w") as fout:
             fout.write(json.dumps(all_metrics))
+
+
+class TrainMode(Enum):
+    Skill = 1,
+    ExtractiveSlot = 2,
+    AbstractiveSlot = 3
 
 
 if __name__ == "__main__":
@@ -602,25 +607,15 @@ if __name__ == "__main__":
     for factory in factories:
         retrievers.append(load_context_retrievers({factory.tag: factory.schema}, f"{output}/index/{factory.tag}"))
 
-    train_skill = True
-    train_slot = True
+    train_mode = TrainMode.Slot
     skill_factories = []
     for index, factory in enumerate(factories):
         context_retriever = retrievers[index]
-        skill_converter0 = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.skill_prompt])
-        skill_converter1 = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.specs_prompt])
-        skill_factories.append(ConvertedFactory(factory, [skill_converter0, skill_converter1]))
+        if train_mode == TrainMode.Skill:
+            skill_converter0 = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.skill_prompt])
+            skill_converter1 = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.specs_prompt])
+        if train_mode == TrainMode.ExtractiveSlot:
+            skill_factories.append(ConvertedFactory(factory, [skill_converter0, skill_converter1]))
 
     # Now we need to create the converters.
-    if train_skill:
-        train(skill_factories, "skill", get_lora_config())
-
-    slot_factories = []
-    for index, factory in enumerate(factories):
-        context_retriever = retrievers[index]
-        slot_converter = OneSlotTrainConverter(factory.schema, SlotPrompts[LugConfig.slot_prompt])
-        slot_factories.append(ConvertedFactory(factory, [slot_converter]))
-
-    # Now we need to create the converters.
-    if train_slot:
-        train(slot_factories, "slot", get_lora_config())
+    train(skill_factories, get_lora_config())
