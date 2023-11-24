@@ -50,7 +50,7 @@ if __name__ == "__main__":
             result = converter.understand(item["utterance"])
             target = item['owner']
             arguments = item["arguments"]
-            if result.name == target:
+            if result and result.name == target:
                 counts[1] += 1
             else:
                 print(f"{result} != {target}\n")
