@@ -1,7 +1,5 @@
 import re
 
-import torch
-import transformers
 from peft import PeftConfig, PeftModel
 from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 import json
