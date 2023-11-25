@@ -1,4 +1,5 @@
 import re
+from abc import abstractmethod, ABC
 
 from peft import PeftConfig, PeftModel
 from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
@@ -9,35 +10,32 @@ from core.prompt import SkillPrompts, SlotPrompts
 from core.retriever import ContextRetriever
 
 
+# In case you are curious about decoding: https://huggingface.co/blog/how-to-generate
+# We are not interested in the variance, so we do not do sampling not beam search.
 #
 # Here are the work that client have to do.
 # For now, assume single module. We can worry about multiple module down the road.
 # 1. use description and exemplars to find built the prompt for the skill prompt.
 # 2. use skill and recognizer to build prompt for slot.
 # 3. stitch together the result.
-#
-def generate(peft_model, peft_tokenizer, input_text):
-    peft_encoding = peft_tokenizer(input_text, return_tensors="pt").to("cuda:0")
-    peft_outputs = peft_model.generate(
-        input_ids=peft_encoding.input_ids,
-        generation_config=GenerationConfig(
-            max_new_tokens=256,
-            pad_token_id=peft_tokenizer.eos_token_id,
-            eos_token_id=peft_tokenizer.eos_token_id,
-            attention_mask=peft_encoding.attention_mask,
-            temperature=0.1,
-            top_p=0.1,
-            repetition_penalty=1.2,
-            num_return_sequences=1, ))
-    peft_text_outputs = peft_tokenizer.decode(peft_outputs[0], skip_special_tokens=True)
-    return peft_text_outputs
+# Generator is responsible for low level things, we will have two different implementation
+# local/s-lora. Converter is built on top of generator.
+class Generator(ABC):
+    @abstractmethod
+    def for_skill(self, input_text):
+        pass
+
+    @abstractmethod
+    def for_extractive_slot(self, input_texts):
+        pass
+
+    @abstractmethod
+    def for_abstractive_slot(self, input_text):
+        pass
 
 
-class Converter:
-    def __init__(self, retriever: ContextRetriever, recognizers=None, with_arguments=False):
-        self.retrieve = retriever
-        self.recognizers = recognizers
-
+class LocalGenerator(Generator, ABC):
+    def __init__(self):
         skill_config = PeftConfig.from_pretrained(LugConfig.skill_model)
 
         model_path = skill_config.base_model_name_or_path
@@ -49,7 +47,10 @@ class Converter:
             trust_remote_code=True,
         )
         print(model_path)
+
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.tokenizer.padding_side = "left" # padding side = left for a decoder-only architecture
 
         self.skill_model = PeftModel.from_pretrained(base_model, LugConfig.skill_model)
 
@@ -57,13 +58,50 @@ class Converter:
         if model_path != extractive_slot_config.base_model_name_or_path:
             raise RuntimeError("Only support same base model")
 
+        # For now, we load the base model multiple times.
+        base_model = AutoModelForCausalLM.from_pretrained(
+            skill_config.base_model_name_or_path,
+            return_dict=True,
+            device_map="auto",
+            trust_remote_code=True,
+        )
         self.extractive_slot_model = PeftModel.from_pretrained(base_model, LugConfig.extractive_slot_model)
 
+    @classmethod
+    def generate(cls, peft_model, peft_tokenizer, input_text):
+        peft_encoding = peft_tokenizer(input_text, padding=True, return_tensors="pt").to("cuda:0")
+        peft_outputs = peft_model.generate(
+            input_ids=peft_encoding.input_ids,
+            generation_config=GenerationConfig(
+                max_new_tokens=256,
+                pad_token_id=peft_tokenizer.eos_token_id,
+                eos_token_id=peft_tokenizer.eos_token_id,
+                attention_mask=peft_encoding.attention_mask,
+                repetition_penalty=1.2,
+                num_return_sequences=1, ))
+        peft_text_outputs = peft_tokenizer.decode(peft_outputs[0], skip_special_tokens=True)
+        return peft_text_outputs
+
+    def for_skill(self, input_text):
+        outputs = LocalGenerator.generate(self.skill_model, self.tokenizer, input_text)
+        return outputs[len(input_text):]
+
+    def for_abstractive_slot(self, input_text):
+        pass
+
+    def for_extractive_slot(self, input_texts):
+        outputs = LocalGenerator.generate(self.skill_model, self.tokenizer, input_texts)
+        return [output[len(input_texts):] for output in outputs]
+
+
+class Converter:
+    def __init__(self, retriever: ContextRetriever, recognizers=None, generator=LocalGenerator(), with_arguments=True):
+        self.retrieve = retriever
+        self.recognizers = recognizers
+        self.generator = generator
         self.skill_prompt = SkillPrompts[LugConfig.skill_prompt]
         self.slot_prompt = SlotPrompts[LugConfig.slot_prompt]
-
         self.with_arguments = with_arguments
-
         self.bracket_match = re.compile(r'\[([^]]*)\]')
 
     def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
@@ -79,13 +117,9 @@ class Converter:
         skill_input_dict = {"utterance": text.strip(), "examples": exemplars, "skills": skills}
         skill_prompt = self.skill_prompt(skill_input_dict)
 
-        print(skill_prompt)
+        skill_outputs = self.generator.for_skill(skill_prompt)
 
-        skill_outputs = generate(self.skill_model, self.tokenizer, skill_prompt)
-
-        print(f"Skill model generated: {skill_outputs}.")
-
-        func_match = self.bracket_match.search(skill_outputs[len(skill_prompt):])
+        func_match = self.bracket_match.search(skill_outputs)
         if not func_match:
             return None
 
@@ -96,14 +130,18 @@ class Converter:
 
         # We assume the function_name is global unique for now. From UI perspective, I think
         module = self.retrieve.module.get_module(func_name)
-        slots_of_func = module.skills[func_name]
+        slot_labels_of_func = module.skills[func_name]["slots"]
+        print(slot_labels_of_func)
         # Then we need to create the prompt for the parameters.
+        print(module.slots)
         slot_prompts = []
-        for slot in slots_of_func:
-            slot_input_dict = {"utterance": text, "slot": slot}
+        for slot in slot_labels_of_func:
+            slot_input_dict = {"utterance": text}
+            slot_input_dict.update(module.slots[slot])
             slot_prompts.append(self.slot_prompt(slot_input_dict))
 
-        slot_outputs = generate(self.extractive_slot_model, self.tokenizer, slot_prompts)
+        print(slot_prompts)
+        slot_outputs = self.generator.for_extractive_slot(slot_prompts)
 
         print(f"Slot model generated: {slot_outputs}")
 

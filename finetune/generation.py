@@ -71,16 +71,10 @@ class OneSlotTrainConverter(TrainConverter):
         self.prompt = slot_prompt
         self.module = module
         self.include_negative = True
-        self.use_json = True
 
-    def format_value(self, key, value=None):
-        if self.use_json:
-            if value is None:
-                return "{}</s>"
-            else:
-                return f'{{"{key}": "{value}"}}</s>'
-        else:
-            return f"{value}</s>"
+    @staticmethod
+    def format_value(key, value=None):
+        return f"{json.dumps(value)}</s>"
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # We assume the input is dict version of AnnotatedExemplar
@@ -91,7 +85,8 @@ class OneSlotTrainConverter(TrainConverter):
             for slot_label in self.module.skills[owner]["slots"]:
                 slot = self.module.slots[slot_label]
                 slot_name = slot["name"]
-                input_dict = {"utterance": utterance, "name": slot["name"], "description": slot["description"]}
+                input_dict = {"utterance": utterance}
+                input_dict.update(slot)
                 if slot_name in arguments:
                     ins.append(self.prompt(input_dict))
                     value = arguments[slot_name]

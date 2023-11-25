@@ -1,5 +1,6 @@
 import logging
 
+from core.annotation import CamelToSnake
 from inference.converter import Converter
 from core.embedding import EmbeddingStore
 from core.retriever import load_context_retrievers, build_nodes_from_skills, create_index
@@ -26,9 +27,10 @@ if __name__ == "__main__":
     # Save the things to disk first.
     desc_nodes = []
     exemplar_nodes = []
+    tag = "test"
     for factory in factories:
         build_nodes_from_skills(factory.tag, factory.schema.skills, desc_nodes)
-        build_nodes_from_dataset(factory.tag, factory.build("train"), exemplar_nodes)
+        build_nodes_from_dataset(factory.tag, factory.build(tag), exemplar_nodes)
 
     # For inference, we only create one index.
     create_index(f"{output}/index", "exemplar", exemplar_nodes, EmbeddingStore.for_exemplar())
@@ -37,21 +39,23 @@ if __name__ == "__main__":
     schemas = {factory.tag: factory.schema for factory in factories}
 
     print(schemas)
-
+    to_snake = CamelToSnake()
     context_retriever = load_context_retrievers(schemas, f"{output}/index")
 
     converter = Converter(context_retriever)
 
     counts = [0, 0]
     for factory in factories:
-        dataset = factory.build("test")
+        dataset = factory.build(tag)
         marker = "### Output:"
         for item in dataset:
             result = converter.understand(item["utterance"])
-            target = item['owner']
+            # We only support snake function name.
+            target = to_snake.encode(item['owner'])
             arguments = item["arguments"]
             if result and result.name == target:
                 counts[1] += 1
             else:
-                print(f"{result} != {target}\n")
+                counts[0] += 1
+                print(f"{result} != {target} for {item['utterance']} \n")
     print(counts)
