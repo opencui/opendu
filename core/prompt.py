@@ -96,13 +96,11 @@ SkillPrompts = {
 SlotPrompts = {
     "default":
         Prompt(
-            "From an given input sentence, extract the value for parameter {{name}}: {{description}}.\n"
             "{{#list_values values}} value {{/list_values}}\n"
-            "### Input sentence: {{utterance}}\n"
+            "Extract the value for parameter {{name}}: {{description}} from input sentence: {{utterance}}\n"
             "### Output:"),
     "basic":
         Prompt(
-            "From an given input sentence, extract the value for parameter {{name}}: {{description}}.\n"
-            "### Input sentence: {{utterance}}\n"
+            "Extract the value for parameter {{name}}: {{description}} from input sentence: {{utterance}}\n"
             "### Output:"),
 }

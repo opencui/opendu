@@ -22,5 +22,5 @@ class LugConfig:
     slot_prompt = "basic"
     inference_model="./output/2T/checkpoint-4010/"
     skill_model = "./models/skill/checkpoint-4010/"
-    extractive_slot_model = ""
+    extractive_slot_model = "models/slot/checkpoint-9070/"
     abstractive_slot_model = ""
