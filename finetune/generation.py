@@ -614,5 +614,16 @@ if __name__ == "__main__":
             slot_converter = OneSlotTrainConverter(factory.schema, SlotPrompts[LugConfig.slot_prompt])
             converted_factories.append(ConvertedFactory(factory, [slot_converter]))
 
+    for factory in converted_factories:
+        ds = factory.build("test")
+        count = [0, 0]
+        for item in ds:
+            if item["output"] == "null</s>":
+                count[0] += 1
+            else:
+                count[1] += 1
+            print(item)
+        print(count)
+
     # Now we need to create the converters.
-    train(converted_factories, get_lora_config())
+    #train(converted_factories, get_lora_config())

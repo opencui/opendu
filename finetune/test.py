@@ -1,3 +1,4 @@
+import json
 import logging
 
 from core.annotation import CamelToSnake
@@ -49,12 +50,15 @@ if __name__ == "__main__":
         dataset = factory.build(tag)
         marker = "### Output:"
         for item in dataset:
-            result = converter.understand(item["utterance"])
             # We only support snake function name.
             target = to_snake.encode(item['owner'])
             arguments = item["arguments"]
+            print(item["utterance"])
+            result = converter.understand(item["utterance"])
+
             if result and result.name == target:
                 counts[1] += 1
+                print(f"pred: {result.arguments} target: {arguments}")
             else:
                 counts[0] += 1
                 print(f"{result} != {target} for {item['utterance']} \n")
