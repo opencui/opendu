@@ -68,7 +68,7 @@ class LocalGenerator(Generator, ABC):
         self.extractive_slot_model = PeftModel.from_pretrained(base_model, LugConfig.extractive_slot_model)
 
     @classmethod
-    def generate(cls, peft_model, peft_tokenizer, input_text):
+    def generate(cls, peft_model, peft_tokenizer, input_text, batch):
         peft_encoding = peft_tokenizer(input_text, padding=True, return_tensors="pt").to("cuda:0")
         peft_outputs = peft_model.generate(
             input_ids=peft_encoding.input_ids,
@@ -79,19 +79,21 @@ class LocalGenerator(Generator, ABC):
                 attention_mask=peft_encoding.attention_mask,
                 repetition_penalty=1.2,
                 num_return_sequences=1, ))
-        peft_text_outputs = peft_tokenizer.decode(peft_outputs[0], skip_special_tokens=True)
-        return peft_text_outputs
+        if batch:
+            return peft_tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
+        else:
+            return peft_tokenizer.decode(peft_outputs[0], skip_special_tokens=True)
 
     def for_skill(self, input_text):
-        outputs = LocalGenerator.generate(self.skill_model, self.tokenizer, input_text)
+        outputs = LocalGenerator.generate(self.skill_model, self.tokenizer, input_text, False)
         return outputs[len(input_text):]
 
     def for_abstractive_slot(self, input_text):
         pass
 
     def for_extractive_slot(self, input_texts):
-        outputs = LocalGenerator.generate(self.skill_model, self.tokenizer, input_texts)
-        return [output[len(input_texts):] for output in outputs]
+        outputs = LocalGenerator.generate(self.skill_model, self.tokenizer, input_texts, True)
+        return [output[len(input_texts[index]):] for index, output in enumerate(outputs)]
 
 
 class Converter:
@@ -103,6 +105,13 @@ class Converter:
         self.slot_prompt = SlotPrompts[LugConfig.slot_prompt]
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r'\[([^]]*)\]')
+
+    @staticmethod
+    def parse_json_from_string(text):
+        try:
+            return json.loads(text)
+        except ValueError as e:
+            return None
 
     def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
         to_snake = CamelToSnake()
@@ -131,25 +140,18 @@ class Converter:
         # We assume the function_name is global unique for now. From UI perspective, I think
         module = self.retrieve.module.get_module(func_name)
         slot_labels_of_func = module.skills[func_name]["slots"]
-        print(slot_labels_of_func)
         # Then we need to create the prompt for the parameters.
-        print(module.slots)
         slot_prompts = []
         for slot in slot_labels_of_func:
             slot_input_dict = {"utterance": text}
             slot_input_dict.update(module.slots[slot])
             slot_prompts.append(self.slot_prompt(slot_input_dict))
 
-        print(slot_prompts)
         slot_outputs = self.generator.for_extractive_slot(slot_prompts)
 
-        print(f"Slot model generated: {slot_outputs}")
-
-        for seq in slot_outputs:
-            print(f"Result: {seq['generated_text']}")
-
-        slot_jsons = [json.load(seq['generated_text']) for seq in slot_outputs]
-        slot_values = {key: value for slot_obj in slot_jsons for key, value in slot_obj.items()}
+        slot_values = [self.parse_json_from_string(seq) for seq in slot_outputs]
+        slot_values = dict(zip(slot_labels_of_func, slot_values))
+        slot_values = {key: value for key, value in slot_values.items() if value is not None}
         return FrameValue(name=func_name, arguments=slot_values)
 
     def generate(self, struct: FrameValue) -> str:
