@@ -39,7 +39,6 @@ if __name__ == "__main__":
 
     schemas = {factory.tag: factory.schema for factory in factories}
 
-    print(schemas)
     to_snake = CamelToSnake()
     context_retriever = load_context_retrievers(schemas, f"{output}/index")
 

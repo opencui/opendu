@@ -40,7 +40,7 @@ class LocalGenerator(Generator, ABC):
 
         model_path = skill_config.base_model_name_or_path
 
-        base_model = AutoModelForCausalLM.from_pretrained(
+        skill_base_model = AutoModelForCausalLM.from_pretrained(
             skill_config.base_model_name_or_path,
             return_dict=True,
             device_map="auto",
@@ -50,22 +50,22 @@ class LocalGenerator(Generator, ABC):
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.tokenizer.padding_side = "left" # padding side = left for a decoder-only architecture
+        self.tokenizer.padding_side = "left"
 
-        self.skill_model = PeftModel.from_pretrained(base_model, LugConfig.skill_model)
+        self.skill_model = PeftModel.from_pretrained(skill_base_model, LugConfig.skill_model)
 
         extractive_slot_config = PeftConfig.from_pretrained(LugConfig.extractive_slot_model)
         if model_path != extractive_slot_config.base_model_name_or_path:
             raise RuntimeError("Only support same base model")
 
         # For now, we load the base model multiple times.
-        base_model = AutoModelForCausalLM.from_pretrained(
+        slot_base_model = AutoModelForCausalLM.from_pretrained(
             skill_config.base_model_name_or_path,
             return_dict=True,
             device_map="auto",
             trust_remote_code=True,
         )
-        self.extractive_slot_model = PeftModel.from_pretrained(base_model, LugConfig.extractive_slot_model)
+        self.extractive_slot_model = PeftModel.from_pretrained(slot_base_model, LugConfig.extractive_slot_model)
 
     @classmethod
     def generate(cls, peft_model, peft_tokenizer, input_text, batch):
@@ -73,7 +73,7 @@ class LocalGenerator(Generator, ABC):
         peft_outputs = peft_model.generate(
             input_ids=peft_encoding.input_ids,
             generation_config=GenerationConfig(
-                max_new_tokens=256,
+                max_new_tokens=128,
                 pad_token_id=peft_tokenizer.eos_token_id,
                 eos_token_id=peft_tokenizer.eos_token_id,
                 attention_mask=peft_encoding.attention_mask,
@@ -92,7 +92,7 @@ class LocalGenerator(Generator, ABC):
         pass
 
     def for_extractive_slot(self, input_texts):
-        outputs = LocalGenerator.generate(self.skill_model, self.tokenizer, input_texts, True)
+        outputs = LocalGenerator.generate(self.extractive_slot_model, self.tokenizer, input_texts, True)
         return [output[len(input_texts[index]):] for index, output in enumerate(outputs)]
 
 
