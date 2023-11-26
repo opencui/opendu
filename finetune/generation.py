@@ -295,7 +295,7 @@ def get_accelerate_model(args, extra_special_tokens: set[str], peft_config=None)
     # Tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
         args.model_name_or_path,
-        padding_side="right",
+        padding_side="left",
         use_fast=True,  # Fast tokenizer giving issues.
         trust_remote_code=args.trust_remote_code,
     )
