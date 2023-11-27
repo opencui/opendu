@@ -13,15 +13,23 @@
     "MakeReservation": [
         {
             "template": "I want to book a table."
-        }, {
+        },
+        {
+            "template": "I want to reserve a table."
+        },
+        {
             "template": "Can I make a table reservation for <time>?"
-        }, {
+        },
+        {
             "template": "Can you help me reserve a table for <number>?"
-        }, {
+        },
+        {
             "template": "Can I reserve a table for <number> at <time>?"
-        }, {
+        },
+        {
             "template": "Can I get a table for <number> on <date>?"
-        }, {
+        },
+        {
             "template": "Is there a table available for <number> at <time> on <date>?"
         }
     ],

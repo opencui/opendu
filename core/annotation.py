@@ -122,6 +122,13 @@ class ExemplarStore(TypedDict):
     exemplars: List[Exemplar]
 
 
+def get_value(item, key, value=None):
+    try:
+        return item[key]
+    except:
+        return value
+
+
 #
 # This is need to convert the camel casing to snake casing.
 #
@@ -151,9 +158,9 @@ def build_nodes_from_exemplar_store(module: str, store: ExemplarStore, nodes: Li
         for exemplar in exemplars:
             nodes.append(
                 TextNode(
-                    text=exemplar.template,
-                    id_=str(hash(exemplar.template))[1:13],
-                    metadata={"owner": label, "context": exemplar.context, "module": module},
+                    text=exemplar["template"],
+                    id_=str(hash(exemplar["template"]))[1:13],
+                    metadata={"owner": label, "context": get_value(exemplar, "context", ""), "module": module},
                     excluded_embed_metadata_keys=["owner", "context", "module"]))
 
 

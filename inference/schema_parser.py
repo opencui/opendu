@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import json
-from core.annotation import ExemplarStore, SlotRecognizers, FrameSchema, SlotSchema, Schema
+from core.annotation import ExemplarStore, SlotRecognizers, FrameSchema, SlotSchema, Schema, get_value
 
 
 #
@@ -32,22 +32,14 @@ def from_openai(functions) -> Schema:
     return Schema(skill_infos, slot_infos)
 
 
-def get_value(item, key, value=None):
-    try:
-        return item[key]
-    except:
-        return value
-
-
 def from_openapi(specs) -> Schema:
     skills = {}
     slots = {}
     print(specs)
     for path, v in specs["paths"].items():
         for op, _v in v.items():
-            label = f"{op}:{path}"
-            f = {}
             name = _v["operationId"]
+
             description = get_value(_v, "description")
             if description is None:
                 description = get_value(_v, "summary")
@@ -60,7 +52,7 @@ def from_openapi(specs) -> Schema:
                 if slot_name not in slots:
                     slots[slot_name] = SlotSchema(slot_name, slot_description)
                 parameters.append(slot_name)
-            skills[label] = FrameSchema(name, description, parameters)
+            skills[name] = FrameSchema(name, description, parameters).to_dict()
     return Schema(skills, slots)
 
 
