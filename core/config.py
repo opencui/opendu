@@ -21,6 +21,6 @@ class LugConfig:
     skill_prompt = "specs_exampled"
     slot_prompt = "basic"
     inference_model="./output/2T/checkpoint-4010/"
-    skill_model = "./models/skill/checkpoint-4010/"
-    extractive_slot_model = "models/slot/checkpoint-9070/"
+    skill_model = "OpenCUI/sgd-skill-tinyllama-2t-1.0"
+    extractive_slot_model = "OpenCUI/sgd-slot-tinyllama-2t-1.0"
     abstractive_slot_model = ""

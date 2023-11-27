@@ -10,8 +10,8 @@ from core.annotation import ExemplarStore, SlotRecognizers, FrameSchema, SlotSch
 # We assume that in each domain, the slot name are unique, and skill name are unique.
 #
 def from_openai(functions) -> Schema:
-    skillInfos = {}
-    slotInfos = {}
+    skill_infos = {}
+    slot_infos = {}
     for func in functions:
         f_name = func["name"]
         f_description = func["description"]
@@ -22,31 +22,41 @@ def from_openai(functions) -> Schema:
 
         for key, slot in parameters["properties"].items():
             f_slots.append(key)
-            if key in slotInfos:
+            if key in slot_infos:
                 continue
             else:
                 slot_name = key
                 slot_description = slot["description"]
-                slotInfos[slot_name] = SlotSchema(slot_name, slot_description)
-        skillInfos[f_name] = FrameSchema(f_name, f_description, f_slots)
-    return Schema(skillInfos, slotInfos)
+                slot_infos[slot_name] = SlotSchema(slot_name, slot_description)
+        skill_infos[f_name] = FrameSchema(f_name, f_description, f_slots)
+    return Schema(skill_infos, slot_infos)
+
+
+def get_value(item, key, value=None):
+    try:
+        return item[key]
+    except:
+        return value
 
 
 def from_openapi(specs) -> Schema:
     skills = {}
     slots = {}
-    for path, v in specs.get_skill("paths", {}).items():
+    print(specs)
+    for path, v in specs["paths"].items():
         for op, _v in v.items():
-            label = f"{path}.{op}"
+            label = f"{op}:{path}"
             f = {}
-            name = _v.get_skill("operationId", "")
-            description = _v.get_skill("description", "")
-            if description == "":
-                description = _v.get_skill("summary", "")
+            name = _v["operationId"]
+            description = get_value(_v, "description")
+            if description is None:
+                description = get_value(_v, "summary")
+            assert name is not None and description is not None
+
             parameters = []
-            for _p in _v.get_skill("parameters", []):
-                slot_name = _p.get_skill("name", "")
-                slot_description = _p.get_skill("description", "")
+            for _p in get_value(_v, "parameters", []):
+                slot_name = get_value(_p, "name")
+                slot_description = get_value(_p, "description")
                 if slot_name not in slots:
                     slots[slot_name] = SlotSchema(slot_name, slot_description)
                 parameters.append(slot_name)
@@ -75,14 +85,18 @@ def load_specs_and_recognizers_from_directory(input_path):
 
 
 if __name__ == "__main__":
-    schema = from_openai(json.load(open("./inference/examples/schemas.json")))
+    schema = from_openai(json.load(open("./examples/schemas.json")))
     print(schema)
     print("\n")
 
-    exemplars = ExemplarStore(**json.load(open("./inference/examples/exemplars.json")))
+    schema = from_openapi(json.load(open("./examples/openapi_petstore_v3.1.json")))
+    print(schema)
+    print("\n")
+
+    exemplars = ExemplarStore(**json.load(open("./examples/exemplars.json")))
     print(exemplars)
     print("\n")
 
-    recognizer = SlotRecognizers(**json.load(open("./inference/examples/recognizers.json")))
+    recognizer = SlotRecognizers(**json.load(open("./examples/recognizers.json")))
     print(recognizer)
     print("\n")
