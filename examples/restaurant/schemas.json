@@ -6,9 +6,23 @@
       },
     "paths": {
         "/FoodOrdering": {
-            "get": {
+            "Post": {
                 "summary": "Food ordering",
                 "operationId": "FoodOrdering",
+                "parameters": [
+                    {
+                        "name": "dishes",
+                        "in": "query",
+                        "description": "Dish list",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/components/schemas/Dish"
+                            }
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful response"
@@ -16,10 +30,39 @@
                 }
             }
         },
-        "/MakeReservation": {
-            "get": {
+        "/TableReservation": {
+            "Post": {
                 "summary": "Make reservation",
                 "operationId": "MakeReservation",
+                "parameters": [
+                    {
+                        "name": "number",
+                        "in": "query",
+                        "description": "Number of people",
+                        "required": true,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "description": "Date",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "time",
+                        "in": "query",
+                        "description": "Time",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful response"
@@ -29,8 +72,19 @@
         },
         "/ShowHours": {
             "get": {
-                "summary": "Show hours",
+                "summary": "Display business hours",
                 "operationId": "ShowHours",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "description": "Date",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful response"
@@ -41,19 +95,6 @@
     },
     "components":{
         "schemas": {
-            "FoodOrdering": {
-                "type": "object",
-                "description":  "Food ordering",
-                "properties": {
-                    "dishes": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/Dish"
-                        }
-                    }
-                }
-                
-            },
             "Dish": {
                 "type": "object",
                 "description":  "A dish ordered by the user",
@@ -87,37 +128,6 @@
                         "description": "Dish quantity"
                     }
                 }
-            },
-            "MakeReservation": {
-                "type": "object",
-                "description":  "Make reservation",
-                "required": ["number", "date", "time"],
-                "properties": {
-                    "number":  {
-                        "type": "number",
-                        "description":  "Number of people"
-                    },
-                    "date": {   
-                        "type": "string",
-                        "description": "Date"
-                    },
-                    "time": {   
-                        "type": "string",
-                        "description": "Time"
-                    }
-                }
-                
-            },
-            "ShowHours": {
-                "type": "object",
-                "description":  "Display business hours",
-                "properties": {
-                    "date": {   
-                        "type": "string",
-                        "description": "Date"
-                    }
-                }
-                
             }
         }
     }    
