@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import json
-from core.annotation import ExemplarStore, SlotRecognizers, FrameSchema, SlotSchema, Schema, get_value
+from core.annotation import ExemplarStore, SlotRecognizers, FrameSchema, SlotSchema, Schema, get_value, CamelToSnake
 
 
 #
@@ -12,8 +12,10 @@ from core.annotation import ExemplarStore, SlotRecognizers, FrameSchema, SlotSch
 def from_openai(functions) -> Schema:
     skill_infos = {}
     slot_infos = {}
+    to_snake = CamelToSnake()
     for func in functions:
-        f_name = func["name"]
+        o_name = func["name"]
+        f_name = to_snake.encode(o_name)
         f_description = func["description"]
         f_slots = []
         parameters = func["parameters"]
@@ -29,17 +31,18 @@ def from_openai(functions) -> Schema:
                 slot_description = slot["description"]
                 slot_infos[slot_name] = SlotSchema(slot_name, slot_description)
         skill_infos[f_name] = FrameSchema(f_name, f_description, f_slots)
-    return Schema(skill_infos, slot_infos)
+    return Schema(skill_infos, slot_infos, to_snake.backward)
 
 
 def from_openapi(specs) -> Schema:
     skills = {}
     slots = {}
+    to_snake = CamelToSnake()
     print(specs)
     for path, v in specs["paths"].items():
         for op, _v in v.items():
-            name = _v["operationId"]
-
+            orig_name = _v["operationId"]
+            name = to_snake.encode(orig_name)
             description = get_value(_v, "description")
             if description is None:
                 description = get_value(_v, "summary")
@@ -53,7 +56,7 @@ def from_openapi(specs) -> Schema:
                     slots[slot_name] = SlotSchema(slot_name, slot_description)
                 parameters.append(slot_name)
             skills[name] = FrameSchema(name, description, parameters).to_dict()
-    return Schema(skills, slots)
+    return Schema(skills, slots, to_snake.backward)
 
 
 # This assumes that in a directory we have schemas.json in openai/openapi format, and then exemplars

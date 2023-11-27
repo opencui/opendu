@@ -77,6 +77,7 @@ class LocalGenerator(Generator, ABC):
                 pad_token_id=peft_tokenizer.eos_token_id,
                 eos_token_id=peft_tokenizer.eos_token_id,
                 attention_mask=peft_encoding.attention_mask,
+                do_sample=False,
                 repetition_penalty=1.2,
                 num_return_sequences=1, ))
         if batch:
@@ -134,6 +135,10 @@ class Converter:
 
         func_name = func_match.group(1).strip()
 
+        if not self.retrieve.module.has_module(func_name):
+            print(f"{func_name} is not recognized.")
+            return None
+
         if not self.with_arguments:
             return FrameValue(name=func_name, arguments={})
 
@@ -152,7 +157,12 @@ class Converter:
         slot_values = [self.parse_json_from_string(seq) for seq in slot_outputs]
         slot_values = dict(zip(slot_labels_of_func, slot_values))
         slot_values = {key: value for key, value in slot_values.items() if value is not None}
-        return FrameValue(name=func_name, arguments=slot_values)
+
+        final_name = func_name
+        if module.orig_names is not None:
+            final_name = module.orig_names[func_name]
+
+        return FrameValue(name=final_name, arguments=slot_values)
 
     def generate(self, struct: FrameValue) -> str:
         raise NotImplemented
