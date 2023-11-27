@@ -41,6 +41,12 @@ class FrameId:
 class Schema:
     skills: Dict[str, FrameSchema]
     slots: Dict[str, SlotSchema]
+    backward: Dict[str, str]    # We use snake case inside, so we need this to get back the original name.
+
+    def __init__(self, skills, slots, backward=None):
+        self.skills = skills
+        self.slots = slots
+        self.backward = backward
 
 
 @dataclass_json
@@ -53,10 +59,15 @@ class SchemaStore:
         self.func_to_module = {skill["name"]: schema for schema in schemas.values() for skill in schema.skills.values()}
 
     def get_skill(self, frame_id: FrameId):
-        return self.schemas[frame_id.module].skills[frame_id.name]
+        module = self.schemas[frame_id.module]
+        fname = frame_id.name
+        return module.skills[fname]
 
     def get_module(self, func_name):
         return self.func_to_module[func_name]
+
+    def has_module(self, func_name):
+        return func_name in self.func_to_module
 
 
 @dataclass_json
@@ -154,8 +165,10 @@ class CamelToSnake:
 
 
 def build_nodes_from_exemplar_store(module: str, store: ExemplarStore, nodes: List[TextNode]):
+    to_snake = CamelToSnake()
     for label, exemplars in store.items():
         for exemplar in exemplars:
+            label = to_snake.encode(label)
             nodes.append(
                 TextNode(
                     text=exemplar["template"],

@@ -28,7 +28,7 @@ def get_exemplars(nodes) -> list[Exemplar]:
 if __name__ == "__main__":
     argv = sys.argv[1:]
     input_paths = ''
-    output_path = './index/'
+    output_path = '../index/'
     opts, args = getopt.getopt(argv, "hi:o:")
     cmd = False
     for opt, arg in opts:
