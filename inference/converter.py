@@ -5,7 +5,7 @@ from peft import PeftConfig, PeftModel
 from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 import json
 from core.config import LugConfig
-from core.annotation import FrameValue, Exemplar, DialogExpectation, CamelToSnake, FrameSchema
+from core.annotation import FrameValue, Exemplar, DialogExpectation, CamelToSnake
 from core.prompt import SkillPrompts, SlotPrompts
 from core.retriever import ContextRetriever
 
