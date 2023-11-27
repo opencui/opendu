@@ -7,6 +7,8 @@
     "paths": {
         "/FoodOrdering": {
             "get": {
+                "summary": "Food ordering",
+                "operationId": "FoodOrdering",
                 "responses": {
                     "200": {
                         "description": "Successful response"
@@ -16,6 +18,8 @@
         },
         "/MakeReservation": {
             "get": {
+                "summary": "Make reservation",
+                "operationId": "MakeReservation",
                 "responses": {
                     "200": {
                         "description": "Successful response"
@@ -25,6 +29,8 @@
         },
         "/ShowHours": {
             "get": {
+                "summary": "Show hours",
+                "operationId": "ShowHours",
                 "responses": {
                     "200": {
                         "description": "Successful response"
