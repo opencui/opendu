@@ -7,7 +7,8 @@ import json
 from core.config import LugConfig
 from core.annotation import FrameValue, Exemplar, DialogExpectation, CamelToSnake
 from core.prompt import SkillPrompts, SlotPrompts
-from core.retriever import ContextRetriever
+from core.retriever import ContextRetriever, load_context_retrievers
+from inference.schema_parser import load_all_from_directory
 
 
 # In case you are curious about decoding: https://huggingface.co/blog/how-to-generate
@@ -127,16 +128,18 @@ class Converter:
         skill_input_dict = {"utterance": text.strip(), "examples": exemplars, "skills": skills}
         skill_prompt = self.skill_prompt(skill_input_dict)
 
-        if LugConfig.converter_debug:
-            print(skill_prompt)
-
         skill_outputs = self.generator.for_skill(skill_prompt)
 
-        func_match = self.bracket_match.search(skill_outputs)
-        if not func_match:
-            return None
+        if LugConfig.converter_debug:
+            print(skill_prompt)
+            print(skill_outputs)
 
-        func_name = func_match.group(1).strip()
+        func_name = self.parse_json_from_string(skill_outputs)
+        if LugConfig.converter_debug:
+            print(f"{skill_outputs} is converted to {func_name}, valid: {self.retrieve.module.has_module(func_name)}")
+
+        if not func_name:
+            return None
 
         if not self.retrieve.module.has_module(func_name):
             print(f"{func_name} is not recognized.")
@@ -162,10 +165,19 @@ class Converter:
         slot_values = {key: value for key, value in slot_values.items() if value is not None}
 
         final_name = func_name
-        if module.orig_names is not None:
-            final_name = module.orig_names[func_name]
+        if module.backward is not None:
+            final_name = module.backward[func_name]
 
         return FrameValue(name=final_name, arguments=slot_values)
 
     def generate(self, struct: FrameValue) -> str:
         raise NotImplemented
+
+
+def load_converter(module_path, index_path):
+    # First load the schema info.
+    module_schema, examplers, recognizers = load_all_from_directory(module_path)
+    # Then load the retriever by pointing to index directory
+    context_retriever = load_context_retrievers({module_path: module_schema}, index_path)
+    # Finally build the converter.
+    return Converter(context_retriever)

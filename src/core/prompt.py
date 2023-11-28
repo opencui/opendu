@@ -56,13 +56,11 @@ class Prompt:
         self.extra_tokens = extra_tokens
         self.helpers = {
             'list_examples':
-                ObjectLister(
-                    block_header="\nAnd the expression templates for these functions:\n",
-                    item_header="Expression template"),
+                ObjectLister(),
             'list_skills':
                 ObjectLister(block_header="\nGiven the definition for the following functions:\n", item_delim="\n"),
             'list_skill_names':
-                ObjectLister(item_header=None, item_delim=",", block_tail=" and null."),
+                ObjectLister(item_header=None, item_delim=",", block_tail=" or null"),
             'list_slots':
                 ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
             'list_values':
@@ -92,11 +90,18 @@ SkillPrompts = {
             'The prediction is:'),
     "specs_exampled":
         Prompt(
-            '{{#list_skills skills}} {{name}}: {{description}} {{/list_skills}}\n'
+            '{{#list_skills skills}} "{{name}}": {{description}} {{/list_skills}}\n'
             '{{#list_examples examples}}Input template: {{template}} means {{owner}}\n{{/list_examples}}\n'
             'Classify the input sentence: "{{utterance}}" as one of '
             '{{#list_skill_names skills}} "{{name}}" {{/list_skill_names}}.\n'
             'The prediction is:'),
+    "full":
+        Prompt(
+            '{{#list_skills skills}} "{{name}}": {{description}} {{/list_skills}}\n'
+            'Classify the input as one of '
+            '{{#list_skill_names skills}} "{{name}}" {{/list_skill_names}}.\n\n'
+            '{{#list_examples examples}}Input: "{{template}}"\nOutput:"{{owner}}"\n{{/list_examples}}\n'
+            'Input: "{{utterance}}"\nOutput:'),
 }
 
 # For the slots of enum type, we used different prompt in order to improve the
