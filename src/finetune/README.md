@@ -56,7 +56,7 @@ correct value for hyperparameters.
 
 The script you can use to determine the hyperparameter for retrieval:
 ```bash
-python3 funetune/finetune/find_k_for_prompt.py 
+python3 funetune/find_k_for_prompt.py 
 ```
 Assuming that you have schema-guided dialogue dataset at <dir for lug>/../dstc8-schema-guided-dialogue/
 

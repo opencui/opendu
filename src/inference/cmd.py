@@ -2,7 +2,7 @@ import getopt
 import sys
 
 from core.retriever import load_context_retrievers
-from inference.converter import Converter
+from inference.converter import Converter, load_converter
 from inference.schema_parser import load_all_from_directory
 
 if __name__ == "__main__":
@@ -18,12 +18,8 @@ if __name__ == "__main__":
         elif opt == "-s":
             module_path = arg
 
-    module_schema, examplers, recognizers = load_all_from_directory(module_path)
-
-    print(module_schema)
-
-    context_retriever = load_context_retrievers({module_path: module_schema}, index_path)
-    converter = Converter(context_retriever)
+    # First load the schema info.
+    converter = load_converter(module_path, index_path)
 
     text = ''
 
@@ -31,5 +27,6 @@ if __name__ == "__main__":
     while text != 'quit':
         # Ask the user for a name.
         text = input("Input your sentence, or enter 'quit': ")
+        # This is how you convert the natural language text into structured representation.
         result = converter.understand(text)
         print(result)

@@ -1,6 +1,6 @@
-# LUG 
+# OpenLUG 
 
-LUG, short for Language Understanding and Generation, is an open source, retrieval augmented generation
+OpenLUG, short for Language Understanding and Generation, is an open source, retrieval augmented generation
 (RAG) based function calling API implementation. It is designed both for dialog understanding in chatbot development
 and tool-using agent development. Because of this, the terminology can be a bit confusing, we will use function
 interchangeably with skill, intent, and parameter with slot. 
@@ -126,7 +126,9 @@ schema.
 #### 2. Build index.
 More concretely, we assume that there will be three files in one directory: schema.json, exemplars.json and recognizers.json, 
 one for each kind of signals defined above. 
+
 ```bash
+export PYTHONPATH="$PYTHONPATH:."
 python3 inference/index.py -i <directory_you_read_specs_from> -o <directory_you_write_index_to>
 ```
 By default, the code will not check the format for the function speciation, but it will check the format for the second
@@ -135,11 +137,16 @@ and third input and raise exception when there is issues.
 #### 3. Initialize converter and convert.
 
 ```python
-from inference.converter
-import Converter
+from inference.converter import Converter
 
 converter = load_converter(directory_you_read_specs_from, directory_you_write_index_to)
 converter.understand(utterance)
+```
+
+You can also test it in the command line:
+```bash
+export PYTHONPATH="$PYTHONPATH:."
+python3 inference/cmd.py -s <directory_you_read_specs_from> -i <directory_you_write_index_to>
 ```
 
 ## Acknowledgements
