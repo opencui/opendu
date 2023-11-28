@@ -47,10 +47,9 @@ class TrainConverter(ABC):
 
 # This is needed to determine the intention, intended function or skill
 class SkillTrainConverter(TrainConverter):
-    def __init__(self, retriever: ContextRetriever, func_prompt: Prompt, abstain=False):
+    def __init__(self, retriever: ContextRetriever, func_prompt: Prompt):
         self.prompt = func_prompt
         self.context_retrieve = retriever
-        self.abstain = abstain
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # Working on the batched dataset, with first dimension is column then index.
@@ -69,7 +68,14 @@ class SkillTrainConverter(TrainConverter):
                 neg_owner = random.choice(neg_owners)
                 rm_neg_exemplars = [exemplar for exemplar in exemplars if exemplar.owner != neg_owner]
                 rm_neg_skills = [skill for skill in skills if skill["name"] != neg_owner]
-                if len(rm_neg_exemplars) != 0 or not self.abstain:
+
+                # Without exemplars.
+                input_dict = {"utterance": utterance, "examples": [], "skills": rm_neg_skills}
+                ins.append(self.prompt(input_dict))
+                outs.append(f"{json.dumps(owner)}</s>")
+
+                # With exemplars.
+                if len(rm_neg_exemplars) != 0:
                     input_dict = {"utterance": utterance, "examples": rm_neg_exemplars, "skills": rm_neg_skills}
                     ins.append(self.prompt(input_dict))
                     outs.append(f"{json.dumps(owner)}</s>")
@@ -77,7 +83,12 @@ class SkillTrainConverter(TrainConverter):
             # Try to filter the pos skills and exemplars
             rm_pos_exemplars = [exemplar for exemplar in exemplars if exemplar.owner != owner]
             rm_pos_skills = [skill for skill in skills if skill["name"] != owner]
-            if len(rm_pos_exemplars) != 0 or not self.abstain:
+
+            input_dict = {"utterance": utterance, "examples": [], "skills": rm_pos_skills}
+            ins.append(self.prompt(input_dict))
+            outs.append(f"{json.dumps(None)}</s>")
+
+            if len(rm_pos_exemplars) != 0:
                 input_dict = {"utterance": utterance, "examples": rm_pos_exemplars, "skills": rm_pos_skills}
                 ins.append(self.prompt(input_dict))
                 outs.append(f"{json.dumps(None)}</s>")
@@ -628,9 +639,8 @@ if __name__ == "__main__":
     for index, factory in enumerate(factories):
         context_retriever = retrievers[index]
         if train_mode == TrainMode.Skill:
-            skill_converter0 = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.skill_full_prompt], True)
-            skill_converter1 = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.skill_spec_prompt])
-            converted_factories.append(ConvertedFactory(factory, [skill_converter0, skill_converter1]))
+            skill_converter0 = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.skill_full_prompt])
+            converted_factories.append(ConvertedFactory(factory, [skill_converter0]))
         if train_mode == TrainMode.ExtractiveSlot:
             slot_converter = OneSlotTrainConverter(factory.schema, SlotPrompts[LugConfig.extractive_slot_prompt])
             converted_factories.append(ConvertedFactory(factory, [slot_converter]))

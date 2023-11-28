@@ -18,7 +18,7 @@ class LugConfig:
     exemplar_retrieve_topk = 16
     llm_device = "cpu"
     skill_spec_prompt = "specs_only"
-    skill_full_prompt = "specs_exampled"
+    skill_full_prompt = "full"
     extractive_slot_prompt = "basic"
     inference_model="./output/2T/checkpoint-4010/"
     skill_model = "OpenCUI/sgd-skill-tinyllama-2t-1.0"
