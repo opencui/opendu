@@ -1,6 +1,6 @@
 # OpenLUG 
 
-OpenLUG, short for Language Understanding and Generation, is an open source, retrieval augmented generation
+OpenLUG, Open sourced Language Understanding and Generation, is a retrieval augmented generation
 (RAG) based function calling API implementation. It is designed both for dialog understanding in chatbot development
 and tool-using agent development. Because of this, the terminology can be a bit confusing, we will use function
 interchangeably with skill, intent, and parameter with slot. 
