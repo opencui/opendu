@@ -55,11 +55,18 @@ class Prompt:
         self.template = Compiler().compile(source)
         self.extra_tokens = extra_tokens
         self.helpers = {
-            'list_examples': ObjectLister(block_header="\nThe expression templates are:\n", item_header="Expression template"),
-            'list_skills': ObjectLister(block_header="\nGiven the functions and their descriptions:\n", item_delim="\n"),
-            'list_skill_names': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
-            'list_slots': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
-            'list_values': ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
+            'list_examples':
+                ObjectLister(
+                    block_header="\nAnd the expression templates for these functions:\n",
+                    item_header="Expression template"),
+            'list_skills':
+                ObjectLister(block_header="\nGiven the definition for the following functions:\n", item_delim="\n"),
+            'list_skill_names':
+                ObjectLister(item_header=None, item_delim=",", block_tail=" and null."),
+            'list_slots':
+                ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
+            'list_values':
+                ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
         }
         self.partials = {}
 
@@ -79,17 +86,17 @@ class Prompt:
 SkillPrompts = {
     "specs_only":
         Prompt(
-            "{{#list_skills skills}} [ {{name}} ] : {{description}} {{/list_skills}}\n"
-            "Classify the input sentence as one of {{#list_skill_names skills}} {{name}} {{/list_skill_names}}.\n"
-            "### Input sentence: {{utterance}}\n"
-            "### Output:"),
+            '{{#list_skills skills}} {{name}}: {{description}} {{/list_skills}}\n'
+            'Classify the input sentence: "{{utterance}}" as one of '
+            '{{#list_skill_names skills}} "{{name}}" {{/list_skill_names}}.\n'
+            'The prediction is:'),
     "specs_exampled":
         Prompt(
-            "{{#list_skills skills}} [ {{name}} ] : {{description}} {{/list_skills}}\n"
-            "{{#list_examples examples}}### Input template: {{template}}\n### Output:[ {{owner}} ]\n{{/list_examples}}\n"
-            "Classify the input sentence as one of {{#list_skill_names skills}} {{name}} {{/list_skill_names}}.\n"
-            "### Input sentence: {{utterance}}\n"
-            "### Output:"),
+            '{{#list_skills skills}} {{name}}: {{description}} {{/list_skills}}\n'
+            '{{#list_examples examples}}Input template: {{template}} means {{owner}}\n{{/list_examples}}\n'
+            'Classify the input sentence: "{{utterance}}" as one of '
+            '{{#list_skill_names skills}} "{{name}}" {{/list_skill_names}}.\n'
+            'The prediction is:'),
 }
 
 # For the slots of enum type, we used different prompt in order to improve the

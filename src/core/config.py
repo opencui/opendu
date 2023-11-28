@@ -24,3 +24,5 @@ class LugConfig:
     skill_model = "OpenCUI/sgd-skill-tinyllama-2t-1.0"
     extractive_slot_model = "OpenCUI/sgd-slot-tinyllama-2t-1.0"
     abstractive_slot_model = ""
+
+    converter_debug = True

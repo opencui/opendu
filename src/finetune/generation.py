@@ -5,6 +5,7 @@ import os
 from enum import Enum
 from os.path import exists, join, isdir
 from dataclasses import dataclass, field
+import random
 from typing import Optional, Dict, Sequence
 import numpy as np
 import logging
@@ -46,21 +47,40 @@ class TrainConverter(ABC):
 
 # This is needed to determine the intention, intended function or skill
 class SkillTrainConverter(TrainConverter):
-    def __init__(self, retriever: ContextRetriever, func_prompt: Prompt):
+    def __init__(self, retriever: ContextRetriever, func_prompt: Prompt, abstain=False):
         self.prompt = func_prompt
         self.context_retrieve = retriever
+        self.abstain = abstain
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
+        # Working on the batched dataset, with first dimension is column then index.
         for idx, utterance in enumerate(batch["utterance"]):
             # We assume the input is dict version of AnnotatedExemplar
             skills, nodes = self.context_retrieve(utterance)
             # remove the identical exemplar
             nodes = [node for node in nodes if node.id_ != batch['id'][idx]]
             exemplars = [Exemplar(owner=node.metadata["owner"], template=node.text) for node in nodes]
-            input_dict = {"utterance": utterance, "examples": exemplars, "skills": skills}
-            ins.append(self.prompt(input_dict))
             owner = batch["owner"][idx]
-            outs.append(f"[ {owner} ]</s>")
+
+            neg_owners = [node.metadata["owner"] for node in nodes if node.metadata["owner"] != owner]
+
+            # randomly filter one neg skills and exemplars
+            if len(neg_owners) != 0:
+                neg_owner = random.choice(neg_owners)
+                rm_neg_exemplars = [exemplar for exemplar in exemplars if exemplar.owner != neg_owner]
+                rm_neg_skills = [skill for skill in skills if skill["name"] != neg_owner]
+                if len(rm_neg_exemplars) != 0 or not self.abstain:
+                    input_dict = {"utterance": utterance, "examples": rm_neg_exemplars, "skills": rm_neg_skills}
+                    ins.append(self.prompt(input_dict))
+                    outs.append(f"{json.dumps(owner)}</s>")
+
+            # Try to filter the pos skills and exemplars
+            rm_pos_exemplars = [exemplar for exemplar in exemplars if exemplar.owner != owner]
+            rm_pos_skills = [skill for skill in skills if skill["name"] != owner]
+            if len(rm_pos_exemplars) != 0 or not self.abstain:
+                input_dict = {"utterance": utterance, "examples": rm_pos_exemplars, "skills": rm_pos_skills}
+                ins.append(self.prompt(input_dict))
+                outs.append(f"{json.dumps(None)}</s>")
 
 
 #
@@ -586,7 +606,7 @@ if __name__ == "__main__":
         print(f"There are {count} instances in {factory.tag}")
 
     # For now, just use the fix path.
-    output = "./output"
+    output = "../output"
 
     # Save the things to disk first, for training we keep each module separate.
     # Down the road, we might
@@ -602,7 +622,8 @@ if __name__ == "__main__":
     for factory in factories:
         retrievers.append(load_context_retrievers({factory.tag: factory.schema}, f"{output}/index/{factory.tag}"))
 
-    train_mode = TrainMode.ExtractiveSlot
+    #train_mode = TrainMode.ExtractiveSlot
+    train_mode = TrainMode.Skill
     converted_factories = []
     for index, factory in enumerate(factories):
         context_retriever = retrievers[index]
@@ -614,16 +635,18 @@ if __name__ == "__main__":
             slot_converter = OneSlotTrainConverter(factory.schema, SlotPrompts[LugConfig.slot_prompt])
             converted_factories.append(ConvertedFactory(factory, [slot_converter]))
 
-    for factory in converted_factories:
-        ds = factory.build("test")
-        count = [0, 0]
-        for item in ds:
-            if item["output"] == "null</s>":
-                count[0] += 1
-            else:
-                count[1] += 1
-            print(item)
-        print(count)
+    debug = False
+    if debug:
+        for factory in converted_factories:
+            ds = factory.build("train")
+            count = [0, 0]
+            for item in ds:
+                if item["output"] == "null</s>":
+                    count[0] += 1
+                else:
+                    count[1] += 1
+                print(item["output"])
+            print(count)
 
     # Now we need to create the converters.
-    #train(converted_factories, get_lora_config())
+    train(converted_factories, get_lora_config())
