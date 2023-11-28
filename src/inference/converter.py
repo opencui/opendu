@@ -127,6 +127,9 @@ class Converter:
         skill_input_dict = {"utterance": text.strip(), "examples": exemplars, "skills": skills}
         skill_prompt = self.skill_prompt(skill_input_dict)
 
+        if LugConfig.converter_debug:
+            print(skill_prompt)
+
         skill_outputs = self.generator.for_skill(skill_prompt)
 
         func_match = self.bracket_match.search(skill_outputs)

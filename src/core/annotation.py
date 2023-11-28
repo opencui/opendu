@@ -3,7 +3,6 @@ import re
 from dataclasses import field
 from typing import Union, List, TypedDict, Optional, Dict, Literal
 from dataclasses import dataclass
-
 from dataclasses_json import dataclass_json
 from llama_index.schema import TextNode
 from typing_extensions import Annotated
@@ -60,8 +59,7 @@ class SchemaStore:
 
     def get_skill(self, frame_id: FrameId):
         module = self.schemas[frame_id.module]
-        fname = frame_id.name
-        return module.skills[fname]
+        return module.skills[frame_id.name]
 
     def get_module(self, func_name):
         return self.func_to_module[func_name]
