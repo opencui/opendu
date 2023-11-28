@@ -102,8 +102,8 @@ class Converter:
         self.retrieve = retriever
         self.recognizers = recognizers
         self.generator = generator
-        self.skill_prompt = SkillPrompts[LugConfig.skill_prompt]
-        self.slot_prompt = SlotPrompts[LugConfig.slot_prompt]
+        self.skill_prompt = SkillPrompts[LugConfig.skill_full_prompt]
+        self.slot_prompt = SlotPrompts[LugConfig.extractive_slot_prompt]
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r'\[([^]]*)\]')
 
