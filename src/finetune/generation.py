@@ -46,6 +46,7 @@ class TrainConverter(ABC):
 
 
 # This is needed to determine the intention, intended function or skill
+# https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/
 class SkillTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever, func_prompt: Prompt):
         self.prompt = func_prompt
@@ -70,12 +71,14 @@ class SkillTrainConverter(TrainConverter):
                 rm_neg_skills = [skill for skill in skills if skill["name"] != neg_owner]
 
                 # Without exemplars.
+                random.shuffle(rm_neg_skills)
                 input_dict = {"utterance": utterance, "examples": [], "skills": rm_neg_skills}
                 ins.append(self.prompt(input_dict))
                 outs.append(f"{json.dumps(owner)}</s>")
 
                 # With exemplars.
                 if len(rm_neg_exemplars) != 0:
+                    random.shuffle(rm_neg_exemplars)
                     input_dict = {"utterance": utterance, "examples": rm_neg_exemplars, "skills": rm_neg_skills}
                     ins.append(self.prompt(input_dict))
                     outs.append(f"{json.dumps(owner)}</s>")
@@ -84,11 +87,13 @@ class SkillTrainConverter(TrainConverter):
             rm_pos_exemplars = [exemplar for exemplar in exemplars if exemplar.owner != owner]
             rm_pos_skills = [skill for skill in skills if skill["name"] != owner]
 
+            random.shuffle(rm_pos_skills)
             input_dict = {"utterance": utterance, "examples": [], "skills": rm_pos_skills}
             ins.append(self.prompt(input_dict))
             outs.append(f"{json.dumps(None)}</s>")
 
             if len(rm_pos_exemplars) != 0:
+                random.shuffle(rm_pos_exemplars)
                 input_dict = {"utterance": utterance, "examples": rm_pos_exemplars, "skills": rm_pos_skills}
                 ins.append(self.prompt(input_dict))
                 outs.append(f"{json.dumps(None)}</s>")
