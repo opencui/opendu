@@ -626,8 +626,7 @@ if __name__ == "__main__":
 
     # Save the things to disk first, for training we keep each module separate.
     # Down the road, we might
-    build_index = True
-    if build_index:
+    if LugConfig.finetune_build_index:
         for factory in factories:
             build_desc_index(factory.tag, factory.schema, f"{output}/index/{factory.tag}",
                              EmbeddingStore.for_description())
@@ -644,13 +643,13 @@ if __name__ == "__main__":
     for index, factory in enumerate(factories):
         context_retriever = retrievers[index]
         if train_mode == TrainMode.Skill:
-            skill_converter0 = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.skill_full_prompt])
-            converted_factories.append(ConvertedFactory(factory, [skill_converter0]))
+            skill_converter = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.skill_full_prompt])
+            converted_factories.append(ConvertedFactory(factory, [skill_converter]))
         if train_mode == TrainMode.ExtractiveSlot:
             slot_converter = OneSlotTrainConverter(factory.schema, SlotPrompts[LugConfig.extractive_slot_prompt])
             converted_factories.append(ConvertedFactory(factory, [slot_converter]))
 
-    dataset_debug = False
+    dataset_debug = LugConfig.finetune_dataset_debug
     if dataset_debug:
         for factory in converted_factories:
             ds = factory.build("train")
