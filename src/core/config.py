@@ -14,13 +14,15 @@ class LugConfig:
 
     finetune_build_index = False
     finetune_dataset_debug = True
+    classification_prompt = True
 
     desc_retriever_mode = "embedding"
     exemplar_retriever_mode = "OR"
     desc_retrieve_topk = 4
     exemplar_retrieve_topk = 16
     llm_device = "cpu"
-    skill_full_prompt = "short"
+    skill_spec_prompt = "mspec"
+    skill_full_prompt = "mfull"
     extractive_slot_prompt = "basic"
     inference_model="./output/2T/checkpoint-4010/"
     skill_model = "OpenCUI/sgd-skill-tinyllama-2t-1.0"

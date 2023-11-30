@@ -60,7 +60,7 @@ class Prompt:
             'list_skills':
                 ObjectLister(block_header="\nGiven the definition for the following functions:\n", item_delim="\n"),
             'list_skill_names':
-                ObjectLister(block_header="\nClassify the input into the following functions:\n", item_delim="\n"),
+                ObjectLister(block_header="Classify the input into the following functions:\n", item_delim="\n"),
             'list_slots':
                 ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
             'list_values':
@@ -109,6 +109,34 @@ SkillPrompts = {
             '{{#list_examples examples}}Input: "{{template}}"\nOutput:"{{owner}}"\n{{/list_examples}}\n'
             'Input: "{{utterance}}"\nOutput:'),
 }
+
+ClassificationPrompts = {
+    "mspec":
+        Prompt(
+            'Determine whether the input means {{skill.name}}: {{skill.description}}, output only true or false.\n'
+            'Input "{{utterance}} means {{skill.name}}? Output: '
+        ),
+    "mfull":
+        Prompt(
+            'Determine whether the input means {{skill.name}}: {{skill.description}}, output only true or false.\n'
+            'Input "{{exemplar.template}} means {{skill.name}}? Output: {{decision}}\n'
+            'Input "{{utterance}} means {{skill.name}}? Output: '
+        ),
+    "ispec":
+        Prompt(
+            'Determine whether the input implies {{skill.name}}: {{skill.description}}, true or false.\n'
+            'Input "{{utterance}} implies {{skill.name}}? Decision: '
+        ),
+    "ifull":
+        Prompt(
+            'Determine whether the input implies {{skill.name}}: {{skill.description}}, true or false.\n'
+            'Input "{{exemplar.template}} implies {{skill.name}}? Decision: {{decision}}\n'
+            'Input "{{utterance}} implies {{skill.name}}? Decision: '
+        )
+}
+
+
+
 
 # For the slots of enum type, we used different prompt in order to improve the
 SlotPrompts = {
