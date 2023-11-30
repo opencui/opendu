@@ -49,7 +49,7 @@ class TrainConverter(ABC):
 # https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/
 class SkillTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever):
-        self.prompt = SkillPrompts[LugConfig.skill_full_prompt]
+        self.full_prompt = SkillPrompts[LugConfig.skill_full_prompt]
         self.context_retrieve = retriever
         self.count = {}
         self.limits = 128
@@ -77,14 +77,14 @@ class SkillTrainConverter(TrainConverter):
                 # Without exemplars.
                 random.shuffle(rm_neg_skills)
                 input_dict = {"utterance": utterance, "examples": [], "skills": rm_neg_skills}
-                ins.append(self.prompt(input_dict))
+                ins.append(self.full_prompt(input_dict))
                 outs.append(f"{json.dumps(owner)}</s>")
 
                 # With exemplars.
                 if len(rm_neg_exemplars) != 0:
                     random.shuffle(rm_neg_exemplars)
                     input_dict = {"utterance": utterance, "examples": rm_neg_exemplars, "skills": rm_neg_skills}
-                    ins.append(self.prompt(input_dict))
+                    ins.append(self.full_prompt(input_dict))
                     outs.append(f"{json.dumps(owner)}</s>")
 
             # Try to filter the pos skills and exemplars
@@ -93,19 +93,19 @@ class SkillTrainConverter(TrainConverter):
 
             random.shuffle(rm_pos_skills)
             input_dict = {"utterance": utterance, "examples": [], "skills": rm_pos_skills}
-            ins.append(self.prompt(input_dict))
+            ins.append(self.full_prompt(input_dict))
             outs.append(f"{json.dumps(None)}</s>")
 
             if len(rm_pos_exemplars) != 0:
                 random.shuffle(rm_pos_exemplars)
                 input_dict = {"utterance": utterance, "examples": rm_pos_exemplars, "skills": rm_pos_skills}
-                ins.append(self.prompt(input_dict))
+                ins.append(self.full_prompt(input_dict))
                 outs.append(f"{json.dumps(None)}</s>")
 
 
 class OneSkillTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever):
-        self.prompt = ClassificationPrompts[LugConfig.skill_full_prompt]
+        self.full_prompt = ClassificationPrompts[LugConfig.skill_full_prompt]
         self.context_retrieve = retriever
         self.count = {}
         self.limits = 128
@@ -125,7 +125,7 @@ class OneSkillTrainConverter(TrainConverter):
             # for the skills
             for skill in skills:
                 input_dict = {"utterance": utterance,  "examples": [], "skill": skill}
-                ins.append(self.prompt(input_dict))
+                ins.append(self.full_prompt(input_dict))
                 outs.append(f"{json.dumps(owner == skill['name'])}</s>")
                 skill_map[skill["name"]] = skill
 
@@ -136,7 +136,7 @@ class OneSkillTrainConverter(TrainConverter):
                     for exemplar in exemplars]
 
                 input_dict = {"utterance": utterance, "examples": exemplar_dicts, "skill": skill_map[target]}
-                ins.append(self.prompt(input_dict))
+                ins.append(self.full_prompt(input_dict))
                 outs.append(f"{json.dumps(owner == target)}</s>")
 
 
