@@ -156,6 +156,15 @@ class BSkillConverter(SkillConverter):
             skill["name"] = to_snake.encode(skill["name"])
 
         # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
+        for o_exemplar in exemplars:
+            target = o_exemplar.owner
+            exemplar_dicts = [
+                {"template": exemplar.template, "target": target, "decision": target == exemplar.owner}
+                for exemplar in exemplars]
+
+            input_dict = {"utterance": utterance, "examples": exemplar_dicts, "skill": skill_map[target]}
+            ins.append(self.prompt(input_dict))
+            outs.append(f"{json.dumps(owner == target)}</s>")
 
 
 
