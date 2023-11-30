@@ -6,7 +6,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 import json
 from core.config import LugConfig
 from core.annotation import FrameValue, Exemplar, DialogExpectation, CamelToSnake
-from core.prompt import SkillPrompts, SlotPrompts
+from core.prompt import SkillPrompts, SlotPrompts, ClassificationPrompts
 from core.retriever import ContextRetriever, load_context_retrievers
 from inference.schema_parser import load_all_from_directory
 
@@ -23,7 +23,7 @@ from inference.schema_parser import load_all_from_directory
 # local/s-lora. Converter is built on top of generator.
 class Generator(ABC):
     @abstractmethod
-    def for_skill(self, input_text):
+    def for_skill(self, input_texts):
         pass
 
     @abstractmethod
@@ -31,7 +31,7 @@ class Generator(ABC):
         pass
 
     @abstractmethod
-    def for_abstractive_slot(self, input_text):
+    def for_abstractive_slot(self, input_texts):
         pass
 
 
@@ -69,7 +69,7 @@ class LocalGenerator(Generator, ABC):
         self.extractive_slot_model = PeftModel.from_pretrained(slot_base_model, LugConfig.extractive_slot_model)
 
     @classmethod
-    def generate(cls, peft_model, peft_tokenizer, input_text, batch):
+    def generate(cls, peft_model, peft_tokenizer, input_text):
         peft_encoding = peft_tokenizer(input_text, padding=True, return_tensors="pt").to("cuda:0")
         peft_outputs = peft_model.generate(
             input_ids=peft_encoding.input_ids,
@@ -81,41 +81,39 @@ class LocalGenerator(Generator, ABC):
                 do_sample=False,
                 repetition_penalty=1.2,
                 num_return_sequences=1, ))
-        if batch:
-            return peft_tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
-        else:
-            return peft_tokenizer.decode(peft_outputs[0], skip_special_tokens=True)
 
-    def for_skill(self, input_text):
-        outputs = LocalGenerator.generate(self.skill_model, self.tokenizer, input_text, False)
-        return outputs[len(input_text):]
+        return peft_tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
 
-    def for_abstractive_slot(self, input_text):
+    def for_skill(self, input_texts):
+        outputs = LocalGenerator.generate(self.skill_model, self.tokenizer, input_texts)
+        return [output[len(input_texts[index]):] for index, output in enumerate(outputs)]
+
+    def for_abstractive_slot(self, input_texts):
         pass
 
     def for_extractive_slot(self, input_texts):
-        outputs = LocalGenerator.generate(self.extractive_slot_model, self.tokenizer, input_texts, True)
+        outputs = LocalGenerator.generate(self.extractive_slot_model, self.tokenizer, input_texts)
         return [output[len(input_texts[index]):] for index, output in enumerate(outputs)]
 
 
-class Converter:
-    def __init__(self, retriever: ContextRetriever, recognizers=None, generator=LocalGenerator(), with_arguments=True):
+class SkillConverter(ABC):
+    @abstractmethod
+    def get_skill(self, text):
+        pass
+
+def parse_json_from_string(text):
+    try:
+        return json.loads(text)
+    except ValueError as e:
+        return None
+
+
+class MSkillConverter(SkillConverter):
+    def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
         self.retrieve = retriever
-        self.recognizers = recognizers
         self.generator = generator
         self.skill_prompt = SkillPrompts[LugConfig.skill_full_prompt]
-        self.slot_prompt = SlotPrompts[LugConfig.extractive_slot_prompt]
-        self.with_arguments = with_arguments
-        self.bracket_match = re.compile(r'\[([^]]*)\]')
-
-    @staticmethod
-    def parse_json_from_string(text):
-        try:
-            return json.loads(text)
-        except ValueError as e:
-            return None
-
-    def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
+    def get_skill(self, text):
         to_snake = CamelToSnake()
 
         # first we figure out what is the
@@ -126,7 +124,7 @@ class Converter:
             skill["name"] = to_snake.encode(skill["name"])
 
         skill_input_dict = {"utterance": text.strip(), "examples": exemplars, "skills": skills}
-        skill_prompt = self.skill_prompt(skill_input_dict)
+        skill_prompt = self.skill_prompt([skill_input_dict])
 
         skill_outputs = self.generator.for_skill(skill_prompt)
 
@@ -134,12 +132,66 @@ class Converter:
             print(skill_prompt)
             print(skill_outputs)
 
-        func_name = self.parse_json_from_string(skill_outputs)
+        func_name = parse_json_from_string(skill_outputs[0])
         if LugConfig.converter_debug:
             print(f"{skill_outputs} is converted to {func_name}, valid: {self.retrieve.module.has_module(func_name)}")
 
-        if not func_name:
-            return None
+        return func_name
+
+
+class BSkillConverter(SkillConverter):
+    def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
+        self.retrieve = retriever
+        self.generator = generator
+        self.skill_prompt = ClassificationPrompts[LugConfig.skill_full_prompt]
+
+    def get_skill(self, text):
+        to_snake = CamelToSnake()
+
+        # first we figure out what is the
+        skills, nodes = self.retrieve(text)
+        exemplars = [Exemplar(owner=to_snake.encode(node.metadata["owner"]), template=node.text) for node in nodes]
+
+        for skill in skills:
+            skill["name"] = to_snake.encode(skill["name"])
+
+        # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
+
+
+
+        skill_input_dict = {"utterance": text.strip(), "examples": exemplars, "skills": skills}
+        skill_prompt = self.skill_prompt([skill_input_dict])
+
+        skill_outputs = self.generator.for_skill(skill_prompt)
+
+        if LugConfig.converter_debug:
+            print(skill_prompt)
+            print(skill_outputs)
+
+        func_name = self.parse_json_from_string(skill_outputs[0])
+        if LugConfig.converter_debug:
+            print(f"{skill_outputs} is converted to {func_name}, valid: {self.retrieve.module.has_module(func_name)}")
+
+        return func_name
+
+
+class Converter:
+    def __init__(self, retriever: ContextRetriever, recognizers=None, generator=LocalGenerator(), with_arguments=True):
+        self.retrieve = retriever
+        self.recognizers = recognizers
+        self.generator = generator
+        self.slot_prompt = SlotPrompts[LugConfig.extractive_slot_prompt]
+        self.with_arguments = with_arguments
+        self.bracket_match = re.compile(r'\[([^]]*)\]')
+        self.skill_converter = None
+        if LugConfig.classification_prompt:
+            self.skill_converter = MSkillConverter(retriever, generator)
+        else:
+            self.skill_converter = BSkillConverter(retriever, generator)
+
+    def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
+        # low level get skill.
+        func_name = self.skill_converter.get_skill(text)
 
         if not self.retrieve.module.has_module(func_name):
             print(f"{func_name} is not recognized.")
