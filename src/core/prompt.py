@@ -114,7 +114,7 @@ ClassificationPrompts = {
     "basic":
         Prompt(
             'Determine whether the input means "{{skill.name}}": {{skill.description}}, output true or false.\n'
-            '{{#list_examples examples}}Input: [{{template}}] means "{{target}}"? Output: {{decision}}\n{{/list_examples}}'
+            '{{#list_examples examples}}Input: [{{template}}] means "{{target}}"? Output: {{decision}}{{/list_examples}}'
             'Input: [{{utterance}}] means "{{skill.name}}"? Output: '
         ),
 }
