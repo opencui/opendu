@@ -113,26 +113,15 @@ SkillPrompts = {
 ClassificationPrompts = {
     "mspec":
         Prompt(
-            'Determine whether the input means {{skill.name}}: {{skill.description}}, output only true or false.\n'
-            'Input "{{utterance}} means {{skill.name}}? Output: '
+            'Determine whether the input means "{{skill.name}}": {{skill.description}}, output true or false.\n'
+            'Input: [{{utterance}}] means "{{skill.name}}"? Output: '
         ),
     "mfull":
         Prompt(
-            'Determine whether the input means {{skill.name}}: {{skill.description}}, output only true or false.\n'
-            'Input "{{exemplar.template}} means {{skill.name}}? Output: {{decision}}\n'
-            'Input "{{utterance}} means {{skill.name}}? Output: '
+            'Determine whether the input means "{{skill.name}}": {{skill.description}}, output true or false.\n'
+            'Input: [{{exemplar.template}}] means "{{skill.name}}"? Output: {{decision}}\n'
+            'Input: [{{utterance}}] means "{{skill.name}}"? Output: '
         ),
-    "ispec":
-        Prompt(
-            'Determine whether the input implies {{skill.name}}: {{skill.description}}, true or false.\n'
-            'Input "{{utterance}} implies {{skill.name}}? Decision: '
-        ),
-    "ifull":
-        Prompt(
-            'Determine whether the input implies {{skill.name}}: {{skill.description}}, true or false.\n'
-            'Input "{{exemplar.template}} implies {{skill.name}}? Decision: {{decision}}\n'
-            'Input "{{utterance}} implies {{skill.name}}? Decision: '
-        )
 }
 
 
