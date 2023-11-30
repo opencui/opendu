@@ -1,5 +1,5 @@
 {
-    "FoodOrdering": [
+    "OrderFood": [
         {
             "template": "order food"
         }, {
@@ -10,7 +10,7 @@
             "template": "I'd like to order <quantity> <name>."
         }
     ],
-    "MakeReservation": [
+    "MakeTableReservation": [
         {
             "template": "I want to book a table."
         },
@@ -33,7 +33,7 @@
             "template": "Is there a table available for <number> at <time> on <date>?"
         }
     ],
-    "ShowHours": [
+    "GetHours": [
         {
             "template": "When do you open?"
         }, {
