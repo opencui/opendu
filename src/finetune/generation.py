@@ -12,7 +12,7 @@ import logging
 import torch
 import transformers
 from torch.nn.utils.rnn import pad_sequence
-from core.prompt import SkillPrompts, SlotPrompts
+from core.prompt import SkillPrompts, SlotPrompts, ClassificationPrompts
 import argparse
 from transformers import (
     AutoTokenizer,
@@ -38,7 +38,7 @@ IGNORE_INDEX = -100
 # by generation fine-tuning. The assumed the columns are input and output, and we added id for debugging
 # purpose.
 class TrainConverter(ABC):
-    prompt: Prompt
+    full_prompt: Prompt
 
     @abstractmethod
     def __call__(self, item: AnnotatedExemplar, ins: list[str], outs: list[str]):
@@ -48,9 +48,11 @@ class TrainConverter(ABC):
 # This is needed to determine the intention, intended function or skill
 # https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/
 class SkillTrainConverter(TrainConverter):
-    def __init__(self, retriever: ContextRetriever, func_prompt: Prompt):
-        self.prompt = func_prompt
+    def __init__(self, retriever: ContextRetriever):
+        self.prompt = SkillPrompts[LugConfig.skill_full_prompt]
         self.context_retrieve = retriever
+        self.count = {}
+        self.limits = 128
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # Working on the batched dataset, with first dimension is column then index.
@@ -61,6 +63,8 @@ class SkillTrainConverter(TrainConverter):
             nodes = [node for node in nodes if node.id_ != batch['id'][idx]]
             exemplars = [Exemplar(owner=node.metadata["owner"], template=node.text) for node in nodes]
             owner = batch["owner"][idx]
+
+            # How can we reduce the need for
 
             neg_owners = [node.metadata["owner"] for node in nodes if node.metadata["owner"] != owner]
 
@@ -97,6 +101,41 @@ class SkillTrainConverter(TrainConverter):
                 input_dict = {"utterance": utterance, "examples": rm_pos_exemplars, "skills": rm_pos_skills}
                 ins.append(self.prompt(input_dict))
                 outs.append(f"{json.dumps(None)}</s>")
+
+
+class OneSkillTrainConverter(TrainConverter):
+    def __init__(self, retriever: ContextRetriever):
+        self.full_prompt = ClassificationPrompts[LugConfig.skill_full_prompt]
+        self.spec_prompt = ClassificationPrompts[LugConfig.skill_spec_prompt]
+        self.context_retrieve = retriever
+        self.count = {}
+        self.limits = 128
+
+    def __call__(self, batch, ins: list[str], outs: list[str]):
+        # Working on the batched dataset, with first dimension is column then index.
+        for idx, utterance in enumerate(batch["utterance"]):
+            # We assume the input is dict version of AnnotatedExemplar
+            skills, nodes = self.context_retrieve(utterance)
+            # remove the identical exemplar
+            nodes = [node for node in nodes if node.id_ != batch['id'][idx]]
+            exemplars = [Exemplar(owner=node.metadata["owner"], template=node.text) for node in nodes]
+            owner = batch["owner"][idx]
+
+            skill_map = {}
+
+            # for the skills
+            for skill in skills:
+                input_dict = {"utterance": utterance, "skill": skill}
+                ins.append(self.spec_prompt(input_dict))
+                outs.append(f"{json.dumps(owner == skill['name'])}</s>")
+                skill_map[skill["name"]] = skill
+
+            for exemplar in exemplars:
+                flag = (owner == exemplar.owner)
+                skill = skill_map[exemplar.owner]
+                input_dict = {"utterance": utterance, "exemplar": exemplar, "decision": flag, "skill": skill}
+                ins.append(self.full_prompt(input_dict))
+                outs.append(f"{json.dumps(owner == exemplar.owner)}</s>")
 
 
 #
@@ -136,6 +175,13 @@ class OneSlotTrainConverter(TrainConverter):
                         outs.append(self.format_value(slot_name, None))
 
 
+def skill_converter(retriever: ContextRetriever):
+    if LugConfig.classification_prompt:
+        return OneSkillTrainConverter(retriever)
+    else:
+        return SkillTrainConverter(retriever)
+
+
 # This inference is needed for cases where users' utterance is response to bot's prompt questions, and
 # needs the abstractive understanding instead of extractive understanding.
 # This is needed to determine the intention, intended function or skill
@@ -152,7 +198,7 @@ class ConvertedFactory(DatasetFactory):
         self.columns = ["id", "utterance", "template", "owner", "arguments", "expectations"]
 
     def extra_tokens(self):
-        return list(set([token for converter in self.converters for token in converter.prompt.extra_tokens]))
+        return list(set([token for converter in self.converters for token in converter.full_prompt.extra_tokens]))
 
     def convert_one(self, item):
         ins = []
@@ -637,14 +683,13 @@ if __name__ == "__main__":
     for factory in factories:
         retrievers.append(load_context_retrievers({factory.tag: factory.schema}, f"{output}/index/{factory.tag}"))
 
-    #train_mode = TrainMode.ExtractiveSlot
+    # train_mode = TrainMode.ExtractiveSlot
     train_mode = TrainMode.Skill
     converted_factories = []
     for index, factory in enumerate(factories):
         context_retriever = retrievers[index]
         if train_mode == TrainMode.Skill:
-            skill_converter = SkillTrainConverter(context_retriever, SkillPrompts[LugConfig.skill_full_prompt])
-            converted_factories.append(ConvertedFactory(factory, [skill_converter]))
+            converted_factories.append(ConvertedFactory(factory, [skill_converter(context_retriever)]))
         if train_mode == TrainMode.ExtractiveSlot:
             slot_converter = OneSlotTrainConverter(factory.schema, SlotPrompts[LugConfig.extractive_slot_prompt])
             converted_factories.append(ConvertedFactory(factory, [slot_converter]))
@@ -659,7 +704,7 @@ if __name__ == "__main__":
                     count[0] += 1
                 else:
                     count[1] += 1
-                print(item["output"])
+                print(item)
             print(count)
 
     # Now we need to create the converters.

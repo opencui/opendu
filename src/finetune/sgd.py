@@ -71,7 +71,7 @@ class SGD(DatasetFactory):
             """
             files = os.listdir(base_path)
             s_set = defaultdict(set)
-            # Fentenceor all files.
+            # For all files.
             for file in files:
                 if file[:6] != 'dialog':
                     continue
@@ -210,6 +210,10 @@ if __name__ == '__main__':
 
     output = "./index/sgdskill/"
     dsc = SGD("/home/sean/src/dstc8-schema-guided-dialogue/")
+
+    print(f"there are {len(dsc.schema.skills)} skills")
+    print(json.dumps(dsc.schema.skills, indent=2))
+    #print(json.dumps(dsc.schema.slots, indent=2))
 
     dataset = dsc.build("train")
     dataset.save_to_disk("./datasets/sgd")

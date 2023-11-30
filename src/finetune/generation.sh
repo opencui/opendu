@@ -1,8 +1,7 @@
-# We include a simple full-parameter finetuning & inference script here. Our V0.1 chat model is finetuned using this script.
-# The FT dataset we use is openassistant-guanaco. For finetuning with less than 4GB RAM, we refer you to the Qlora and bitsandbytes repo.
-# We did not undergone extensive hyperparameter tuning nor choosing more performant FT datasets.
-# We hope the community can explore on finetuning TinyLlama and come up with better chat models. I will include community-finetuned models in this repo.
-
+#
+# We include a simple lora finetuning & inference script here. The goal is so that you can finetune both
+# both skill and slot model on 7B model on consumer grade hardware like x090.
+#
 python3 finetune/generation.py \
     --model_name_or_path TinyLlama/TinyLlama-1.1B-intermediate-step-955k-token-2T \
     --output_dir ./output/lr1e-5_ep5_top1_2023-11-20 \
@@ -16,9 +15,9 @@ python3 finetune/generation.py \
     --per_device_eval_batch_size 1 \
     --max_new_tokens 32 \
     --dataloader_num_workers 3 \
-    --group_by_length=False \
+    --group_by_length False \
     --logging_strategy steps \
-    --remove_unused_columns False \
+    --remove_unused_columns True \
     --do_train \
     --do_eval \
     --warmup_ratio 0.05 \
@@ -27,7 +26,7 @@ python3 finetune/generation.py \
     --target_max_len 128 \
     --per_device_train_batch_size 16 \
     --max_steps 0 \
-    --num_train_epochs 5 \
+    --num_train_epochs 3 \
     --learning_rate 2e-5 \
     --adam_beta2 0.999 \
     --max_grad_norm 1.0 \
