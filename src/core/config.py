@@ -13,7 +13,7 @@ class LugConfig:
     embedding_exemplar_prompt = "baai_exemplar"
 
     finetune_build_index = False
-    finetune_dataset_debug = True
+    finetune_dataset_debug = False
     classification_prompt = True
 
     desc_retriever_mode = "embedding"
