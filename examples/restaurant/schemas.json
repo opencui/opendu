@@ -7,8 +7,8 @@
     "paths": {
         "/FoodOrdering": {
             "Post": {
-                "summary": "Food ordering",
-                "operationId": "FoodOrdering",
+                "summary": "Allow user to order food items off menu",
+                "operationId": "OrderFood",
                 "parameters": [
                     {
                         "name": "dishes",
@@ -32,8 +32,8 @@
         },
         "/TableReservation": {
             "Post": {
-                "summary": "Make reservation",
-                "operationId": "MakeReservation",
+                "summary": "Allow user to make table reservation",
+                "operationId": "MakeTableReservation",
                 "parameters": [
                     {
                         "name": "number",
@@ -72,8 +72,8 @@
         },
         "/ShowHours": {
             "get": {
-                "summary": "Display business hours",
-                "operationId": "ShowHours",
+                "summary": "Get business hours for user",
+                "operationId": "GetHours",
                 "parameters": [
                     {
                         "name": "date",
