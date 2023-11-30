@@ -18,7 +18,7 @@ class ObjectLister:
             self,
             item_header=None,
             item_header_delim: str = "\n",
-            item_delim: str = "\n\n",
+            item_delim: str = "\n",
             block_header: str = "",
             block_tail: str = "",
             with_index: bool = True):
@@ -58,9 +58,9 @@ class Prompt:
             'list_examples':
                 ObjectLister(),
             'list_skills':
-                ObjectLister(block_header="\nGiven the definition for the following functions:\n", item_delim="\n"),
+                ObjectLister(block_header="\nGiven the definition for the following functions:\n"),
             'list_skill_names':
-                ObjectLister(block_header="Classify the input into the following functions:\n", item_delim="\n"),
+                ObjectLister(block_header="Classify the input into the following functions:\n"),
             'list_slots':
                 ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
             'list_values':
@@ -114,7 +114,7 @@ ClassificationPrompts = {
     "basic":
         Prompt(
             'Determine whether the input means "{{skill.name}}": {{skill.description}}, output true or false.\n'
-            '{{#list_examples examples}}Input: [{{template}}] means "{{target}}"? Output: {{decision}}\n{{/list_examples}}'
+            '{{#list_examples examples}}Input: [{{template}}] means "{{target}}"? Output: {{decision}}{{/list_examples}}'
             'Input: [{{utterance}}] means "{{skill.name}}"? Output: '
         ),
 }
