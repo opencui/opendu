@@ -5,7 +5,7 @@
 python3 finetune/generation.py \
     --model_name_or_path TinyLlama/TinyLlama-1.1B-intermediate-step-955k-token-2T \
     --output_dir ./output/lr1e-5_ep5_top1_2023-11-20 \
-    --logging_steps 10 \
+    --logging_steps 50 \
     --save_strategy epoch \
     --data_seed 42 \
     --save_total_limit 6 \
@@ -26,7 +26,7 @@ python3 finetune/generation.py \
     --target_max_len 128 \
     --per_device_train_batch_size 16 \
     --max_steps 0 \
-    --num_train_epochs 3 \
+    --num_train_epochs 4 \
     --learning_rate 2e-5 \
     --adam_beta2 0.999 \
     --max_grad_norm 1.0 \

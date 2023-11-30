@@ -107,8 +107,7 @@ class OneSkillTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever):
         self.full_prompt = ClassificationPrompts[LugConfig.skill_full_prompt]
         self.context_retrieve = retriever
-        self.count = {}
-        self.limits = 128
+        self.neg_k = 1
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # Working on the batched dataset, with first dimension is column then index.
@@ -131,9 +130,14 @@ class OneSkillTrainConverter(TrainConverter):
 
             for o_exemplar in exemplars:
                 target = o_exemplar.owner
+                # Try not to have more than two examples.
+                neg_owners = [node.metadata["owner"] for node in nodes if node.metadata["owner"] != target]
+                random.shuffle(neg_owners)
+                candidates = set([target] + neg_owners[0:self.neg_k])
+
                 exemplar_dicts = [
                     {"template": exemplar.template, "target": target, "decision": target == exemplar.owner}
-                    for exemplar in exemplars]
+                    for exemplar in exemplars if exemplar.owner in candidates]
 
                 input_dict = {"utterance": utterance, "examples": exemplar_dicts, "skill": skill_map[target]}
                 ins.append(self.full_prompt(input_dict))
