@@ -102,7 +102,7 @@ SkillPrompts = {
             '{{#list_skill_names skills}} "{{name}}" {{/list_skill_names}}.\n\n'
             '{{#list_examples examples}}Input: "{{template}}"\nOutput:"{{owner}}"\n{{/list_examples}}\n'
             'Input: "{{utterance}}"\nOutput:'),
-    "short":
+    "basic":
         Prompt(
             '{{#list_skill_names skills}} "{{name}}": {{description}} {{/list_skill_names}}\n'
             'Output null if input does not imply any one of them.\n\n'
@@ -111,20 +111,13 @@ SkillPrompts = {
 }
 
 ClassificationPrompts = {
-    "mspec":
+    "basic":
         Prompt(
             'Determine whether the input means "{{skill.name}}": {{skill.description}}, output true or false.\n'
-            'Input: [{{utterance}}] means "{{skill.name}}"? Output: '
-        ),
-    "mfull":
-        Prompt(
-            'Determine whether the input means "{{skill.name}}": {{skill.description}}, output true or false.\n'
-            'Input: [{{exemplar.template}}] means "{{skill.name}}"? Output: {{decision}}\n'
+            '{{#list_examples examples}}Input: [{{template}}] means "{{target}}"? Output: {{decision}}\n{{/list_examples}}'
             'Input: [{{utterance}}] means "{{skill.name}}"? Output: '
         ),
 }
-
-
 
 
 # For the slots of enum type, we used different prompt in order to improve the

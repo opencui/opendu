@@ -105,8 +105,7 @@ class SkillTrainConverter(TrainConverter):
 
 class OneSkillTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever):
-        self.full_prompt = ClassificationPrompts[LugConfig.skill_full_prompt]
-        self.spec_prompt = ClassificationPrompts[LugConfig.skill_spec_prompt]
+        self.prompt = ClassificationPrompts[LugConfig.skill_full_prompt]
         self.context_retrieve = retriever
         self.count = {}
         self.limits = 128
@@ -125,17 +124,20 @@ class OneSkillTrainConverter(TrainConverter):
 
             # for the skills
             for skill in skills:
-                input_dict = {"utterance": utterance, "skill": skill}
-                ins.append(self.spec_prompt(input_dict))
+                input_dict = {"utterance": utterance,  "examples": [], "skill": skill}
+                ins.append(self.prompt(input_dict))
                 outs.append(f"{json.dumps(owner == skill['name'])}</s>")
                 skill_map[skill["name"]] = skill
 
-            for exemplar in exemplars:
-                flag = (owner == exemplar.owner)
-                skill = skill_map[exemplar.owner]
-                input_dict = {"utterance": utterance, "exemplar": exemplar, "decision": flag, "skill": skill}
-                ins.append(self.full_prompt(input_dict))
-                outs.append(f"{json.dumps(owner == exemplar.owner)}</s>")
+            for o_exemplar in exemplars:
+                target = o_exemplar.owner
+                exemplar_dicts = [
+                    {"template": exemplar.template, "target": target, "decision": target == exemplar.owner}
+                    for exemplar in exemplars]
+
+                input_dict = {"utterance": utterance, "examples": exemplar_dicts, "skill": skill_map[target]}
+                ins.append(self.prompt(input_dict))
+                outs.append(f"{json.dumps(owner == target)}</s>")
 
 
 #
