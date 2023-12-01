@@ -32,5 +32,7 @@ python3 finetune/generation.py \
     --max_grad_norm 1.0 \
     --weight_decay 0.0 \
     --seed 0 \
+    --debug_dataset False \
+    --training_mode skill \
     --trust_remote_code \
     --report_to wandb

@@ -176,7 +176,7 @@ class OneSlotTrainConverter(TrainConverter):
 
 
 def skill_converter(retriever: ContextRetriever):
-    if LugConfig.classification_prompt:
+    if LugConfig.classification_skill:
         return OneSkillTrainConverter(retriever)
     else:
         return SkillTrainConverter(retriever)
@@ -299,6 +299,8 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
     save_steps: int = field(default=250, metadata={"help": 'How often to save a model'})
     save_total_limit: int = field(default=40,
                                   metadata={"help": 'How many checkpoints to save before the oldest is overwritten'})
+    debug_dataset: bool = field(default=False, metadata={"help": 'print out dataset instead'})
+    training_mode: str = field(default='skill', metadata={"help": 'skill or slot'})
 
 
 @dataclass
@@ -541,7 +543,7 @@ def get_last_checkpoint(checkpoint_dir):
     return None, False  # first training
 
 
-def train(converted_factories: list[ConvertedFactory], peft_config=None):
+def train(factories: list[DatasetFactory], peft_config=None):
     hfparser = transformers.HfArgumentParser((
         ModelArguments, DataArguments, TrainingArguments, GenerationArguments
     ))
@@ -553,7 +555,59 @@ def train(converted_factories: list[ConvertedFactory], peft_config=None):
     args = argparse.Namespace(
         **vars(model_args), **vars(data_args), **vars(training_args)
     )
+
     print(args)
+
+    # For now, just use the fix path.
+    output = "../output"
+
+    # Save the things to disk first, for training we keep each module separate.
+    # Down the road, we might
+    for factory in factories:
+        build_desc_index(factory.tag, factory.schema, f"{output}/index/{factory.tag}",
+                         EmbeddingStore.for_description())
+        build_dataset_index(factory.tag, factory.build("train"), f"{output}/index/{factory.tag}",
+                            EmbeddingStore.for_exemplar())
+
+    retrievers = []
+    for factory in factories:
+        retrievers.append(load_context_retrievers({factory.tag: factory.schema}, f"{output}/index/{factory.tag}"))
+
+    train_mode = None
+    if args.training_mode == "skill":
+        train_mode = TrainMode.Skill
+    if args.training_mode == "extractive_slot":
+        train_mode = TrainMode.ExtractiveSlot
+    if args.training_mode == "abstractive_slot":
+        train_mode = TrainMode.AbstractiveSlot
+
+    if train_mode is None:
+        raise RuntimeError("Do not know the task.")
+
+    converted_factories = []
+    for index, factory in enumerate(factories):
+        context_retriever = retrievers[index]
+        if train_mode == TrainMode.Skill:
+            converted_factories.append(ConvertedFactory(factory, [skill_converter(context_retriever)]))
+        if train_mode == TrainMode.ExtractiveSlot:
+            slot_converter = OneSlotTrainConverter(factory.schema, SlotPrompts[LugConfig.extractive_slot_prompt])
+            converted_factories.append(ConvertedFactory(factory, [slot_converter]))
+        if train_mode == TrainMode.AbstractiveSlot:
+            raise RuntimeError("Not implemented.")
+
+    # If we debug dataset, we do not train.
+    if args.debug_dataset:
+        for factory in converted_factories:
+            ds = factory.build("train")
+            count = [0, 0]
+            for item in ds:
+                if item["output"] == "null</s>":
+                    count[0] += 1
+                else:
+                    count[1] += 1
+                print(json.dumps(item, indent=2))
+            print(count)
+        exit(0)
 
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
@@ -669,46 +723,5 @@ if __name__ == "__main__":
             count += 1
         print(f"There are {count} instances in {factory.tag}")
 
-    # For now, just use the fix path.
-    output = "../output"
-
-    # Save the things to disk first, for training we keep each module separate.
-    # Down the road, we might
-    if LugConfig.finetune_build_index:
-        for factory in factories:
-            build_desc_index(factory.tag, factory.schema, f"{output}/index/{factory.tag}",
-                             EmbeddingStore.for_description())
-            build_dataset_index(factory.tag, factory.build("train"), f"{output}/index/{factory.tag}",
-                                EmbeddingStore.for_exemplar())
-
-    retrievers = []
-    for factory in factories:
-        retrievers.append(load_context_retrievers({factory.tag: factory.schema}, f"{output}/index/{factory.tag}"))
-
-    # train_mode = TrainMode.ExtractiveSlot
-    train_mode = TrainMode.Skill
-    converted_factories = []
-    for index, factory in enumerate(factories):
-        context_retriever = retrievers[index]
-        if train_mode == TrainMode.Skill:
-            converted_factories.append(ConvertedFactory(factory, [skill_converter(context_retriever)]))
-        if train_mode == TrainMode.ExtractiveSlot:
-            slot_converter = OneSlotTrainConverter(factory.schema, SlotPrompts[LugConfig.extractive_slot_prompt])
-            converted_factories.append(ConvertedFactory(factory, [slot_converter]))
-
-    dataset_debug = LugConfig.finetune_dataset_debug
-    if dataset_debug:
-        for factory in converted_factories:
-            ds = factory.build("train")
-            count = [0, 0]
-            for item in ds:
-                if item["output"] == "null</s>":
-                    count[0] += 1
-                else:
-                    count[1] += 1
-                print(item)
-            print(count)
-
     # Now we need to create the converters.
-    if not dataset_debug:
-        train(converted_factories, get_lora_config())
+    train(factories, get_lora_config())

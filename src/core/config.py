@@ -12,10 +12,7 @@ class LugConfig:
     embedding_desc_prompt = "baai_desc"
     embedding_exemplar_prompt = "baai_exemplar"
 
-    finetune_build_index = False
-    finetune_dataset_debug = False
-    classification_prompt = True
-
+    classification_skill = True
     desc_retriever_mode = "embedding"
     exemplar_retriever_mode = "OR"
     desc_retrieve_topk = 4
@@ -27,5 +24,4 @@ class LugConfig:
     skill_model = "OpenCUI/sgd-skill-tinyllama-2t-1.0"
     extractive_slot_model = "OpenCUI/sgd-slot-tinyllama-2t-1.0"
     abstractive_slot_model = ""
-
     converter_debug = True
