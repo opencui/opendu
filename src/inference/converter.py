@@ -1,6 +1,7 @@
 import re
 from abc import abstractmethod, ABC
 
+import torch
 from peft import PeftConfig, PeftModel
 from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 import json
@@ -46,6 +47,7 @@ class LocalGenerator(Generator, ABC):
             return_dict=True,
             device_map="auto",
             trust_remote_code=True,
+            torch_dtype=torch.float16
         )
         print(model_path)
 
@@ -65,6 +67,7 @@ class LocalGenerator(Generator, ABC):
             return_dict=True,
             device_map="auto",
             trust_remote_code=True,
+            torch_dtype=torch.float16
         )
         self.extractive_slot_model = PeftModel.from_pretrained(slot_base_model, LugConfig.extractive_slot_model)
 
@@ -102,11 +105,11 @@ class SkillConverter(ABC):
         pass
 
 
-def parse_json_from_string(text):
+def parse_json_from_string(text, default=None):
     try:
         return json.loads(text)
     except ValueError as e:
-        return None
+        return default
 
 
 class MSkillConverter(SkillConverter):
@@ -114,6 +117,7 @@ class MSkillConverter(SkillConverter):
         self.retrieve = retriever
         self.generator = generator
         self.skill_prompt = SkillPrompts[LugConfig.skill_full_prompt]
+
     def get_skill(self, text):
         to_snake = CamelToSnake()
 
@@ -144,7 +148,7 @@ class BSkillConverter(SkillConverter):
     def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
         self.retrieve = retriever
         self.generator = generator
-        self.skill_prompt = ClassificationPrompts[LugConfig.skill_full_prompt]
+        self.prompt = ClassificationPrompts[LugConfig.skill_full_prompt]
 
     def get_skill(self, text):
         to_snake = CamelToSnake()
@@ -156,7 +160,7 @@ class BSkillConverter(SkillConverter):
         for skill in skills:
             skill["name"] = to_snake.encode(skill["name"])
 
-        skill_map = {skill.name: skill for skill in skills}
+        skill_map = {skill["name"]: skill for skill in skills}
 
         skill_prompts = []
         owners = []
@@ -176,21 +180,19 @@ class BSkillConverter(SkillConverter):
             processed.add(target)
 
         for skill in skills:
-            if skill.name in processed:
+            if skill["name"] in processed:
                 continue
             input_dict = {"utterance": text, "examples": [], "skill": skill}
             skill_prompts.append(self.prompt(input_dict))
-            owners.append[skill.name]
+            owners.append[skill["name"]]
 
         skill_outputs = self.generator.for_skill(skill_prompts)
-
-
 
         if LugConfig.converter_debug:
             print(skill_prompts)
             print(skill_outputs)
 
-        flags = [self.parse_json_from_string(raw_flag, False) for index, raw_flag in enumerate(skill_outputs)]
+        flags = [parse_json_from_string(raw_flag, False) for index, raw_flag in enumerate(skill_outputs)]
 
         func_names = [owners[index] for index, flag in enumerate(flags) if flag]
 
@@ -207,9 +209,9 @@ class Converter:
         self.bracket_match = re.compile(r'\[([^]]*)\]')
         self.skill_converter = None
         if LugConfig.classification_prompt:
-            self.skill_converter = MSkillConverter(retriever, generator)
-        else:
             self.skill_converter = BSkillConverter(retriever, generator)
+        else:
+            self.skill_converter = MSkillConverter(retriever, generator)
 
     def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
         # low level get skill.
@@ -231,16 +233,18 @@ class Converter:
         # We assume the function_name is global unique for now. From UI perspective, I think
         module = self.retrieve.module.get_module(func_name)
         slot_labels_of_func = module.skills[func_name]["slots"]
+        print(slot_labels_of_func)
+        print(module.slots)
         # Then we need to create the prompt for the parameters.
         slot_prompts = []
         for slot in slot_labels_of_func:
             slot_input_dict = {"utterance": text}
-            slot_input_dict.update(module.slots[slot])
+            slot_input_dict.update(module.slots[slot].to_dict())
             slot_prompts.append(self.slot_prompt(slot_input_dict))
 
         slot_outputs = self.generator.for_extractive_slot(slot_prompts)
 
-        slot_values = [self.parse_json_from_string(seq) for seq in slot_outputs]
+        slot_values = [parse_json_from_string(seq) for seq in slot_outputs]
         slot_values = dict(zip(slot_labels_of_func, slot_values))
         slot_values = {key: value for key, value in slot_values.items() if value is not None}
 
