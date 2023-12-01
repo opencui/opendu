@@ -111,7 +111,7 @@ SkillPrompts = {
 }
 
 ClassificationPrompts = {
-    "basic":
+    "default":
         Prompt(
             'Determine whether the input means "{{skill.name}}": {{skill.description}}, output true or false.\n'
             '{{#list_examples examples}}Input: [{{template}}] means "{{target}}"? Output: {{decision}}{{/list_examples}}'

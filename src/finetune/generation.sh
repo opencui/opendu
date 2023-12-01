@@ -17,7 +17,7 @@ python3 finetune/generation.py \
     --dataloader_num_workers 3 \
     --group_by_length False \
     --logging_strategy steps \
-    --remove_unused_columns True \
+    --remove_unused_columns False \
     --do_train \
     --do_eval \
     --warmup_ratio 0.05 \

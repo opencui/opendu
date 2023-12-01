@@ -516,7 +516,7 @@ def make_data_module(data_collator, args, converters) -> Dict:
     """
     # Split train/eval, reduce size
     if args.do_eval or args.do_predict:
-        eval_dataset = merge_created_datasets(converters, "validation")
+        eval_dataset = merge_created_datasets(converters, "test")
     if args.do_train:
         train_dataset = merge_created_datasets(converters, "train")
 
