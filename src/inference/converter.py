@@ -98,8 +98,9 @@ class LocalGenerator(Generator, ABC):
 
 class SkillConverter(ABC):
     @abstractmethod
-    def get_skill(self, text):
+    def get_skill(self, text) -> list[str]:
         pass
+
 
 def parse_json_from_string(text):
     try:
@@ -136,7 +137,7 @@ class MSkillConverter(SkillConverter):
         if LugConfig.converter_debug:
             print(f"{skill_outputs} is converted to {func_name}, valid: {self.retrieve.module.has_module(func_name)}")
 
-        return func_name
+        return [func_name]
 
 
 class BSkillConverter(SkillConverter):
@@ -148,40 +149,52 @@ class BSkillConverter(SkillConverter):
     def get_skill(self, text):
         to_snake = CamelToSnake()
 
-        # first we figure out what is the
+        # nodes owner are always included in the
         skills, nodes = self.retrieve(text)
         exemplars = [Exemplar(owner=to_snake.encode(node.metadata["owner"]), template=node.text) for node in nodes]
 
         for skill in skills:
             skill["name"] = to_snake.encode(skill["name"])
 
+        skill_map = {skill.name: skill for skill in skills}
+
+        skill_prompts = []
+        owners = []
+        processed = set()
         # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
         for o_exemplar in exemplars:
             target = o_exemplar.owner
+            # Try not to have more than two examples.
             exemplar_dicts = [
                 {"template": exemplar.template, "target": target, "decision": target == exemplar.owner}
                 for exemplar in exemplars]
 
-            input_dict = {"utterance": utterance, "examples": exemplar_dicts, "skill": skill_map[target]}
-            ins.append(self.prompt(input_dict))
-            outs.append(f"{json.dumps(owner == target)}</s>")
+            input_dict = {"utterance": text, "examples": exemplar_dicts, "skill": skill_map[target]}
+            skill_prompts.append(self.prompt(input_dict))
+            owners.append(target)
+
+            processed.add(target)
+
+        for skill in skills:
+            if skill.name in processed:
+                continue
+            input_dict = {"utterance": text, "examples": [], "skill": skill}
+            skill_prompts.append(self.prompt(input_dict))
+            owners.append[skill.name]
+
+        skill_outputs = self.generator.for_skill(skill_prompts)
 
 
-
-        skill_input_dict = {"utterance": text.strip(), "examples": exemplars, "skills": skills}
-        skill_prompt = self.skill_prompt([skill_input_dict])
-
-        skill_outputs = self.generator.for_skill(skill_prompt)
 
         if LugConfig.converter_debug:
-            print(skill_prompt)
+            print(skill_prompts)
             print(skill_outputs)
 
-        func_name = self.parse_json_from_string(skill_outputs[0])
-        if LugConfig.converter_debug:
-            print(f"{skill_outputs} is converted to {func_name}, valid: {self.retrieve.module.has_module(func_name)}")
+        flags = [self.parse_json_from_string(raw_flag, False) for index, raw_flag in enumerate(skill_outputs)]
 
-        return func_name
+        func_names = [owners[index] for index, flag in enumerate(flags) if flag]
+
+        return func_names
 
 
 class Converter:
@@ -200,7 +213,13 @@ class Converter:
 
     def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
         # low level get skill.
-        func_name = self.skill_converter.get_skill(text)
+        func_names = self.skill_converter.get_skill(text)
+
+        if len(func_names) == 0:
+            return None
+
+        # For now, just return the first one.
+        func_name = func_names[0]
 
         if not self.retrieve.module.has_module(func_name):
             print(f"{func_name} is not recognized.")

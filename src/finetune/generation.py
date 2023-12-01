@@ -121,7 +121,7 @@ class OneSkillTrainConverter(TrainConverter):
 
             # for the skills
             for skill in skills:
-                input_dict = {"utterance": utterance,  "examples": [], "skill": skill}
+                input_dict = {"utterance": utterance, "examples": [], "skill": skill}
                 ins.append(self.prompt(input_dict))
                 outs.append(f"{json.dumps(owner == skill['name'])}</s>")
                 skill_map[skill["name"]] = skill
@@ -129,13 +129,9 @@ class OneSkillTrainConverter(TrainConverter):
             for o_exemplar in exemplars:
                 target = o_exemplar.owner
                 # Try not to have more than two examples.
-                neg_owners = [node.metadata["owner"] for node in nodes if node.metadata["owner"] != target]
-                random.shuffle(neg_owners)
-                candidates = set([target] + neg_owners[0:self.neg_k])
-
                 exemplar_dicts = [
                     {"template": exemplar.template, "target": target, "decision": target == exemplar.owner}
-                    for exemplar in exemplars if exemplar.owner in candidates]
+                    for exemplar in exemplars]
 
                 input_dict = {"utterance": utterance, "examples": exemplar_dicts, "skill": skill_map[target]}
                 ins.append(self.prompt(input_dict))
@@ -531,12 +527,14 @@ def make_data_module(data_collator, args, converters) -> Dict:
 def get_last_checkpoint(checkpoint_dir):
     if isdir(checkpoint_dir):
         is_completed = exists(join(checkpoint_dir, 'completed'))
-        if is_completed: return None, True  # already finished
+        if is_completed:
+            return None, True  # already finished
         max_step = 0
         for filename in os.listdir(checkpoint_dir):
             if isdir(join(checkpoint_dir, filename)) and filename.startswith('checkpoint'):
                 max_step = max(max_step, int(filename.replace('checkpoint-', '')))
-        if max_step == 0: return None, is_completed  # training started, but no checkpoint
+        if max_step == 0:
+            return None, is_completed  # training started, but no checkpoint
         checkpoint_dir = join(checkpoint_dir, f'checkpoint-{max_step}')
         print(f"Found a previous checkpoint at: {checkpoint_dir}")
         return checkpoint_dir, is_completed  # checkpoint found!
