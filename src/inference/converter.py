@@ -189,8 +189,8 @@ class BSkillConverter(SkillConverter):
         skill_outputs = self.generator.for_skill(skill_prompts)
 
         if LugConfig.converter_debug:
-            print(skill_prompts)
-            print(skill_outputs)
+            print(json.dumps(skill_prompts, indent=2))
+            print(json.dumps(skill_outputs, indent=2))
 
         flags = [parse_json_from_string(raw_flag, False) for index, raw_flag in enumerate(skill_outputs)]
 
@@ -208,7 +208,7 @@ class Converter:
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r'\[([^]]*)\]')
         self.skill_converter = None
-        if LugConfig.classification_prompt:
+        if LugConfig.classification_skill:
             self.skill_converter = BSkillConverter(retriever, generator)
         else:
             self.skill_converter = MSkillConverter(retriever, generator)
@@ -242,7 +242,12 @@ class Converter:
             slot_input_dict.update(module.slots[slot].to_dict())
             slot_prompts.append(self.slot_prompt(slot_input_dict))
 
+        if LugConfig.converter_debug:
+            print(json.dumps(slot_prompts, indent=2))
         slot_outputs = self.generator.for_extractive_slot(slot_prompts)
+
+        if LugConfig.converter_debug:
+            print(json.dumps(slot_outputs, indent=2))
 
         slot_values = [parse_json_from_string(seq) for seq in slot_outputs]
         slot_values = dict(zip(slot_labels_of_func, slot_values))
