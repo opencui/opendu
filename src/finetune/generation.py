@@ -38,7 +38,7 @@ IGNORE_INDEX = -100
 # by generation fine-tuning. The assumed the columns are input and output, and we added id for debugging
 # purpose.
 class TrainConverter(ABC):
-    full_prompt: Prompt
+    prompt: Prompt
 
     @abstractmethod
     def __call__(self, item: AnnotatedExemplar, ins: list[str], outs: list[str]):
@@ -49,10 +49,8 @@ class TrainConverter(ABC):
 # https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/
 class SkillTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever):
-        self.full_prompt = SkillPrompts[LugConfig.skill_full_prompt]
+        self.prompt = SkillPrompts[LugConfig.skill_full_prompt]
         self.context_retrieve = retriever
-        self.count = {}
-        self.limits = 128
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # Working on the batched dataset, with first dimension is column then index.
@@ -77,14 +75,14 @@ class SkillTrainConverter(TrainConverter):
                 # Without exemplars.
                 random.shuffle(rm_neg_skills)
                 input_dict = {"utterance": utterance, "examples": [], "skills": rm_neg_skills}
-                ins.append(self.full_prompt(input_dict))
+                ins.append(self.prompt(input_dict))
                 outs.append(f"{json.dumps(owner)}</s>")
 
                 # With exemplars.
                 if len(rm_neg_exemplars) != 0:
                     random.shuffle(rm_neg_exemplars)
                     input_dict = {"utterance": utterance, "examples": rm_neg_exemplars, "skills": rm_neg_skills}
-                    ins.append(self.full_prompt(input_dict))
+                    ins.append(self.prompt(input_dict))
                     outs.append(f"{json.dumps(owner)}</s>")
 
             # Try to filter the pos skills and exemplars
@@ -93,19 +91,19 @@ class SkillTrainConverter(TrainConverter):
 
             random.shuffle(rm_pos_skills)
             input_dict = {"utterance": utterance, "examples": [], "skills": rm_pos_skills}
-            ins.append(self.full_prompt(input_dict))
+            ins.append(self.prompt(input_dict))
             outs.append(f"{json.dumps(None)}</s>")
 
             if len(rm_pos_exemplars) != 0:
                 random.shuffle(rm_pos_exemplars)
                 input_dict = {"utterance": utterance, "examples": rm_pos_exemplars, "skills": rm_pos_skills}
-                ins.append(self.full_prompt(input_dict))
+                ins.append(self.prompt(input_dict))
                 outs.append(f"{json.dumps(None)}</s>")
 
 
 class OneSkillTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever):
-        self.full_prompt = ClassificationPrompts[LugConfig.skill_full_prompt]
+        self.prompt = ClassificationPrompts[LugConfig.skill_full_prompt]
         self.context_retrieve = retriever
         self.neg_k = 1
 
@@ -124,7 +122,7 @@ class OneSkillTrainConverter(TrainConverter):
             # for the skills
             for skill in skills:
                 input_dict = {"utterance": utterance,  "examples": [], "skill": skill}
-                ins.append(self.full_prompt(input_dict))
+                ins.append(self.prompt(input_dict))
                 outs.append(f"{json.dumps(owner == skill['name'])}</s>")
                 skill_map[skill["name"]] = skill
 
@@ -140,7 +138,7 @@ class OneSkillTrainConverter(TrainConverter):
                     for exemplar in exemplars if exemplar.owner in candidates]
 
                 input_dict = {"utterance": utterance, "examples": exemplar_dicts, "skill": skill_map[target]}
-                ins.append(self.full_prompt(input_dict))
+                ins.append(self.prompt(input_dict))
                 outs.append(f"{json.dumps(owner == target)}</s>")
 
 
@@ -204,7 +202,7 @@ class ConvertedFactory(DatasetFactory):
         self.columns = ["id", "utterance", "template", "owner", "arguments", "expectations"]
 
     def extra_tokens(self):
-        return list(set([token for converter in self.converters for token in converter.full_prompt.extra_tokens]))
+        return list(set([token for converter in self.converters for token in converter.prompt.extra_tokens]))
 
     def convert_one(self, item):
         ins = []
@@ -518,7 +516,7 @@ def make_data_module(data_collator, args, converters) -> Dict:
     """
     # Split train/eval, reduce size
     if args.do_eval or args.do_predict:
-        eval_dataset = merge_created_datasets(converters, "validation")
+        eval_dataset = merge_created_datasets(converters, "test")
     if args.do_train:
         train_dataset = merge_created_datasets(converters, "train")
 
