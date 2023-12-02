@@ -143,7 +143,9 @@ converter = load_converter(directory_you_read_specs_from, directory_you_write_in
 converter.understand(utterance)
 ```
 
+Notice the converter is single thread reference implementation, use some thing like s-lora for high throughput use cases.
 You can also test it in the command line:
+
 ```bash
 export PYTHONPATH="$PYTHONPATH:."
 python3 inference/cmd.py -s <directory_you_read_specs_from> -i <directory_you_write_index_to>
@@ -154,3 +156,4 @@ This project is relying on many impactful open source projects, we list the most
 1. [LlamaIndex](https://github.com/run-llama/llama_index) for RAG implementation.
 2. [TinyLlama-1.1B](https://github.com/jzhang38/TinyLlama) for tiny llama model.
 3. [huggingface.ai](https://huggingface.ai) for dataset, fine-tuning
+4. [S-Lora](https://github.com/S-LoRA/S-LoRA) For efficient inference with multiple lora adaptors.
