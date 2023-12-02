@@ -8,6 +8,9 @@
             "template": "I'd like to order some <category>."
         }, {
             "template": "I'd like to order <quantity> <name>."
+        },
+	{
+            "template": "I'd like to order some food." 
         }
     ],
     "MakeTableReservation": [

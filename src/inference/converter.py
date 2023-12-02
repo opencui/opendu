@@ -42,34 +42,20 @@ class LocalGenerator(Generator, ABC):
 
         model_path = skill_config.base_model_name_or_path
 
-        skill_base_model = AutoModelForCausalLM.from_pretrained(
+        base_model = AutoModelForCausalLM.from_pretrained(
             skill_config.base_model_name_or_path,
             return_dict=True,
             device_map="auto",
             trust_remote_code=True,
             torch_dtype=torch.float16
         )
-        print(model_path)
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "left"
 
-        self.skill_model = PeftModel.from_pretrained(skill_base_model, LugConfig.skill_model)
-
-        extractive_slot_config = PeftConfig.from_pretrained(LugConfig.extractive_slot_model)
-        if model_path != extractive_slot_config.base_model_name_or_path:
-            raise RuntimeError("Only support same base model")
-
-        # For now, we load the base model multiple times.
-        slot_base_model = AutoModelForCausalLM.from_pretrained(
-            skill_config.base_model_name_or_path,
-            return_dict=True,
-            device_map="auto",
-            trust_remote_code=True,
-            torch_dtype=torch.float16
-        )
-        self.extractive_slot_model = PeftModel.from_pretrained(slot_base_model, LugConfig.extractive_slot_model)
+        self.lora_model = PeftModel.from_pretrained(base_model, LugConfig.skill_model, adapter_name="skill")
+        self.lora_model.load_adapter(LugConfig.extractive_slot_model, adapter_name="extractive_slot")
 
     @classmethod
     def generate(cls, peft_model, peft_tokenizer, input_text):
@@ -88,14 +74,16 @@ class LocalGenerator(Generator, ABC):
         return peft_tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
 
     def for_skill(self, input_texts):
-        outputs = LocalGenerator.generate(self.skill_model, self.tokenizer, input_texts)
+        self.lora_model.set_adapter("skill")
+        outputs = LocalGenerator.generate(self.lora_model, self.tokenizer, input_texts)
         return [output[len(input_texts[index]):] for index, output in enumerate(outputs)]
 
     def for_abstractive_slot(self, input_texts):
         pass
 
     def for_extractive_slot(self, input_texts):
-        outputs = LocalGenerator.generate(self.extractive_slot_model, self.tokenizer, input_texts)
+        self.lora_model.set_adapter("extractive_slot")
+        outputs = LocalGenerator.generate(self.lora_model, self.tokenizer, input_texts)
         return [output[len(input_texts[index]):] for index, output in enumerate(outputs)]
 
 

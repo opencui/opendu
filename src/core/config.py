@@ -12,16 +12,18 @@ class LugConfig:
     embedding_desc_prompt = "baai_desc"
     embedding_exemplar_prompt = "baai_exemplar"
 
-    classification_skill = True
     desc_retriever_mode = "embedding"
     exemplar_retriever_mode = "OR"
     desc_retrieve_topk = 4
     exemplar_retrieve_topk = 16
+
+    classification_skill = True
     llm_device = "cpu"
     skill_full_prompt = "default"
     extractive_slot_prompt = "basic"
-    inference_model="./output/2T/checkpoint-4010/"
+
     skill_model = "OpenCUI/sgd-skill-tinyllama-2t-1.0"
     extractive_slot_model = "OpenCUI/sgd-slot-tinyllama-2t-1.0"
     abstractive_slot_model = ""
+
     converter_debug = True
