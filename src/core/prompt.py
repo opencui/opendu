@@ -64,7 +64,9 @@ class Prompt:
             'list_slots':
                 ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
             'list_values':
-                ObjectLister(item_header=None, item_delim=",", block_header="[", block_tail="]"),
+                ObjectLister(
+                    item_header=None, item_delim=",",
+                    block_header="Given the candidate values: [", block_tail="null]"),
         }
         self.partials = {}
 
@@ -117,6 +119,25 @@ ClassificationPrompts = {
             '{{#list_examples examples}}Input: [{{template}}] means "{{target}}"? Output: {{decision}}{{/list_examples}}'
             'Input: [{{utterance}}] means "{{skill.name}}"? Output: '
         ),
+    "natural":
+        Prompt(
+            'Determine whether the input means "{{skill.name}}": {{skill.description}}, output true or false.\n'
+            '{{#list_examples examples}}'
+            'Question: Does "{{template}}" mean "{{target}}"? Answer: {{decision}}'
+            '{{/list_examples}}'
+            'Question: Does "{{utterance}}" mean "{{skill.name}}"? Answer:'
+        ),
+}
+
+
+LayeredPrompts = {
+    "default": (
+        Prompt(
+            'Does "{{utterance}}" fit the description: "{{skill.description}}"? Answer: '
+        ),
+        Prompt(
+            'Does "{{utterance}}" mean "{{template}}"? Answer: '
+        )),
 }
 
 
@@ -124,13 +145,9 @@ ClassificationPrompts = {
 SlotPrompts = {
     "default":
         Prompt(
-            "{{#list_values values}} value {{/list_values}}\n"
-            "Extract the value for parameter {{name}} ({{description}}) from and only from the given input:\n"
-            "### Input: {{utterance}}\n"
-            "### Output:"),
+            '{{#list_values values}} {{value}} {{/list_values}}\n'
+            'The value for {{name}} ({{description}}) from "{{utterance}}" is:'),
     "basic":
         Prompt(
-            "Extract the value for parameter {{name}} ({{description}}) from and only from the given input:\n"
-            "### Input: {{utterance}}\n"
-            "### Output:"),
+            'The value for {{name}} ({{description}}) from "{{utterance}}" is:'),
 }
