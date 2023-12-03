@@ -12,7 +12,7 @@ import logging
 import torch
 import transformers
 from torch.nn.utils.rnn import pad_sequence
-from core.prompt import SkillPrompts, SlotPrompts, ClassificationPrompts
+from core.prompt import SkillPrompts, SlotPrompts, ClassificationPrompts, LayeredPrompts
 import argparse
 from transformers import (
     AutoTokenizer,
@@ -138,6 +138,40 @@ class OneSkillTrainConverter(TrainConverter):
                 outs.append(f"{json.dumps(owner == target)}</s>")
 
 
+class LayeredTrainConverter(TrainConverter):
+    def __init__(self, retriever: ContextRetriever):
+        self.desc_prompt = LayeredPrompts[LugConfig.skill_full_prompt][0]
+        self.example_prompt = LayeredPrompts[LugConfig.skill_full_prompt][1]
+        self.context_retrieve = retriever
+        self.neg_k = 1
+
+    def __call__(self, batch, ins: list[str], outs: list[str]):
+        # Working on the batched dataset, with first dimension is column then index.
+        for idx, utterance in enumerate(batch["utterance"]):
+            # We assume the input is dict version of AnnotatedExemplar
+            skills, nodes = self.context_retrieve(utterance)
+            # remove the identical exemplar
+            nodes = [node for node in nodes if node.id_ != batch['id'][idx]]
+            exemplars = [Exemplar(owner=node.metadata["owner"], template=node.text) for node in nodes]
+            owner = batch["owner"][idx]
+
+            skill_map = {}
+
+            # for the skills
+            for skill in skills:
+                input_dict = {"utterance": utterance, "skill": skill}
+                ins.append(self.desc_prompt(input_dict))
+                outs.append(f"{json.dumps(owner == skill['name'])}</s>")
+                skill_map[skill["name"]] = skill
+
+            for exemplar in exemplars:
+                target = exemplar.owner
+                # Try not to have more than two examples.
+                input_dict = {"utterance": utterance, "template": exemplar.template}
+                ins.append(self.example_prompt(input_dict))
+                outs.append(f"{json.dumps(owner == target)}</s>")
+
+
 #
 # This is for extractive slot value understanding.
 # For now, we only get positive example.
@@ -176,17 +210,18 @@ class OneSlotTrainConverter(TrainConverter):
 
 
 def skill_converter(retriever: ContextRetriever):
-    if LugConfig.classification_skill:
+    if LugConfig.skill_mode == "binary":
         return OneSkillTrainConverter(retriever)
-    else:
+    if LugConfig.skill_mode == "multiclass":
         return SkillTrainConverter(retriever)
+    if LugConfig.skill_mode == "simple":
+        return LayeredTrainConverter(retriever)
 
 
 # This inference is needed for cases where users' utterance is response to bot's prompt questions, and
 # needs the abstractive understanding instead of extractive understanding.
 # This is needed to determine the intention, intended function or skill
 # class BooleanConverter
-
 @dataclass
 class ConvertedFactory(DatasetFactory):
     __metaclass__ = ABCMeta
@@ -573,26 +608,16 @@ def train(factories: list[DatasetFactory], peft_config=None):
     for factory in factories:
         retrievers.append(load_context_retrievers({factory.tag: factory.schema}, f"{output}/index/{factory.tag}"))
 
-    train_mode = None
-    if args.training_mode == "skill":
-        train_mode = TrainMode.Skill
-    if args.training_mode == "extractive_slot":
-        train_mode = TrainMode.ExtractiveSlot
-    if args.training_mode == "abstractive_slot":
-        train_mode = TrainMode.AbstractiveSlot
-
-    if train_mode is None:
-        raise RuntimeError("Do not know the task.")
-
+    train_mode = args.training_mode
     converted_factories = []
     for index, factory in enumerate(factories):
         context_retriever = retrievers[index]
-        if train_mode == TrainMode.Skill:
+        if train_mode == "skill":
             converted_factories.append(ConvertedFactory(factory, [skill_converter(context_retriever)]))
-        if train_mode == TrainMode.ExtractiveSlot:
+        if train_mode == "extractive_slot":
             slot_converter = OneSlotTrainConverter(factory.schema, SlotPrompts[LugConfig.extractive_slot_prompt])
             converted_factories.append(ConvertedFactory(factory, [slot_converter]))
-        if train_mode == TrainMode.AbstractiveSlot:
+        if train_mode == "abstractive_slot":
             raise RuntimeError("Not implemented.")
 
     # If we debug dataset, we do not train.

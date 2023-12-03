@@ -17,10 +17,11 @@ class LugConfig:
     desc_retrieve_topk = 4
     exemplar_retrieve_topk = 16
 
-    classification_skill = True
+    # multiclass, classification, simple
+    skill_mode = "simple"
     llm_device = "cpu"
     skill_full_prompt = "default"
-    extractive_slot_prompt = "basic"
+    extractive_slot_prompt = "default"
 
     skill_model = "OpenCUI/sgd-skill-tinyllama-2t-1.0"
     extractive_slot_model = "OpenCUI/sgd-slot-tinyllama-2t-1.0"

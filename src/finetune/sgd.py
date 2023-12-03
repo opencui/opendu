@@ -57,12 +57,16 @@ class SGD(DatasetFactory):
             "arguments": Value(dtype='string', id=None),
             "expectations": Value(dtype='string', id=None)
         })
+        self.entities_map = {}
 
     def build(self, split):
         if split == "validation":
             split = "dev"
 
         base_path = f"{self.base_path}/{split}/"
+
+        self.entities_map[split] = self.collect_entities(split)
+
         def gen_skills():
             """
             load original sgd data and create expression examples
@@ -161,7 +165,44 @@ class SGD(DatasetFactory):
 
         return Dataset.from_generator(gen_skills)
 
+    def collect_entities(self, split):
+        if split == "validation":
+            split = "dev"
 
+        base_path = f"{self.base_path}/{split}/"
+
+        entities = {}
+
+        files = os.listdir(base_path)
+        # For all files.
+        for file in files:
+            if file[:6] != 'dialog':
+                continue
+            with open(base_path + file, encoding='utf-8') as f:
+                f = json.load(f)
+                # For all sessions.
+                for dialogue in f:
+                    turns = dialogue["turns"]
+                    dialogue_id = dialogue["dialogue_id"]
+
+                    # For each session with multiple turns.
+                    pre_intents = set()
+                    existing_intents = set()
+                    actions = None
+                    for idx, turn in enumerate(turns):
+                        # Getting actions.
+                        if turn['speaker'] != 'USER':
+                            continue
+
+                        for frame in turn['frames']:
+                            slot_values = frame["state"]["slot_values"]
+                            for key, values in slot_values.items():
+                                if key not in entities.keys():
+                                    entities[key] = set()
+                                for value in values:
+                                    entities[key].add(value)
+
+        return entities
 
     @classmethod
     def extract_actions(cls, turn):
@@ -189,7 +230,7 @@ def load_schema_as_dict(full_path, suffix: str = "_1"):
                 slots = intent["required_slots"]
                 optional_slots = intent["optional_slots"].keys()
                 slots.extend(list(optional_slots))
-                slots = [f"{slot}" for slot in slots]
+
                 if skill_name in SGD.intent_taboo_word:
                     continue
                 skill_name = CamelToSnake.convert(skill_name)

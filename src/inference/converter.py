@@ -196,7 +196,7 @@ class Converter:
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r'\[([^]]*)\]')
         self.skill_converter = None
-        if LugConfig.classification_skill:
+        if LugConfig.skill_mode:
             self.skill_converter = BSkillConverter(retriever, generator)
         else:
             self.skill_converter = MSkillConverter(retriever, generator)
