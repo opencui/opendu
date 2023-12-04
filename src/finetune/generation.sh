@@ -33,6 +33,6 @@ python3 finetune/generation.py \
     --weight_decay 0.0 \
     --seed 0 \
     --debug_dataset False \
-    --training_mode skill \
+    --training_mode extractive_slot \
     --trust_remote_code \
     --report_to wandb

@@ -1,3 +1,4 @@
+import re
 from abc import ABC
 import abc
 from typing import Optional
@@ -144,6 +145,18 @@ def generate_sentence_pairs(dataset_infos: list[DatasetCreatorWithIndex]) -> Dat
                 dataset_info.exemplar_retriever
             ))
     return generators
+
+
+def collect_slot_values(dataset):
+    entities = {}
+    for exemplar in dataset:
+        slot_values = eval(exemplar["arguments"])
+        for key, values in slot_values.items():
+            if key not in entities.keys():
+                entities[key] = set()
+            for value in values:
+                entities[key].add(value)
+    return entities
 
 
 if __name__ == "__main__":
