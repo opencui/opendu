@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import json
 import sys
 import getopt
 import shutil
 import logging
 import traceback
 
+from core.config import LugConfig
 from core.embedding import EmbeddingStore
 from inference.schema_parser import load_all_from_directory
 from core.annotation import build_nodes_from_exemplar_store, FrameSchema, Exemplar
@@ -44,10 +46,10 @@ if __name__ == "__main__":
 
     modules = input_paths.split(",")
 
-    # For now, we only support single module
-    if len(modules) != 1:
-        print('index.py -o <output_directory> -i <input_files>')
+    # remember the configuration used for index so we can recover.
+    json.dump(LugConfig, open(f"{output_path}/config.json"), indent=2)
 
+    # For now, we only support single module
     try:
         # We assume that there are schema.json, exemplars.json and recognizers.json under the directory
         desc_nodes = []
