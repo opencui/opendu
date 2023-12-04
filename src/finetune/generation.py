@@ -188,22 +188,33 @@ class OneSlotTrainConverter(SlotTrainConverter):
         self.module = module
         self.include_negative = True
         # First try to be efficient.
-        self.entities = {}
+        self.entities = entities
+        self.patterns = {}
         for key, values in entities.items():
             strings_to_check = list(values)
             pattern = re.compile('|'.join(map(re.escape, strings_to_check)))
-            self.entities[key] = pattern
+            self.patterns[key] = pattern
 
     @staticmethod
     def format_value(key, value=None):
         return f"{json.dumps(value)}</s>"
 
     def find_matches(self, slot, utterance):
-        if slot not in self.entities:
+        if slot not in self.pattens:
             return []
 
-        pattern = self.entities[slot]
+        pattern = self.patterns[slot]
         return pattern.findall(utterance)
+
+    def add_one_negative(self, slot_name, small_value_set):
+        picked = None
+        candidates = self.entities[slot_name]
+
+        while picked in small_value_set:
+            picked = random.choice(candidates)
+
+        if picked is not None:
+            small_value_set.add(picked)
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # We assume the input is dict version of AnnotatedExemplar
@@ -219,6 +230,7 @@ class OneSlotTrainConverter(SlotTrainConverter):
                 # In addition to the true value, the best should be of the same type and
                 # also the occurs in the utterance but not the value.
                 values = set(self.find_matches(slot_name, utterance))
+                self.add_one_negative(slot_label, values)
                 input_dict = {"utterance": utterance, "values": values}
                 input_dict.update(slot)
                 if slot_name in arguments:

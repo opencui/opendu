@@ -105,13 +105,6 @@ class DatasetFactory(ABC):
         return
 
 
-class ValueCollectable:
-    @abc.abstractmethod
-    def collect_slot_values(self, split):
-        """This should collect all the values for all the slot"""
-        return
-
-
 class LoadFactory(DatasetFactory):
     def __init__(self, dsf: DatasetFactory, path: str):
         self.path = path

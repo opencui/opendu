@@ -9,8 +9,7 @@ from collections import defaultdict
 from datasets import Dataset, Features, Value
 
 from core.annotation import Schema, FrameSchema, SlotSchema, CamelToSnake
-from finetune.commons import DatasetFactory, create_full_exemplar, ValueCollectable
-
+from finetune.commons import DatasetFactory, create_full_exemplar
 
 # pip install -U gin-config faiss-cpu scikit-learn sentence-transformers
 # python3 generate_intent.py --input=/home/sean/src/dstc8-schema-guided-dialogue/train/ --output=./res/train
