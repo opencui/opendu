@@ -240,6 +240,7 @@ class OneSlotTrainConverter(SlotTrainConverter):
                 if slot_name in arguments:
                     value = arguments[slot_name]
                     # First without values. We assume that value is
+                    input_dict["values"] = []
                     ins.append(self.prompt(input_dict))
                     if len(value) == 1:
                         outs.append(self.format_value(slot_name, arguments[slot_name][0]))
@@ -253,6 +254,7 @@ class OneSlotTrainConverter(SlotTrainConverter):
                     else:
                         outs.append(self.format_value(slot_name, arguments[slot_name]))
                 else:
+                    input_dict["values"] = []
                     if self.include_negative:
                         ins.append(self.prompt(input_dict))
                         outs.append(self.format_value(slot_name, None))
