@@ -200,13 +200,16 @@ class OneSlotTrainConverter(SlotTrainConverter):
         return f"{json.dumps(value)}</s>"
 
     def find_matches(self, slot, utterance):
-        if slot not in self.pattens:
+        if slot not in self.patterns:
             return []
 
         pattern = self.patterns[slot]
         return pattern.findall(utterance)
 
     def add_one_negative(self, slot_name, small_value_set):
+        if slot_name not in self.entities:
+            return
+        
         picked = None
         candidates = self.entities[slot_name]
 
