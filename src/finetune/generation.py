@@ -1,3 +1,4 @@
+import re
 from abc import ABC, abstractmethod, ABCMeta
 import copy
 import json
@@ -26,7 +27,7 @@ from core.annotation import Schema, Exemplar
 from core.embedding import EmbeddingStore
 from core.prompt import Prompt
 from core.retriever import load_context_retrievers, ContextRetriever, build_desc_index
-from finetune.commons import AnnotatedExemplar, DatasetFactory, build_dataset_index
+from finetune.commons import AnnotatedExemplar, DatasetFactory, build_dataset_index, collect_slot_values
 from peft import LoraConfig, get_peft_model
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,11 @@ class TrainConverter(ABC):
     @abstractmethod
     def __call__(self, item: AnnotatedExemplar, ins: list[str], outs: list[str]):
         return
+
+
+# The slot converter need to have access to entities.
+class SlotTrainConverter(TrainConverter, ABC):
+    entities: dict[str, re.Pattern]
 
 
 # This is needed to determine the intention, intended function or skill
@@ -138,6 +144,7 @@ class OneSkillTrainConverter(TrainConverter):
                 outs.append(f"{json.dumps(owner == target)}</s>")
 
 
+# For this one, we first use example based prediction, and then description based prediction.
 class LayeredTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever):
         self.desc_prompt = LayeredPrompts[LugConfig.skill_full_prompt][0]
@@ -175,15 +182,28 @@ class LayeredTrainConverter(TrainConverter):
 #
 # This is for extractive slot value understanding.
 # For now, we only get positive example.
-class OneSlotTrainConverter(TrainConverter):
-    def __init__(self, module: Schema, slot_prompt: Prompt):
+class OneSlotTrainConverter(SlotTrainConverter):
+    def __init__(self, module: Schema, slot_prompt: Prompt, entities):
         self.prompt = slot_prompt
         self.module = module
         self.include_negative = True
+        # First try to be efficient.
+        self.entities = {}
+        for key, values in entities.items():
+            strings_to_check = list(values)
+            pattern = re.compile('|'.join(map(re.escape, strings_to_check)))
+            self.entities[key] = pattern
 
     @staticmethod
     def format_value(key, value=None):
         return f"{json.dumps(value)}</s>"
+
+    def find_matches(self, slot, utterance):
+        if slot not in self.entities:
+            return []
+
+        pattern = self.entities[slot]
+        return pattern.findall(utterance)
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # We assume the input is dict version of AnnotatedExemplar
@@ -194,7 +214,12 @@ class OneSlotTrainConverter(TrainConverter):
             for slot_label in self.module.skills[owner]["slots"]:
                 slot = self.module.slots[slot_label]
                 slot_name = slot["name"]
-                input_dict = {"utterance": utterance}
+
+                # Now we need to select the value from entities
+                # In addition to the true value, the best should be of the same type and
+                # also the occurs in the utterance but not the value.
+                values = set(self.find_matches(slot_name, utterance))
+                input_dict = {"utterance": utterance, "values": values}
                 input_dict.update(slot)
                 if slot_name in arguments:
                     ins.append(self.prompt(input_dict))
@@ -615,7 +640,9 @@ def train(factories: list[DatasetFactory], peft_config=None):
         if train_mode == "skill":
             converted_factories.append(ConvertedFactory(factory, [skill_converter(context_retriever)]))
         if train_mode == "extractive_slot":
-            slot_converter = OneSlotTrainConverter(factory.schema, SlotPrompts[LugConfig.extractive_slot_prompt])
+            entity_values = collect_slot_values(factory.build("train"))
+            slot_converter = OneSlotTrainConverter(
+                factory.schema, SlotPrompts[LugConfig.extractive_slot_prompt], entity_values)
             converted_factories.append(ConvertedFactory(factory, [slot_converter]))
         if train_mode == "abstractive_slot":
             raise RuntimeError("Not implemented.")
