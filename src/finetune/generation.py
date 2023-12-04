@@ -233,12 +233,21 @@ class OneSlotTrainConverter(SlotTrainConverter):
                 # In addition to the true value, the best should be of the same type and
                 # also the occurs in the utterance but not the value.
                 values = set(self.find_matches(slot_name, utterance))
-                self.add_one_negative(slot_label, values)
-                input_dict = {"utterance": utterance, "values": values}
+                # Most likely we do not need to add the negatives.
+                # self.add_one_negative(slot_label, values)
+                input_dict = {"utterance": utterance}
                 input_dict.update(slot)
                 if slot_name in arguments:
-                    ins.append(self.prompt(input_dict))
                     value = arguments[slot_name]
+                    # First without values. We assume that value is
+                    ins.append(self.prompt(input_dict))
+                    if len(value) == 1:
+                        outs.append(self.format_value(slot_name, arguments[slot_name][0]))
+                    else:
+                        outs.append(self.format_value(slot_name, arguments[slot_name]))
+                    # then with values.
+                    input_dict["values"] = values
+                    ins.append(self.prompt(input_dict))
                     if len(value) == 1:
                         outs.append(self.format_value(slot_name, arguments[slot_name][0]))
                     else:
