@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import shutil
 import logging
+from collections import defaultdict
 
 from llama_index import ServiceContext, StorageContext, load_index_from_storage
 from llama_index import VectorStoreIndex, SimpleKeywordTableIndex
@@ -128,13 +129,13 @@ class HybridRetriever(BaseRetriever):
         return retrieve_nodes
 
 
-def dedup_nodes(old_results: list[TextNode]):
+def dedup_nodes(old_results: list[TextNode], arity=1):
     new_results = []
-    intents = set()
+    intents = defaultdict(int)
     for item in old_results:
         intent = item.metadata["owner"]
-        if intent not in intents:
-            intents.add(intent)
+        if intents[intent] < arity:
+            intents[intent] += 1
             new_results.append(item)
     return new_results
 
@@ -147,13 +148,14 @@ class ContextRetriever:
         self.desc_retriever = d_retrievers
         self.exemplar_retriever = e_retriever
         self.nones = ["NONE"]
-        self.num_exemplars = 4
+        self.arity = LugConfig.exemplar_retrieve_arity
+        self.num_exemplars = LugConfig.exemplar_combined_topk
 
     def __call__(self, query):
         # The goal here is to find the combined descriptions and exemplars.
         desc_nodes = [item.node for item in self.desc_retriever.retrieve(query)]
         exemplar_nodes = [item.node for item in self.exemplar_retriever.retrieve(query)]
-        exemplar_nodes = dedup_nodes(exemplar_nodes)[0:self.num_exemplars]
+        exemplar_nodes = dedup_nodes(exemplar_nodes, self.arity)[0:self.num_exemplars]
         all_nodes = dedup_nodes(desc_nodes + exemplar_nodes)
         owners = [FrameId(item.metadata["module"], item.metadata["owner"]) for item in all_nodes if item.metadata["owner"] not in self.nones]
 

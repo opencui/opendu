@@ -16,9 +16,12 @@ class LugConfig:
     exemplar_retriever_mode = "OR"
     desc_retrieve_topk = 4
     exemplar_retrieve_topk = 16
+    exemplar_retrieve_arity = 1
+    exemplar_combined_topk = 4
 
     # multiclass, classification, simple
     skill_mode = "simple"
+    skill_arity = 1
     llm_device = "cpu"
     skill_full_prompt = "default"
     extractive_slot_prompt = "default"

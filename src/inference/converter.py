@@ -7,7 +7,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 import json
 from core.config import LugConfig
 from core.annotation import FrameValue, Exemplar, DialogExpectation, CamelToSnake
-from core.prompt import SkillPrompts, SlotPrompts, ClassificationPrompts
+from core.prompt import SkillPrompts, SlotPrompts, ClassificationPrompts, LayeredPrompts
 from core.retriever import ContextRetriever, load_context_retrievers
 from inference.schema_parser import load_all_from_directory
 
@@ -182,6 +182,51 @@ class BSkillConverter(SkillConverter):
 
         flags = [parse_json_from_string(raw_flag, False) for index, raw_flag in enumerate(skill_outputs)]
 
+        func_names = [owners[index] for index, flag in enumerate(flags) if flag]
+
+        return func_names
+
+
+class SSkillConverter(SkillConverter):
+    def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
+        self.retrieve = retriever
+        self.generator = generator
+        self.desc_prompt = LayeredPrompts[LugConfig.skill_full_prompt][0]
+        self.example_prompt = LayeredPrompts[LugConfig.skill_full_prompt][1]
+
+    def get_skill(self, text):
+        to_snake = CamelToSnake()
+
+        # nodes owner are always included in the
+        skills, nodes = self.retrieve(text)
+        exemplars = [Exemplar(owner=to_snake.encode(node.metadata["owner"]), template=node.text) for node in nodes]
+
+        for skill in skills:
+            skill["name"] = to_snake.encode(skill["name"])
+
+        skill_prompts = []
+        owners = []
+        # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
+        for exemplar in exemplars:
+            owners.append(exemplar.owner)
+            input_dict = {"utterance": text, "template": exemplar.template}
+            skill_prompts.append(self.example_prompt(input_dict))
+
+        # for now, we process it once.
+        for skill in skills:
+            input_dict = {"utterance": text, "skill": skill}
+            skill_prompts.append(self.desc_prompt(input_dict))
+            owners.append[skill["name"]]
+
+        skill_outputs = self.generator.for_skill(skill_prompts)
+
+        if LugConfig.converter_debug:
+            print(json.dumps(skill_prompts, indent=2))
+            print(json.dumps(skill_outputs, indent=2))
+
+        flags = [parse_json_from_string(raw_flag, False) for index, raw_flag in enumerate(skill_outputs)]
+
+        # We only pick the first function for now, example wins.
         func_names = [owners[index] for index, flag in enumerate(flags) if flag]
 
         return func_names
