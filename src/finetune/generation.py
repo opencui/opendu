@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod, ABCMeta
 import copy
 import json
 import os
+import shutil
 from enum import Enum
 from os.path import exists, join, isdir
 from dataclasses import dataclass, field
@@ -640,6 +641,9 @@ def train(factories: list[DatasetFactory], peft_config=None):
     )
 
     print(args)
+    # Copy the configure file over so that we know which is which.
+    shutil.copy("./finetune/generation.sh", args.output_dir)
+    shutil.copy("./core/config.py", args.output_dir)
 
     # For now, just use the fix path.
     output = "../output"
@@ -683,6 +687,8 @@ def train(factories: list[DatasetFactory], peft_config=None):
                 print(json.dumps(item, indent=2))
             print(count)
         exit(0)
+
+
 
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
@@ -770,6 +776,7 @@ def train(factories: list[DatasetFactory], peft_config=None):
     if args.do_train or args.do_eval or args.do_predict:
         with open(os.path.join(args.output_dir, "metrics.json"), "w") as fout:
             fout.write(json.dumps(all_metrics))
+
 
 
 class TrainMode(Enum):
