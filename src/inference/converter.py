@@ -282,7 +282,7 @@ class Converter:
             values = []
             if self.recognizer is not None:
                 values = self.recognizer.extract_values(slot, text)
-            slot_input_dict = {"utterance": text, "values": value}
+            slot_input_dict = {"utterance": text, "values": values}
             slot_input_dict.update(module.slots[slot].to_dict())
             slot_prompts.append(self.slot_prompt(slot_input_dict))
 
