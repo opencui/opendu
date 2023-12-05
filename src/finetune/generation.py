@@ -182,6 +182,10 @@ class LayeredTrainConverter(TrainConverter):
 #
 # This is for extractive slot value understanding.
 # For now, we only get positive example.
+class ListRecoginizer:
+    pass
+
+
 class OneSlotTrainConverter(SlotTrainConverter):
     def __init__(self, module: Schema, slot_prompt: Prompt, entities):
         self.prompt = slot_prompt
@@ -198,13 +202,6 @@ class OneSlotTrainConverter(SlotTrainConverter):
     @staticmethod
     def format_value(key, value=None):
         return f"{json.dumps(value)}</s>"
-
-    def find_matches(self, slot, utterance):
-        if slot not in self.patterns:
-            return []
-
-        pattern = self.patterns[slot]
-        return pattern.findall(utterance)
 
     def add_one_negative(self, slot_name, small_value_set):
         if slot_name not in self.entities:
@@ -232,7 +229,7 @@ class OneSlotTrainConverter(SlotTrainConverter):
                 # Now we need to select the value from entities
                 # In addition to the true value, the best should be of the same type and
                 # also the occurs in the utterance but not the value.
-                values = set(self.find_matches(slot_name, utterance))
+                values = set(ListRecoginizer.find_matches(self.patterns, slot_name, utterance))
                 # Most likely we do not need to add the negatives.
                 # self.add_one_negative(slot_label, values)
                 input_dict = {"utterance": utterance}

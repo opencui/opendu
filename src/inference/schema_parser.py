@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import json
-from core.annotation import ExemplarStore, SlotRecognizers, FrameSchema, SlotSchema, Schema, get_value, CamelToSnake
+from core.annotation import ExemplarStore, EntityMetas, FrameSchema, SlotSchema, Schema, get_value, CamelToSnake
 
 
 #
@@ -69,13 +69,13 @@ def load_schema_from_directory(path):
 def load_all_from_directory(input_path):
     module_schema = load_schema_from_directory(f"{input_path}/schemas.json")
     examplers = ExemplarStore(**json.load(open(f"{input_path}/exemplars.json")))
-    recognizers = SlotRecognizers(**json.load(open(f"{input_path}/recognizers.json")))
+    recognizers = EntityMetas(**json.load(open(f"{input_path}/recognizers.json")))
     return module_schema, examplers, recognizers
 
 
 def load_specs_and_recognizers_from_directory(input_path):
     module_schema = load_schema_from_directory(f"{input_path}/schemas.json")
-    recognizers = SlotRecognizers(**json.load(open(f"{input_path}/recognizers.json")))
+    recognizers = EntityMetas(**json.load(open(f"{input_path}/recognizers.json")))
     return module_schema, recognizers
 
 
@@ -92,6 +92,6 @@ if __name__ == "__main__":
     print(exemplars)
     print("\n")
 
-    recognizer = SlotRecognizers(**json.load(open("./examples/recognizers.json")))
+    recognizer = EntityMetas(**json.load(open("./examples/recognizers.json")))
     print(recognizer)
     print("\n")
