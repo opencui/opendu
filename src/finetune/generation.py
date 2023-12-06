@@ -785,7 +785,7 @@ def build_skill_factory(output):
     for factory in factories:
         build_desc_index(factory.tag, factory.schema, f"{output}/index/{factory.tag}",
                          EmbeddingStore.for_description())
-        build_dataset_index(factory.tag, factory.build("train"), f"{output}/index/{factory.tag}",
+        build_dataset_index(factory.tag, factory["train"], f"{output}/index/{factory.tag}",
                             EmbeddingStore.for_exemplar())
 
     retrievers = []
