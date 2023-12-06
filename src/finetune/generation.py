@@ -651,10 +651,19 @@ def train(factories: list[DatasetFactory], peft_config=None):
         **vars(model_args), **vars(data_args), **vars(training_args)
     )
 
-    print(args)
+    # append the training mode
+    args.output_dir = f"{args.output_dir}/{args.training_mode}"
+    if args.training_mode == "skill":
+        args.output_dir = f"{args.output_dir}/{LugConfig.skill_mode}"
+
     # Copy the configure file over so that we know which is which.
-    shutil.copy("./finetune/generation.sh", args.output_dir)
-    shutil.copy("./core/config.py", args.output_dir)
+    try:
+        os.makedirs(args.output_dir, exist_ok = True)
+    except OSError as error:
+        print("Directory '%s' can not be created" % args.output_dir)
+
+    shutil.copy("./finetune/generation.sh", f"{args.output_dir}/")
+    shutil.copy("./core/config.py", f"{args.output_dir}/")
 
     # For now, just use the fix path.
     output = "../output"
