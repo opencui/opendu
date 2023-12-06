@@ -29,8 +29,8 @@ def from_openai(functions) -> Schema:
             else:
                 slot_name = key
                 slot_description = slot["description"]
-                slot_infos[slot_name] = SlotSchema(slot_name, slot_description)
-        skill_infos[f_name] = FrameSchema(f_name, f_description, f_slots)
+                slot_infos[slot_name] = SlotSchema(slot_name, slot_description).to_dict()
+        skill_infos[f_name] = FrameSchema(f_name, f_description, f_slots).to_dict()
     return Schema(skill_infos, slot_infos, to_snake.backward)
 
 
@@ -53,7 +53,7 @@ def from_openapi(specs) -> Schema:
                 slot_name = get_value(_p, "name")
                 slot_description = get_value(_p, "description")
                 if slot_name not in slots:
-                    slots[slot_name] = SlotSchema(slot_name, slot_description)
+                    slots[slot_name] = SlotSchema(slot_name, slot_description).to_dict()
                 parameters.append(slot_name)
             skills[name] = FrameSchema(name, description, parameters).to_dict()
     return Schema(skills, slots, to_snake.backward)

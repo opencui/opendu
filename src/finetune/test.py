@@ -30,7 +30,7 @@ if __name__ == "__main__":
     tag = "validation"
     for factory in factories:
         build_nodes_from_skills(factory.tag, factory.schema.skills, desc_nodes)
-        build_nodes_from_dataset(factory.tag, factory.build(tag), exemplar_nodes)
+        build_nodes_from_dataset(factory.tag, factory[tag], exemplar_nodes)
 
     # For inference, we only create one index.
     create_index(f"{output}/index", "exemplar", exemplar_nodes, EmbeddingStore.for_exemplar())
@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     counts = [0, 0]
     for factory in factories:
-        dataset = factory.build(tag)
+        dataset = factory[tag]
         marker = "### Output:"
         for item in dataset:
             # We only support snake function name.

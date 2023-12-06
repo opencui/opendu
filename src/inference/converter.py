@@ -172,7 +172,7 @@ class BSkillConverter(SkillConverter):
                 continue
             input_dict = {"utterance": text, "examples": [], "skill": skill}
             skill_prompts.append(self.prompt(input_dict))
-            owners.append[skill["name"]]
+            owners.append(skill["name"])
 
         skill_outputs = self.generator.for_skill(skill_prompts)
 
@@ -255,7 +255,7 @@ class Converter:
         if LugConfig.skill_mode == "binary":
             self.skill_converter = BSkillConverter(retriever, generator)
         if LugConfig.skill_mode == "multiclass":
-            self.skill_converter = BSkillConverter(retriever, generator)
+            self.skill_converter = MSkillConverter(retriever, generator)
 
     def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
         # low level get skill.
@@ -286,7 +286,8 @@ class Converter:
             if self.recognizer is not None:
                 values = self.recognizer.extract_values(slot, text)
             slot_input_dict = {"utterance": text, "values": values}
-            slot_input_dict.update(module.slots[slot].to_dict())
+            print(module.slots[slot])
+            slot_input_dict.update(module.slots[slot])
             slot_prompts.append(self.slot_prompt(slot_input_dict))
 
         if LugConfig.converter_debug:
