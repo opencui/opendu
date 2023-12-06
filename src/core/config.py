@@ -27,8 +27,8 @@ class LugConfig:
     extractive_slot_prompt = "default"
     abstractive_slot_prompt = "default"
 
-    skill_model = "OpenCUI/sgd-skill-tinyllama-2t-1.0"
-    extractive_slot_model = "OpenCUI/sgd-slot-tinyllama-2t-1.0"
-    abstractive_slot_model = ""
+    skill_model = "OpenCUI/skill-tinyllama-2t-1.0"
+    extractive_slot_model = "OpenCUI/extractive-tinyllama-2t-1.0"
+    abstractive_slot_model = "OpenCUI/abstractive-tinyllama-2t-1.0"
 
     converter_debug = True
