@@ -7,7 +7,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 import json
 from core.config import LugConfig
 from core.annotation import FrameValue, Exemplar, DialogExpectation, CamelToSnake, EntityMetas, ListRecognizer
-from core.prompt import SkillPrompts, SlotPrompts, ClassificationPrompts, LayeredPrompts
+from core.prompt import SkillPrompts, ExtractivePrompts, ClassificationPrompts, LayeredPrompts
 from core.retriever import ContextRetriever, load_context_retrievers
 from inference.schema_parser import load_all_from_directory
 
@@ -245,7 +245,7 @@ class Converter:
             self.recognizer = ListRecognizer(entity_metas)
 
         self.generator = generator
-        self.slot_prompt = SlotPrompts[LugConfig.extractive_slot_prompt]
+        self.slot_prompt = ExtractivePrompts[LugConfig.extractive_slot_prompt]
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r'\[([^]]*)\]')
         self.skill_converter = None

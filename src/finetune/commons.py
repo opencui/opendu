@@ -100,19 +100,9 @@ class DatasetFactory(ABC):
     schema: Schema
 
     @abc.abstractmethod
-    def build(self, split: str = "train") -> Dataset:
+    def __getitem__(self, split: str = "train") -> Dataset:
         """This return the domain meta needed."""
         return
-
-
-class LoadFactory(DatasetFactory):
-    def __init__(self, dsf: DatasetFactory, path: str):
-        self.path = path
-        self.tag = dsf.tag
-        self.schema = dsf.schema
-
-    def build(self, split: str = "train") -> Dataset:
-        return datasets.load_from_disk(f"{self.path}/datasets/{self.tag}/{split}")
 
 
 @dataclass
@@ -132,7 +122,7 @@ class DatasetCreatorWithIndex:
 def generate_sentence_pairs(dataset_infos: list[DatasetCreatorWithIndex]) -> Dataset:
     generators = []
     for dataset_info in dataset_infos:
-        dataset = dataset_info.creator.build("train")
+        dataset = dataset_info.creator["train"]
         generators.extend(
             create_sentence_pair_for_description(
                 dataset_info.creator.schema.skills,

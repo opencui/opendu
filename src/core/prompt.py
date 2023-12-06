@@ -142,7 +142,7 @@ LayeredPrompts = {
 
 
 # For the slots of enum type, we used different prompt in order to improve the
-SlotPrompts = {
+ExtractivePrompts = {
     "default":
         Prompt(
             '{{#list_values values}} {{value}} {{/list_values}}\n'
@@ -150,4 +150,12 @@ SlotPrompts = {
     "basic":
         Prompt(
             'The value for {{name}} ({{description}}) from "{{utterance}}" is:'),
+}
+
+
+AbstractivePrompts = {
+    "default":
+        Prompt(
+            'Text: {{utterance}} Focus: {{target}} Sentiment: '
+        )
 }
