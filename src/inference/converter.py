@@ -216,8 +216,9 @@ class SSkillConverter(SkillConverter):
         for skill in skills:
             input_dict = {"utterance": text, "skill": skill}
             skill_prompts.append(self.desc_prompt(input_dict))
-            owners.append[skill["name"]]
+            owners.append(skill["name"])
 
+        print(skill_prompts)
         skill_outputs = self.generator.for_skill(skill_prompts)
 
         if LugConfig.converter_debug:
@@ -249,10 +250,12 @@ class Converter:
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r'\[([^]]*)\]')
         self.skill_converter = None
-        if LugConfig.skill_mode:
+        if LugConfig.skill_mode == "simple":
+            self.skill_converter = SSkillConverter(retriever, generator)
+        if LugConfig.skill_mode == "binary":
             self.skill_converter = BSkillConverter(retriever, generator)
-        else:
-            self.skill_converter = MSkillConverter(retriever, generator)
+        if LugConfig.skill_mode == "multiclass":
+            self.skill_converter = BSkillConverter(retriever, generator)
 
     def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
         # low level get skill.

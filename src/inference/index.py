@@ -46,9 +46,6 @@ if __name__ == "__main__":
 
     modules = input_paths.split(",")
 
-    # remember the configuration used for index so we can recover.
-    json.dump(LugConfig, open(f"{output_path}/config.json"), indent=2)
-
     # For now, we only support single module
     try:
         # We assume that there are schema.json, exemplars.json and recognizers.json under the directory
