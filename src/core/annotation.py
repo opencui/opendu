@@ -1,10 +1,12 @@
 import json
 import re
+from abc import abstractmethod
 from dataclasses import field
 from typing import Union, List, TypedDict, Optional, Dict, Literal
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 from llama_index.schema import TextNode
+from torch.ao.quantization.observer import ABC
 from typing_extensions import Annotated
 from pydantic import BaseModel, Field
 
@@ -95,25 +97,38 @@ class EntityInstance(BaseModel):
     expressions: List[str] = Field(description="the expressions used to identify this instance.")
 
 
-class ListRecognizer(BaseModel):
+class ListEntityInfo(BaseModel):
     rec_type: Literal['list']
     name: str = Field(description="language dependent name")
     description: Optional[str] = Field(description="define what is this type for.")
     instances: List[EntityInstance]
 
 
-class PatternRecognizer(BaseModel):
-    rec_type: Literal['pattern']
-    name: str = Field(description="language dependent name")
-    description: Optional[str] = Field(description="define what is this type for.")
-    pattern: str = Field(description="regex pattern to recognize the instance of this entity.")
-
-
-class SlotRecognizers(BaseModel):
+# For now, we only worry about list entity in the python side, as it is mainly designed for function calling.
+class EntityMetas(BaseModel):
     slots: Dict[str, str] = Field(description="the mapping from slot name to entity name")
-    recognizers: Dict[
-        str, Annotated[Union[ListRecognizer, PatternRecognizer], Field(discriminator='rec_type')]] = Field(
-        description="the name to recognizer")
+    recognizers: Dict[str, ListEntityInfo] = Field(description="the name to recognizer")
+
+
+# For now, we do not handle normalization in understanding.
+class ListRecognizer:
+    def __init__(self, infos: Dict[str, ListEntityInfo]):
+        self.infos = infos
+        self.patterns = {}
+        for key, info in infos.items():
+            instances = [item for instance in info for item in instance.expressions]
+            self.patterns[key] = re.compile('|'.join(map(re.escape, instances)))
+
+    @staticmethod
+    def find_matches(patterns, slot, utterance):
+        if slot not in patterns:
+            return []
+
+        pattern = patterns[slot]
+        return pattern.findall(utterance)
+
+    def extract_values(self, slot, text):
+        return ListRecognizer.find_matches(self.patterns, slot, text)
 
 
 # owner is not needed if exemplars are listed insider function specs.

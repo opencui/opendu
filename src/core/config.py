@@ -25,6 +25,7 @@ class LugConfig:
     llm_device = "cpu"
     skill_full_prompt = "default"
     extractive_slot_prompt = "default"
+    abstractive_slot_prompt = "default"
 
     skill_model = "OpenCUI/sgd-skill-tinyllama-2t-1.0"
     extractive_slot_model = "OpenCUI/sgd-slot-tinyllama-2t-1.0"

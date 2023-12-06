@@ -61,10 +61,25 @@ python3 funetune/find_k_for_prompt.py
 Assuming that you have schema-guided dialogue dataset at <dir for lug>/../dstc8-schema-guided-dialogue/
 
 ### Fine-tune the generation model
+By default, OpenLug uses a cascade model, where we use a lora based skill more to determine the skill/function 
+first, then use a different lora adaptor for determine the slot/parameter values. Ideally, both adaptors are 
+paired with the same base model. The generation models need to be fine-tuned separately. Mainly by changing the shared 
+configuration in core/config.py and training aspect in finetune/generation.sh.  
+
+Use skill and extractive_slot for training_mode in finetune/generation.sh for fine-tuning skill and slot models respectively.
 
 ```bash
 python3 finetune/generation.sh
 ```
+
+After finetune, it is advised to publish the resulting adaptors to huggingface so that people can test your adaptors.
+
+### Testing
+The follow python script can be used to test finetuned adaptors.
+```bash
+python3 fineturn/test.py 
+```
+
 
 ## Special considerations
 Fine-tuning generator for RAG applications bring some new considerations. 

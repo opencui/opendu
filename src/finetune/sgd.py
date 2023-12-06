@@ -57,7 +57,7 @@ class SGD(DatasetFactory):
             "expectations": Value(dtype='string', id=None)
         })
 
-    def build(self, split):
+    def __getitem__(self, split):
         if split == "validation":
             split = "dev"
 

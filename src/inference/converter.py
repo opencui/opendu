@@ -6,8 +6,8 @@ from peft import PeftConfig, PeftModel
 from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 import json
 from core.config import LugConfig
-from core.annotation import FrameValue, Exemplar, DialogExpectation, CamelToSnake
-from core.prompt import SkillPrompts, SlotPrompts, ClassificationPrompts, LayeredPrompts
+from core.annotation import FrameValue, Exemplar, DialogExpectation, CamelToSnake, EntityMetas, ListRecognizer
+from core.prompt import SkillPrompts, ExtractivePrompts, ClassificationPrompts, LayeredPrompts
 from core.retriever import ContextRetriever, load_context_retrievers
 from inference.schema_parser import load_all_from_directory
 
@@ -233,11 +233,19 @@ class SSkillConverter(SkillConverter):
 
 
 class Converter:
-    def __init__(self, retriever: ContextRetriever, recognizers=None, generator=LocalGenerator(), with_arguments=True):
+    def __init__(
+            self,
+            retriever: ContextRetriever,
+            entity_metas: EntityMetas = None,
+            generator=LocalGenerator(),
+            with_arguments=True):
         self.retrieve = retriever
-        self.recognizers = recognizers
+        self.recognizer = None
+        if entity_metas is not None:
+            self.recognizer = ListRecognizer(entity_metas)
+
         self.generator = generator
-        self.slot_prompt = SlotPrompts[LugConfig.extractive_slot_prompt]
+        self.slot_prompt = ExtractivePrompts[LugConfig.extractive_slot_prompt]
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r'\[([^]]*)\]')
         self.skill_converter = None
@@ -271,7 +279,10 @@ class Converter:
         # Then we need to create the prompt for the parameters.
         slot_prompts = []
         for slot in slot_labels_of_func:
-            slot_input_dict = {"utterance": text}
+            values = []
+            if self.recognizer is not None:
+                values = self.recognizer.extract_values(slot, text)
+            slot_input_dict = {"utterance": text, "values": values}
             slot_input_dict.update(module.slots[slot].to_dict())
             slot_prompts.append(self.slot_prompt(slot_input_dict))
 

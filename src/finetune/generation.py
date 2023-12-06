@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod, ABCMeta
 import copy
 import json
 import os
+import shutil
 from enum import Enum
 from os.path import exists, join, isdir
 from dataclasses import dataclass, field
@@ -13,7 +14,7 @@ import logging
 import torch
 import transformers
 from torch.nn.utils.rnn import pad_sequence
-from core.prompt import SkillPrompts, SlotPrompts, ClassificationPrompts, LayeredPrompts
+from core.prompt import SkillPrompts, ExtractivePrompts, ClassificationPrompts, LayeredPrompts, AbstractivePrompts
 import argparse
 from transformers import (
     AutoTokenizer,
@@ -21,9 +22,9 @@ from transformers import (
     set_seed,
     Seq2SeqTrainer,
 )
-from datasets import Dataset, concatenate_datasets
+from datasets import Dataset, concatenate_datasets, load_dataset
 
-from core.annotation import Schema, Exemplar
+from core.annotation import Schema, Exemplar, ListRecognizer
 from core.embedding import EmbeddingStore
 from core.prompt import Prompt
 from core.retriever import load_context_retrievers, ContextRetriever, build_desc_index
@@ -47,7 +48,7 @@ class TrainConverter(ABC):
 
 
 # The slot converter need to have access to entities.
-class SlotTrainConverter(TrainConverter, ABC):
+class SlotExtractConverter(TrainConverter, ABC):
     entities: dict[str, re.Pattern]
 
 
@@ -182,7 +183,7 @@ class LayeredTrainConverter(TrainConverter):
 #
 # This is for extractive slot value understanding.
 # For now, we only get positive example.
-class OneSlotTrainConverter(SlotTrainConverter):
+class OneSlotExtractConverter(SlotExtractConverter):
     def __init__(self, module: Schema, slot_prompt: Prompt, entities):
         self.prompt = slot_prompt
         self.module = module
@@ -198,13 +199,6 @@ class OneSlotTrainConverter(SlotTrainConverter):
     @staticmethod
     def format_value(key, value=None):
         return f"{json.dumps(value)}</s>"
-
-    def find_matches(self, slot, utterance):
-        if slot not in self.patterns:
-            return []
-
-        pattern = self.patterns[slot]
-        return pattern.findall(utterance)
 
     def add_one_negative(self, slot_name, small_value_set):
         if slot_name not in self.entities:
@@ -232,7 +226,7 @@ class OneSlotTrainConverter(SlotTrainConverter):
                 # Now we need to select the value from entities
                 # In addition to the true value, the best should be of the same type and
                 # also the occurs in the utterance but not the value.
-                values = set(self.find_matches(slot_name, utterance))
+                values = set(ListRecognizer.find_matches(self.patterns, slot_name, utterance))
                 # Most likely we do not need to add the negatives.
                 # self.add_one_negative(slot_label, values)
                 input_dict = {"utterance": utterance}
@@ -260,6 +254,21 @@ class OneSlotTrainConverter(SlotTrainConverter):
                         outs.append(self.format_value(slot_name, None))
 
 
+# We need to handle many different use case here.
+class SlotAbstractConverter(TrainConverter, ABC):
+    def __init__(self, prompt):
+        self.prompt = prompt
+
+    def __call__(self, batch, ins: list[str], outs: list[str]):
+        # We assume the input is dict version of AnnotatedExemplar
+        for idx, utterance in enumerate(batch["utterance"]):
+            target = batch["target"][idx]
+            label = batch["label"][idx]
+            input_dict = {"utterance": utterance, "target": target}
+            ins.append(self.prompt(input_dict))
+            outs.append(f"{label}</s>")
+
+
 def skill_converter(retriever: ContextRetriever):
     if LugConfig.skill_mode == "binary":
         return OneSkillTrainConverter(retriever)
@@ -274,14 +283,14 @@ def skill_converter(retriever: ContextRetriever):
 # This is needed to determine the intention, intended function or skill
 # class BooleanConverter
 @dataclass
-class ConvertedFactory(DatasetFactory):
+class PromptedFactory(DatasetFactory):
     __metaclass__ = ABCMeta
+    skill_columns = ["id", "utterance", "template", "owner", "arguments", "expectations"]
 
-    def __init__(self, dsf: DatasetFactory, convert: list[TrainConverter]):
+    def __init__(self, dsf: DatasetFactory, convert: list[TrainConverter], unused_columns=skill_columns):
         self.creator = dsf
         self.converters: list[TrainConverter] = convert
-        self.tag = self.creator.tag
-        self.columns = ["id", "utterance", "template", "owner", "arguments", "expectations"]
+        self.columns = unused_columns
 
     def extra_tokens(self):
         return list(set([token for converter in self.converters for token in converter.prompt.extra_tokens]))
@@ -294,8 +303,8 @@ class ConvertedFactory(DatasetFactory):
         assert len(ins) == len(outs)
         return {"input": ins, "output": outs}
 
-    def build(self, split: str) -> Dataset:
-        dataset = self.creator.build(split)
+    def __getitem__(self, split: str) -> Dataset:
+        dataset = self.creator[split]
         return dataset.map(self.convert_one, batched=True, remove_columns=self.columns)
 
 
@@ -584,7 +593,7 @@ class DataCollatorForCausalLM(object):
 def merge_created_datasets(creators, split: str) -> Dataset:
     datasets = []
     for creator in creators:
-        dataset = creator.build(split)
+        dataset = creator.__getitem__(split)
         if dataset is not None:
             datasets.append(dataset)
     return concatenate_datasets(datasets).shuffle(seed=42)
@@ -643,40 +652,29 @@ def train(factories: list[DatasetFactory], peft_config=None):
     )
 
     print(args)
+    # Copy the configure file over so that we know which is which.
+    shutil.copy("./finetune/generation.sh", args.output_dir)
+    shutil.copy("./core/config.py", args.output_dir)
 
     # For now, just use the fix path.
     output = "../output"
 
     # Save the things to disk first, for training we keep each module separate.
     # Down the road, we might
-    for factory in factories:
-        build_desc_index(factory.tag, factory.schema, f"{output}/index/{factory.tag}",
-                         EmbeddingStore.for_description())
-        build_dataset_index(factory.tag, factory.build("train"), f"{output}/index/{factory.tag}",
-                            EmbeddingStore.for_exemplar())
-
-    retrievers = []
-    for factory in factories:
-        retrievers.append(load_context_retrievers({factory.tag: factory.schema}, f"{output}/index/{factory.tag}"))
-
-    train_mode = args.training_mode
     converted_factories = []
-    for index, factory in enumerate(factories):
-        context_retriever = retrievers[index]
-        if train_mode == "skill":
-            converted_factories.append(ConvertedFactory(factory, [skill_converter(context_retriever)]))
-        if train_mode == "extractive_slot":
-            entity_values = collect_slot_values(factory.build("train"))
-            slot_converter = OneSlotTrainConverter(
-                factory.schema, SlotPrompts[LugConfig.extractive_slot_prompt], entity_values)
-            converted_factories.append(ConvertedFactory(factory, [slot_converter]))
-        if train_mode == "abstractive_slot":
-            raise RuntimeError("Not implemented.")
+    if args.training_mode == "skill":
+        converted_factories = build_skill_factory(output)
+    if args.training_mode == "extractive_slot":
+        converted_factories = build_extractive_slot_factory()
+    if args.training_mode == "abstractive_slot":
+        converted_factories = build_abstractive_slot_factory()
+
+    assert len(converted_factories) != 0
 
     # If we debug dataset, we do not train.
     if args.debug_dataset:
         for factory in converted_factories:
-            ds = factory.build("train")
+            ds = factory.__getitem__("train")
             count = [0, 0]
             for item in ds:
                 if item["output"] == "null</s>":
@@ -686,6 +684,8 @@ def train(factories: list[DatasetFactory], peft_config=None):
                 print(json.dumps(item, indent=2))
             print(count)
         exit(0)
+
+
 
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
@@ -775,10 +775,69 @@ def train(factories: list[DatasetFactory], peft_config=None):
             fout.write(json.dumps(all_metrics))
 
 
-class TrainMode(Enum):
-    Skill = 1,
-    ExtractiveSlot = 2,
-    AbstractiveSlot = 3
+# Here we create the dataset factory for skills
+def build_skill_factory(output):
+    factories = [
+        SGD("/home/sean/src/dstc8-schema-guided-dialogue/"),
+    ]
+    # Save the things to disk first, for training we keep each module separate.
+    # Down the road, we might
+    for factory in factories:
+        build_desc_index(factory.tag, factory.schema, f"{output}/index/{factory.tag}",
+                         EmbeddingStore.for_description())
+        build_dataset_index(factory.tag, factory.build("train"), f"{output}/index/{factory.tag}",
+                            EmbeddingStore.for_exemplar())
+
+    retrievers = []
+    for factory in factories:
+        retrievers.append(load_context_retrievers({factory.tag: factory.schema}, f"{output}/index/{factory.tag}"))
+
+    converted_factories = []
+    for index, factory in enumerate(factories):
+        context_retriever = retrievers[index]
+        converted_factories.append(PromptedFactory(factory, [skill_converter(context_retriever)]))
+
+    return converted_factories
+
+
+def build_extractive_slot_factory():
+    factories = [
+        SGD("/home/sean/src/dstc8-schema-guided-dialogue/"),
+    ]
+    converted_factories = []
+    for index, factory in enumerate(factories):
+        entity_values = collect_slot_values(factory.__getitem__("train"))
+        slot_converter = OneSlotExtractConverter(
+            factory.schema, ExtractivePrompts[LugConfig.extractive_slot_prompt], entity_values)
+        converted_factories.append(PromptedFactory(factory, [slot_converter]))
+
+    return converted_factories
+
+
+def build_abstractive_slot_factory():
+    # Here we assume the raw input is sentence, focus and label (positive, negative and neutral)
+    semeval2016 = load_dataset("eastwind/semeval-2016-absa-reviews-english-translated-stanford-alpaca")
+    semeval2016 = semeval2016.rename_column("sentence", "utterance")
+    semeval2016 = semeval2016.rename_column("aspect", "target")
+    semeval2016 = semeval2016.rename_column("sentiment", "label")
+    factories = [semeval2016]
+
+    converted_factories = []
+    for index, factory in enumerate(factories):
+        converter = SlotAbstractConverter(AbstractivePrompts[LugConfig.abstractive_slot_prompt])
+        converted_factories.append(PromptedFactory(factory, [converter], []))
+    return converted_factories
+
+
+def print_factories(factories):
+    for factory in factories:
+        ds = factory.__getitem__("train")
+        count = 0
+        for item in ds:
+            print(item)
+            count += 1
+        print(f"There are {count} instances")
+
 
 
 if __name__ == "__main__":
@@ -790,16 +849,5 @@ if __name__ == "__main__":
 
     LugConfig.embedding_device = "cuda"
 
-    factories = [
-        SGD("/home/sean/src/dstc8-schema-guided-dialogue/"),
-    ]
-
-    for factory in factories:
-        ds = factory.build("train")
-        count = 0
-        for item in ds:
-            count += 1
-        print(f"There are {count} instances in {factory.tag}")
-
     # Now we need to create the converters.
-    train(factories, get_lora_config())
+    train(get_lora_config())

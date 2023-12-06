@@ -27,7 +27,7 @@ if __name__ == "__main__":
     # Save the things to disk first.
     desc_nodes = []
     exemplar_nodes = []
-    tag = "test"
+    tag = "validation"
     for factory in factories:
         build_nodes_from_skills(factory.tag, factory.schema.skills, desc_nodes)
         build_nodes_from_dataset(factory.tag, factory.build(tag), exemplar_nodes)
