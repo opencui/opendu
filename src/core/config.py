@@ -20,7 +20,7 @@ class LugConfig:
     exemplar_combined_topk = 4
 
     # multiclass, classification, simple
-    skill_mode = "simple"
+    skill_mode = "binary"
     skill_arity = 1
     llm_device = "cpu"
     skill_full_prompt = "default"
