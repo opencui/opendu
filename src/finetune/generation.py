@@ -653,10 +653,6 @@ def train(peft_config=None):
         **vars(model_args), **vars(data_args), **vars(training_args)
     )
 
-    # append the training mode
-    shutil.copy("./finetune/generation.sh", f"{args.output_dir}/")
-    shutil.copy("./core/config.py", f"{args.output_dir}/")
-
     # For now, just use the fix path.
     output = "../output"
 
@@ -685,8 +681,6 @@ def train(peft_config=None):
                 print(json.dumps(item, indent=2))
             print(count)
         exit(0)
-
-
 
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
@@ -742,6 +736,10 @@ def train(peft_config=None):
         trainer.save_metrics("train", metrics)
         trainer.save_state()
         all_metrics.update(metrics)
+
+        # append save the config
+        shutil.copy("./finetune/generation.sh", f"{args.output_dir}/")
+        shutil.copy("./core/config.py", f"{args.output_dir}/")
 
     # Evaluation
     if args.do_eval:
