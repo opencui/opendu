@@ -106,6 +106,21 @@ class DatasetFactory(ABC):
 
 
 @dataclass
+class MappedDatasetDict(ABC):
+    def __init__(self, ds_dict, train="train", validation="validation"):
+        self.dict = ds_dict
+        self.train = train
+        self.validation = validation
+
+    def __getitem__(self, split):
+        if split == "train":
+            return self.dict[self.train]
+        if split == "validation":
+            return self.dict[self.validation]
+        return self.dict[split]
+
+
+@dataclass
 class DatasetCreatorWithIndex:
     creator: DatasetFactory
     desc_retriever: HybridRetriever

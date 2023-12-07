@@ -7,7 +7,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 import json
 from core.config import LugConfig
 from core.annotation import FrameValue, Exemplar, DialogExpectation, CamelToSnake, EntityMetas, ListRecognizer
-from core.prompt import SkillPrompts, ExtractivePrompts, ClassificationPrompts, LayeredPrompts
+from core.prompt import MulticlassSkillPrompts, ExtractiveSlotPrompts, BinarySkillPrompts, LayeredPrompts, NliPrompts
 from core.retriever import ContextRetriever, load_context_retrievers
 from inference.schema_parser import load_all_from_directory
 
@@ -32,7 +32,7 @@ class Generator(ABC):
         pass
 
     @abstractmethod
-    def for_abstractive_slot(self, input_texts):
+    def for_nli(self, input_texts):
         pass
 
 
@@ -56,6 +56,7 @@ class LocalGenerator(Generator, ABC):
 
         self.lora_model = PeftModel.from_pretrained(base_model, LugConfig.skill_model, adapter_name="skill")
         self.lora_model.load_adapter(LugConfig.extractive_slot_model, adapter_name="extractive_slot")
+        self.lora_model.load_adapter(LugConfig.nli_model, adapter_name="nli")
 
     @classmethod
     def generate(cls, peft_model, peft_tokenizer, input_text):
@@ -78,8 +79,10 @@ class LocalGenerator(Generator, ABC):
         outputs = LocalGenerator.generate(self.lora_model, self.tokenizer, input_texts)
         return [output[len(input_texts[index]):] for index, output in enumerate(outputs)]
 
-    def for_abstractive_slot(self, input_texts):
-        pass
+    def for_nli(self, input_text):
+        self.lora_model.set_adapter("nli")
+        output = LocalGenerator.generate(self.lora_model, self.tokenizer, input_text)
+        return output[len(input_text):]
 
     def for_extractive_slot(self, input_texts):
         self.lora_model.set_adapter("extractive_slot")
@@ -104,7 +107,7 @@ class MSkillConverter(SkillConverter):
     def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
         self.retrieve = retriever
         self.generator = generator
-        self.skill_prompt = SkillPrompts[LugConfig.skill_full_prompt]
+        self.skill_prompt = MulticlassSkillPrompts[LugConfig.skill_prompt]
 
     def get_skill(self, text):
         to_snake = CamelToSnake()
@@ -136,7 +139,7 @@ class BSkillConverter(SkillConverter):
     def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
         self.retrieve = retriever
         self.generator = generator
-        self.prompt = ClassificationPrompts[LugConfig.skill_full_prompt]
+        self.prompt = BinarySkillPrompts[LugConfig.skill_prompt]
 
     def get_skill(self, text):
         to_snake = CamelToSnake()
@@ -191,8 +194,8 @@ class SSkillConverter(SkillConverter):
     def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
         self.retrieve = retriever
         self.generator = generator
-        self.desc_prompt = LayeredPrompts[LugConfig.skill_full_prompt][0]
-        self.example_prompt = LayeredPrompts[LugConfig.skill_full_prompt][1]
+        self.desc_prompt = LayeredPrompts[LugConfig.skill_prompt][0]
+        self.example_prompt = LayeredPrompts[LugConfig.skill_prompt][1]
 
     def get_skill(self, text):
         to_snake = CamelToSnake()
@@ -246,7 +249,8 @@ class Converter:
             self.recognizer = ListRecognizer(entity_metas)
 
         self.generator = generator
-        self.slot_prompt = ExtractivePrompts[LugConfig.extractive_slot_prompt]
+        self.slot_prompt = ExtractiveSlotPrompts[LugConfig.slot_prompt]
+        self.nli_prompt = NliPrompts[LugConfig.nli_promt]
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r'\[([^]]*)\]')
         self.skill_converter = None
@@ -256,6 +260,7 @@ class Converter:
             self.skill_converter = BSkillConverter(retriever, generator)
         if LugConfig.skill_mode == "multiclass":
             self.skill_converter = MSkillConverter(retriever, generator)
+        self.nli_labels = {"entailment": True, "neutral": None, "contradiction": False}
 
     def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
         # low level get skill.
@@ -305,6 +310,18 @@ class Converter:
             final_name = module.backward[func_name]
 
         return FrameValue(name=final_name, arguments=slot_values)
+
+    # There are three different
+    def decide_boolean(self, utterance, question, lang="en")-> bool:
+        # For now, we ignore the language
+        input_dict = {"promise": utterance, "hypothesis": f"{question} yes."}
+        input_prompt = self.nli_prompt(input_dict)
+        output = self.generator.for_nli(input_prompt)
+        if LugConfig.converter_debug:
+            print(f"{input_prompt} {output}")
+        if output not in self.nli_labels:
+            return None
+        return self.nli_labels[output]
 
     def generate(self, struct: FrameValue) -> str:
         raise NotImplemented

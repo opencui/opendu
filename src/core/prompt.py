@@ -83,7 +83,7 @@ class Prompt:
 # values: ?
 #
 
-SkillPrompts = {
+MulticlassSkillPrompts = {
     "specs_only":
         Prompt(
             '{{#list_skills skills}} {{name}}: {{description}} {{/list_skills}}\n'
@@ -112,7 +112,7 @@ SkillPrompts = {
             'Input: "{{utterance}}"\nOutput:'),
 }
 
-ClassificationPrompts = {
+BinarySkillPrompts = {
     "default":
         Prompt(
             'Determine whether the input means "{{skill.name}}": {{skill.description}}, output true or false.\n'
@@ -142,7 +142,7 @@ LayeredPrompts = {
 
 
 # For the slots of enum type, we used different prompt in order to improve the
-ExtractivePrompts = {
+ExtractiveSlotPrompts = {
     "default":
         Prompt(
             '{{#list_values values}} {{value}} {{/list_values}}\n'
@@ -153,9 +153,9 @@ ExtractivePrompts = {
 }
 
 
-AbstractivePrompts = {
+NliPrompts = {
     "default":
         Prompt(
-            'Text: {{utterance}} Focus: {{target}} Sentiment: '
-        )
+            'The relation between hypothesis "{{hypothesis}}" and premise: "{{premise}}" is:'
+        ),
 }
