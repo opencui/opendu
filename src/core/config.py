@@ -30,6 +30,6 @@ class LugConfig:
 
     skill_model = "OpenCUI/skill-tinyllama-2t-1.0"
     extractive_slot_model = "OpenCUI/extractive-tinyllama-2t-1.0"
-    abstractive_slot_model = "OpenCUI/mnli-tinyllama-2t-1.0"
+    abstractive_slot_model = "OpenCUI/nli-tinyllama-2t-1.0"
 
     converter_debug = True

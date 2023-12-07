@@ -142,7 +142,7 @@ LayeredPrompts = {
 
 
 # For the slots of enum type, we used different prompt in order to improve the
-ExtractivePrompts = {
+ExtractiveSlotPrompts = {
     "default":
         Prompt(
             '{{#list_values values}} {{value}} {{/list_values}}\n'
@@ -153,7 +153,7 @@ ExtractivePrompts = {
 }
 
 
-NLIPrompts = {
+NliPrompts = {
     "default":
         Prompt(
             'The relation between hypothesis "{{hypothesis}}" and premise: "{{premise}}" is:'

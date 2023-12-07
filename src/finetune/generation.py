@@ -14,7 +14,7 @@ import logging
 import torch
 import transformers
 from torch.nn.utils.rnn import pad_sequence
-from core.prompt import MulticlassSkillPrompts, ExtractivePrompts, BinarySkillPrompts, LayeredPrompts, NLIPrompts
+from core.prompt import MulticlassSkillPrompts, ExtractiveSlotPrompts, BinarySkillPrompts, LayeredPrompts, NliPrompts
 import argparse
 from transformers import (
     AutoTokenizer,
@@ -28,7 +28,8 @@ from core.annotation import Schema, Exemplar, ListRecognizer
 from core.embedding import EmbeddingStore
 from core.prompt import Prompt
 from core.retriever import load_context_retrievers, ContextRetriever, build_desc_index
-from finetune.commons import AnnotatedExemplar, DatasetFactory, build_dataset_index, collect_slot_values
+from finetune.commons import AnnotatedExemplar, DatasetFactory, build_dataset_index, collect_slot_values, \
+    MappedDatasetDict
 from peft import LoraConfig, get_peft_model
 
 logger = logging.getLogger(__name__)
@@ -610,7 +611,7 @@ def make_data_module(data_collator, args, converters) -> Dict:
     """
     # Split train/eval, reduce size
     if args.do_eval or args.do_predict:
-        eval_dataset = merge_created_datasets(converters, "test")
+        eval_dataset = merge_created_datasets(converters, "validation")
     if args.do_train:
         train_dataset = merge_created_datasets(converters, "train")
 
@@ -639,7 +640,7 @@ def get_last_checkpoint(checkpoint_dir):
     return None, False  # first training
 
 
-def train(factories: list[DatasetFactory], peft_config=None):
+def train(peft_config=None):
     hfparser = transformers.HfArgumentParser((
         ModelArguments, DataArguments, TrainingArguments, GenerationArguments
     ))
@@ -653,16 +654,6 @@ def train(factories: list[DatasetFactory], peft_config=None):
     )
 
     # append the training mode
-    args.output_dir = f"{args.output_dir}/{args.training_mode}"
-    if args.training_mode == "skill":
-        args.output_dir = f"{args.output_dir}/{LugConfig.skill_mode}"
-
-    # Copy the configure file over so that we know which is which.
-    try:
-        os.makedirs(args.output_dir, exist_ok = True)
-    except OSError as error:
-        print("Directory '%s' can not be created" % args.output_dir)
-
     shutil.copy("./finetune/generation.sh", f"{args.output_dir}/")
     shutil.copy("./core/config.py", f"{args.output_dir}/")
 
@@ -818,7 +809,7 @@ def build_extractive_slot_factory():
     for index, factory in enumerate(factories):
         entity_values = collect_slot_values(factory.__getitem__("train"))
         slot_converter = OneSlotExtractConverter(
-            factory.schema, ExtractivePrompts[LugConfig.slot_prompt], entity_values)
+            factory.schema, ExtractiveSlotPrompts[LugConfig.slot_prompt], entity_values)
         converted_factories.append(PromptedFactory(factory, [slot_converter]))
 
     return converted_factories
@@ -826,12 +817,12 @@ def build_extractive_slot_factory():
 
 def build_nli_factory():
     # Here we assume the raw input is sentence, focus and label (positive, negative and neutral)
-    semeval2016 = load_dataset("multi-nli")
-    factories = [semeval2016]
+    semeval2016 = load_dataset("glue", "mnli")
+    factories = [MappedDatasetDict(semeval2016, "train", "validation_mismatched")]
 
     converted_factories = []
     for index, factory in enumerate(factories):
-        converter = NliConverter(NLIPrompts[LugConfig.nli_prompt])
+        converter = NliConverter(NliPrompts[LugConfig.nli_prompt])
         converted_factories.append(PromptedFactory(factory, [converter], []))
     return converted_factories
 
@@ -844,7 +835,6 @@ def print_factories(factories):
             print(item)
             count += 1
         print(f"There are {count} instances")
-
 
 
 if __name__ == "__main__":
