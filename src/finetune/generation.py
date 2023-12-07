@@ -14,7 +14,7 @@ import logging
 import torch
 import transformers
 from torch.nn.utils.rnn import pad_sequence
-from core.prompt import SkillPrompts, ExtractivePrompts, ClassificationPrompts, LayeredPrompts, AbstractivePrompts
+from core.prompt import MulticlassSkillPrompts, ExtractivePrompts, BinarySkillPrompts, LayeredPrompts, NLIPrompts
 import argparse
 from transformers import (
     AutoTokenizer,
@@ -56,7 +56,7 @@ class SlotExtractConverter(TrainConverter, ABC):
 # https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/
 class SkillTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever):
-        self.prompt = SkillPrompts[LugConfig.skill_full_prompt]
+        self.prompt = MulticlassSkillPrompts[LugConfig.skill_prompt]
         self.context_retrieve = retriever
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
@@ -110,7 +110,7 @@ class SkillTrainConverter(TrainConverter):
 
 class OneSkillTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever):
-        self.prompt = ClassificationPrompts[LugConfig.skill_full_prompt]
+        self.prompt = BinarySkillPrompts[LugConfig.skill_prompt]
         self.context_retrieve = retriever
         self.neg_k = 1
 
@@ -148,8 +148,8 @@ class OneSkillTrainConverter(TrainConverter):
 # For this one, we first use example based prediction, and then description based prediction.
 class LayeredTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever):
-        self.desc_prompt = LayeredPrompts[LugConfig.skill_full_prompt][0]
-        self.example_prompt = LayeredPrompts[LugConfig.skill_full_prompt][1]
+        self.desc_prompt = LayeredPrompts[LugConfig.skill_prompt][0]
+        self.example_prompt = LayeredPrompts[LugConfig.skill_prompt][1]
         self.context_retrieve = retriever
         self.neg_k = 1
 
@@ -254,17 +254,18 @@ class OneSlotExtractConverter(SlotExtractConverter):
                         outs.append(self.format_value(slot_name, None))
 
 
-# We need to handle many different use case here.
-class SlotAbstractConverter(TrainConverter, ABC):
+# We need to handle many different use case here: premise is what user said, and hypothesis is what we want to know.
+class NliConverter(TrainConverter, ABC):
     def __init__(self, prompt):
         self.prompt = prompt
+        self.labels = ["entailment", "neutral", "contradiction"]
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # We assume the input is dict version of AnnotatedExemplar
-        for idx, utterance in enumerate(batch["utterance"]):
-            target = batch["target"][idx]
-            label = batch["label"][idx]
-            input_dict = {"utterance": utterance, "target": target}
+        for idx, premise in enumerate(batch["premise"]):
+            hypothesis = batch["hypothesis"][idx]
+            label = self.labels[int(batch["label"][idx])]
+            input_dict = {"premise": premise, "hypothesis": hypothesis}
             ins.append(self.prompt(input_dict))
             outs.append(f"{label}</s>")
 
@@ -675,8 +676,8 @@ def train(factories: list[DatasetFactory], peft_config=None):
         converted_factories = build_skill_factory(output)
     if args.training_mode == "extractive_slot":
         converted_factories = build_extractive_slot_factory()
-    if args.training_mode == "abstractive_slot":
-        converted_factories = build_abstractive_slot_factory()
+    if args.training_mode == "nli":
+        converted_factories = build_nli_factory()
 
     assert len(converted_factories) != 0
 
@@ -817,23 +818,20 @@ def build_extractive_slot_factory():
     for index, factory in enumerate(factories):
         entity_values = collect_slot_values(factory.__getitem__("train"))
         slot_converter = OneSlotExtractConverter(
-            factory.schema, ExtractivePrompts[LugConfig.extractive_slot_prompt], entity_values)
+            factory.schema, ExtractivePrompts[LugConfig.slot_prompt], entity_values)
         converted_factories.append(PromptedFactory(factory, [slot_converter]))
 
     return converted_factories
 
 
-def build_abstractive_slot_factory():
+def build_nli_factory():
     # Here we assume the raw input is sentence, focus and label (positive, negative and neutral)
-    semeval2016 = load_dataset("eastwind/semeval-2016-absa-reviews-english-translated-stanford-alpaca")
-    semeval2016 = semeval2016.rename_column("sentence", "utterance")
-    semeval2016 = semeval2016.rename_column("aspect", "target")
-    semeval2016 = semeval2016.rename_column("sentiment", "label")
+    semeval2016 = load_dataset("multi-nli")
     factories = [semeval2016]
 
     converted_factories = []
     for index, factory in enumerate(factories):
-        converter = SlotAbstractConverter(AbstractivePrompts[LugConfig.abstractive_slot_prompt])
+        converter = NliConverter(NLIPrompts[LugConfig.nli_prompt])
         converted_factories.append(PromptedFactory(factory, [converter], []))
     return converted_factories
 

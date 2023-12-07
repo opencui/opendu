@@ -7,7 +7,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 import json
 from core.config import LugConfig
 from core.annotation import FrameValue, Exemplar, DialogExpectation, CamelToSnake, EntityMetas, ListRecognizer
-from core.prompt import SkillPrompts, ExtractivePrompts, ClassificationPrompts, LayeredPrompts
+from core.prompt import MulticlassSkillPrompts, ExtractivePrompts, BinarySkillPrompts, LayeredPrompts
 from core.retriever import ContextRetriever, load_context_retrievers
 from inference.schema_parser import load_all_from_directory
 
@@ -104,7 +104,7 @@ class MSkillConverter(SkillConverter):
     def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
         self.retrieve = retriever
         self.generator = generator
-        self.skill_prompt = SkillPrompts[LugConfig.skill_full_prompt]
+        self.skill_prompt = MulticlassSkillPrompts[LugConfig.skill_prompt]
 
     def get_skill(self, text):
         to_snake = CamelToSnake()
@@ -136,7 +136,7 @@ class BSkillConverter(SkillConverter):
     def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
         self.retrieve = retriever
         self.generator = generator
-        self.prompt = ClassificationPrompts[LugConfig.skill_full_prompt]
+        self.prompt = BinarySkillPrompts[LugConfig.skill_prompt]
 
     def get_skill(self, text):
         to_snake = CamelToSnake()
@@ -191,8 +191,8 @@ class SSkillConverter(SkillConverter):
     def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
         self.retrieve = retriever
         self.generator = generator
-        self.desc_prompt = LayeredPrompts[LugConfig.skill_full_prompt][0]
-        self.example_prompt = LayeredPrompts[LugConfig.skill_full_prompt][1]
+        self.desc_prompt = LayeredPrompts[LugConfig.skill_prompt][0]
+        self.example_prompt = LayeredPrompts[LugConfig.skill_prompt][1]
 
     def get_skill(self, text):
         to_snake = CamelToSnake()
@@ -246,7 +246,7 @@ class Converter:
             self.recognizer = ListRecognizer(entity_metas)
 
         self.generator = generator
-        self.slot_prompt = ExtractivePrompts[LugConfig.extractive_slot_prompt]
+        self.slot_prompt = ExtractivePrompts[LugConfig.slot_prompt]
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r'\[([^]]*)\]')
         self.skill_converter = None

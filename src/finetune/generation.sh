@@ -4,7 +4,7 @@
 #
 python3 finetune/generation.py \
     --model_name_or_path TinyLlama/TinyLlama-1.1B-intermediate-step-955k-token-2T \
-    --output_dir ./output/lr1e-5_ep5_top1_2023-11-20 \
+    --output_dir ./output/lr1e-5_ep5_top1_2023-11-21 \
     --logging_steps 50 \
     --save_strategy epoch \
     --data_seed 42 \
@@ -33,6 +33,6 @@ python3 finetune/generation.py \
     --weight_decay 0.0 \
     --seed 0 \
     --debug_dataset False \
-    --training_mode abstractive_slot \
+    --training_mode nli \
     --trust_remote_code \
     --report_to wandb

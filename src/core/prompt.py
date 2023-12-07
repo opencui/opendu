@@ -83,7 +83,7 @@ class Prompt:
 # values: ?
 #
 
-SkillPrompts = {
+MulticlassSkillPrompts = {
     "specs_only":
         Prompt(
             '{{#list_skills skills}} {{name}}: {{description}} {{/list_skills}}\n'
@@ -112,7 +112,7 @@ SkillPrompts = {
             'Input: "{{utterance}}"\nOutput:'),
 }
 
-ClassificationPrompts = {
+BinarySkillPrompts = {
     "default":
         Prompt(
             'Determine whether the input means "{{skill.name}}": {{skill.description}}, output true or false.\n'
@@ -153,9 +153,9 @@ ExtractivePrompts = {
 }
 
 
-AbstractivePrompts = {
+NLIPrompts = {
     "default":
         Prompt(
-            'Text: {{utterance}} Focus: {{target}} Sentiment: '
-        )
+            'The relation between hypothesis "{{hypothesis}}" and premise: "{{premise}}" is:'
+        ),
 }
