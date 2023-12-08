@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "opencui_lug"
+name = "opencui"
 version = "0.0.1"
-description = "OpenLUG, Open sourced Language Understanding and Generation"
+description = "LUG, OpenCUI Language Understanding and Generation"
 authors = ["Xiaoyun Wu <xiaoyun.wu@gmail.com>"]
 readme = "README.md"
 

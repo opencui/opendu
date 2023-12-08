@@ -7,7 +7,7 @@ from llama_index.embeddings import HuggingFaceEmbedding
 from llama_index.embeddings.base import BaseEmbedding
 from sentence_transformers import SentenceTransformer
 
-from opencui_lug.core.config import LugConfig
+from opencui.core.config import LugConfig
 
 
 # We reuse the underlying embedding when we can.

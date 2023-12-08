@@ -159,6 +159,6 @@ ExtractiveSlotPrompts = {
 
 NliPrompts = {
     "default": Prompt(
-        'The relation between hypothesis "{{hypothesis}}" and premise: "{{premise}}" is:'
+        'With the respect to the premise: "{{premise}}", the hypothesis: "{{hypothesis}}" is'
     ),
 }

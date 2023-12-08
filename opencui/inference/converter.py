@@ -6,16 +6,11 @@ import torch
 from peft import PeftConfig, PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 
-from opencui_lug.core.annotation import (CamelToSnake, DialogExpectation,
-                                         EntityMetas, Exemplar, FrameValue,
-                                         ListRecognizer)
-from opencui_lug.core.config import LugConfig
-from opencui_lug.core.prompt import (BinarySkillPrompts, ExtractiveSlotPrompts,
-                                     LayeredPrompts, MulticlassSkillPrompts,
-                                     NliPrompts)
-from opencui_lug.core.retriever import (ContextRetriever,
-                                        load_context_retrievers)
-from opencui_lug.inference.schema_parser import load_all_from_directory
+from opencui.core.annotation import (CamelToSnake, DialogExpectation, EntityMetas, Exemplar, FrameValue, ListRecognizer)
+from opencui.core.config import LugConfig
+from opencui.core.prompt import (BinarySkillPrompts, ExtractiveSlotPrompts, LayeredPrompts, MulticlassSkillPrompts, NliPrompts)
+from opencui.core.retriever import (ContextRetriever, load_context_retrievers)
+from opencui.inference.schema_parser import load_all_from_directory
 
 
 # In case you are curious about decoding: https://huggingface.co/blog/how-to-generate
@@ -61,12 +56,10 @@ class LocalGenerator(Generator, ABC):
         self.tokenizer.padding_side = "left"
 
         self.lora_model = PeftModel.from_pretrained(
-            base_model, LugConfig.skill_model, adapter_name="skill"
-        )
+            base_model, LugConfig.skill_model, adapter_name="skill")
         self.lora_model.load_adapter(
-            LugConfig.extractive_slot_model, adapter_name="extractive_slot"
-        )
-        self.lora_model.load_adapter(LugConfig.nli_prompt, adapter_name="nli")
+            LugConfig.extractive_slot_model, adapter_name="extractive_slot")
+        self.lora_model.load_adapter(LugConfig.nli_model, adapter_name="nli")
 
     @classmethod
     def generate(cls, peft_model, peft_tokenizer, input_text):
@@ -299,7 +292,7 @@ class Converter:
 
         self.generator = generator
         self.slot_prompt = ExtractiveSlotPrompts[LugConfig.slot_prompt]
-        self.nli_prompt = NliPrompts[LugConfig.nli_promt]
+        self.nli_prompt = NliPrompts[LugConfig.nli_prompt]
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r"\[([^]]*)\]")
         self.skill_converter = None
@@ -364,9 +357,9 @@ class Converter:
         return FrameValue(name=final_name, arguments=slot_values)
 
     # There are three different
-    def decide_boolean(self, utterance, question, lang="en") -> bool:
+    def decide(self, utterance, question, lang="en") -> bool:
         # For now, we ignore the language
-        input_dict = {"promise": utterance, "hypothesis": f"{question} yes."}
+        input_dict = {"premise": utterance, "hypothesis": f"{question} yes."}
         input_prompt = self.nli_prompt(input_dict)
         output = self.generator.for_nli(input_prompt)
         if LugConfig.converter_debug:

@@ -8,9 +8,8 @@ from collections import defaultdict
 
 from datasets import Dataset, Features, Value
 
-from opencui_lug.core.annotation import (CamelToSnake, FrameSchema, Schema,
-                                         SlotSchema)
-from opencui_lug.finetune.commons import DatasetFactory, create_full_exemplar
+from opencui.core.annotation import (CamelToSnake, FrameSchema, Schema, SlotSchema)
+from opencui.finetune.commons import DatasetFactory, create_full_exemplar
 
 
 # pip install -U gin-config faiss-cpu scikit-learn sentence-transformers

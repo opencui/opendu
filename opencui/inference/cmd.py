@@ -1,9 +1,8 @@
 import getopt
 import sys
+import json
 
-from opencui_lug.core.retriever import load_context_retrievers
-from opencui_lug.inference.converter import Converter, load_converter
-from opencui_lug.inference.schema_parser import load_all_from_directory
+from opencui.inference.converter import load_converter
 
 if __name__ == "__main__":
     argv = sys.argv[1:]
@@ -26,7 +25,14 @@ if __name__ == "__main__":
     # Start a loop that will run until the user enters 'quit'.
     while text != "quit":
         # Ask the user for a name.
-        text = input("Input your sentence, or enter 'quit': ")
+        text = input('Input your sentence, or enter {"q":question, "u": utterance} or quit:\n')
         # This is how you convert the natural language text into structured representation.
-        result = converter.understand(text)
+
+        text = text.strip()
+
+        if text[0] != "{":
+            result = converter.understand(text)
+        else:
+            input = json.loads(text)
+            result = converter.decide(input["q"], input["u"])
         print(result)

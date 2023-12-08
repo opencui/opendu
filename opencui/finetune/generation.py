@@ -21,14 +21,14 @@ from torch.nn.utils.rnn import pad_sequence
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer,
                           set_seed)
 
-from opencui_lug.core.annotation import Exemplar, ListRecognizer, Schema
-from opencui_lug.core.embedding import EmbeddingStore
-from opencui_lug.core.prompt import (BinarySkillPrompts, ExtractiveSlotPrompts,
+from opencui.core.annotation import Exemplar, ListRecognizer, Schema
+from opencui.core.embedding import EmbeddingStore
+from opencui.core.prompt import (BinarySkillPrompts, ExtractiveSlotPrompts,
                                      LayeredPrompts, MulticlassSkillPrompts,
                                      NliPrompts, Prompt)
-from opencui_lug.core.retriever import (ContextRetriever, build_desc_index,
+from opencui.core.retriever import (ContextRetriever, build_desc_index,
                                         load_context_retrievers)
-from opencui_lug.finetune.commons import (AnnotatedExemplar, DatasetFactory,
+from opencui.finetune.commons import (AnnotatedExemplar, DatasetFactory,
                                           MappedDatasetDict,
                                           build_dataset_index,
                                           collect_slot_values)
@@ -996,7 +996,7 @@ def build_extractive_slot_factory():
 def build_nli_factory():
     # Here we assume the raw input is sentence, focus and label (positive, negative and neutral)
     semeval2016 = load_dataset("glue", "mnli")
-    factories = [MappedDatasetDict(semeval2016, "train", "validation_mismatched")]
+    factories = [MappedDatasetDict(semeval2016, "validation_matched", "validation_mismatched")]
     converted_factories = []
     for index, factory in enumerate(factories):
         converter = NliConverter(NliPrompts[LugConfig.nli_prompt])
@@ -1018,8 +1018,8 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
-    from finetune.sgd import SGD
-    from core.config import LugConfig
+    from opencui.finetune.sgd import SGD
+    from opencui.core.config import LugConfig
 
     LugConfig.embedding_device = "cuda"
 

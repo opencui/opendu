@@ -1,18 +1,18 @@
 import abc
-import re
+
 from abc import ABC
 from dataclasses import dataclass
 from typing import Optional
 
-import datasets
+
 from datasets import Dataset
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode
 
-from opencui_lug.core.annotation import Schema
-from opencui_lug.core.config import LugConfig
-from opencui_lug.core.retriever import HybridRetriever, create_index
-from opencui_lug.finetune.embedding import (
+from opencui.core.annotation import Schema
+from opencui.core.config import LugConfig
+from opencui.core.retriever import HybridRetriever, create_index
+from opencui.finetune.embedding import (
     create_sentence_pair_for_description, create_sentence_pair_for_exemplars)
 
 
