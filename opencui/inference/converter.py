@@ -294,7 +294,7 @@ class Converter:
 
         self.generator = generator
         self.slot_prompt = ExtractiveSlotPrompts[LugConfig.slot_prompt]
-        self.nli_prompt = NliPrompts[LugConfig.nli_promt]
+        self.nli_prompt = NliPrompts[LugConfig.nli_prompt]
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r"\[([^]]*)\]")
         self.skill_converter = None
@@ -359,9 +359,9 @@ class Converter:
         return FrameValue(name=final_name, arguments=slot_values)
 
     # There are three different
-    def decide_boolean(self, utterance, question, lang="en") -> bool:
+    def decide(self, utterance, question, lang="en") -> bool:
         # For now, we ignore the language
-        input_dict = {"promise": utterance, "hypothesis": f"{question} yes."}
+        input_dict = {"premise": utterance, "hypothesis": f"{question} yes."}
         input_prompt = self.nli_prompt(input_dict)
         output = self.generator.for_nli(input_prompt)
         if LugConfig.converter_debug:
