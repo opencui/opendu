@@ -56,12 +56,10 @@ class LocalGenerator(Generator, ABC):
         self.tokenizer.padding_side = "left"
 
         self.lora_model = PeftModel.from_pretrained(
-            base_model, LugConfig.skill_model, adapter_name="skill"
-        )
+            base_model, LugConfig.skill_model, adapter_name="skill")
         self.lora_model.load_adapter(
-            LugConfig.extractive_slot_model, adapter_name="extractive_slot"
-        )
-        self.lora_model.load_adapter(LugConfig.nli_prompt, adapter_name="nli")
+            LugConfig.extractive_slot_model, adapter_name="extractive_slot")
+        self.lora_model.load_adapter(LugConfig.nli_model, adapter_name="nli")
 
     @classmethod
     def generate(cls, peft_model, peft_tokenizer, input_text):

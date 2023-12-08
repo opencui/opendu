@@ -996,7 +996,7 @@ def build_extractive_slot_factory():
 def build_nli_factory():
     # Here we assume the raw input is sentence, focus and label (positive, negative and neutral)
     semeval2016 = load_dataset("glue", "mnli")
-    factories = [MappedDatasetDict(semeval2016, "train", "validation_mismatched")]
+    factories = [MappedDatasetDict(semeval2016, "validation_matched", "validation_mismatched")]
     converted_factories = []
     for index, factory in enumerate(factories):
         converter = NliConverter(NliPrompts[LugConfig.nli_prompt])

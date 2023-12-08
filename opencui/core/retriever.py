@@ -13,10 +13,9 @@ from llama_index.retrievers import (BaseRetriever, KeywordTableSimpleRetriever,
                                     VectorIndexRetriever)
 from llama_index.schema import NodeWithScore, TextNode
 
-from opencui_lug.core.annotation import (FrameId, FrameSchema, Schema,
-                                         SchemaStore)
-from opencui_lug.core.config import LugConfig
-from opencui_lug.core.embedding import EmbeddingStore
+from opencui.core.annotation import (FrameId, FrameSchema, Schema, SchemaStore)
+from opencui.core.config import LugConfig
+from opencui.core.embedding import EmbeddingStore
 
 
 def build_nodes_from_skills(module: str, skills: dict[str, FrameSchema],
@@ -198,7 +197,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.CRITICAL)
 
     output = "./index/sgdskill/"
-    from finetune.sgd import SGD
+    from opencui.finetune.sgd import SGD
 
     dsc = SGD("/home/sean/src/dstc8-schema-guided-dialogue/")
 
