@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
 import json
-from core.annotation import ExemplarStore, EntityMetas, FrameSchema, SlotSchema, Schema, get_value, CamelToSnake
+
+from opencui_lug.core.annotation import (CamelToSnake, EntityMetas,
+                                         ExemplarStore, FrameSchema, Schema,
+                                         SlotSchema, get_value)
 
 
 #
@@ -29,7 +32,9 @@ def from_openai(functions) -> Schema:
             else:
                 slot_name = key
                 slot_description = slot["description"]
-                slot_infos[slot_name] = SlotSchema(slot_name, slot_description).to_dict()
+                slot_infos[slot_name] = SlotSchema(
+                    slot_name, slot_description
+                ).to_dict()
         skill_infos[f_name] = FrameSchema(f_name, f_description, f_slots).to_dict()
     return Schema(skill_infos, slot_infos, to_snake.backward)
 
@@ -63,7 +68,11 @@ def from_openapi(specs) -> Schema:
 # recognizers.
 def load_schema_from_directory(path):
     schema_object = json.load(open(path))
-    return from_openai(schema_object) if isinstance(schema_object, list) else from_openapi(schema_object)
+    return (
+        from_openai(schema_object)
+        if isinstance(schema_object, list)
+        else from_openapi(schema_object)
+    )
 
 
 def load_all_from_directory(input_path):
