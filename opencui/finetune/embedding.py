@@ -7,9 +7,9 @@ from sentence_transformers import SentenceTransformer, losses
 from sentence_transformers.readers import InputExample
 from torch.utils.data import DataLoader
 
-from opencui_lug.core.annotation import FrameSchema
-from opencui_lug.core.config import LugConfig
-from opencui_lug.core.embedding import EmbeddingStore
+from opencui.core.annotation import FrameSchema
+from opencui.core.config import LugConfig
+from opencui.core.embedding import EmbeddingStore
 
 
 def train(model: SentenceTransformer, dataset: Dataset, model_save_path: str):

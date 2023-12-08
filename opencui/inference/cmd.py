@@ -1,9 +1,7 @@
 import getopt
 import sys
 
-from opencui_lug.core.retriever import load_context_retrievers
-from opencui_lug.inference.converter import Converter, load_converter
-from opencui_lug.inference.schema_parser import load_all_from_directory
+from opencui.inference.converter import load_converter
 
 if __name__ == "__main__":
     argv = sys.argv[1:]

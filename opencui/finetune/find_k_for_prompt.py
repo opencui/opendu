@@ -2,11 +2,10 @@ import logging
 
 from datasets import Dataset
 
-from opencui_lug.core.config import LugConfig
-from opencui_lug.core.embedding import EmbeddingStore
-from opencui_lug.core.retriever import (ContextRetriever, build_desc_index,
-                                        load_context_retrievers)
-from opencui_lug.finetune.commons import build_dataset_index
+from opencui.core.config import LugConfig
+from opencui.core.embedding import EmbeddingStore
+from opencui.core.retriever import (ContextRetriever, build_desc_index, load_context_retrievers)
+from opencui.finetune.commons import build_dataset_index
 
 
 def compute_k(dataset: Dataset, retrieve: ContextRetriever):
@@ -41,7 +40,7 @@ if __name__ == "__main__":
     logger.setLevel(logging.CRITICAL)
 
     LugConfig.embedding_device = "cuda"
-    from finetune.sgd import SGD
+    from opencui.finetune.sgd import SGD
 
     factories = [SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]
 

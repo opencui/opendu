@@ -6,16 +6,11 @@ import torch
 from peft import PeftConfig, PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 
-from opencui_lug.core.annotation import (CamelToSnake, DialogExpectation,
-                                         EntityMetas, Exemplar, FrameValue,
-                                         ListRecognizer)
-from opencui_lug.core.config import LugConfig
-from opencui_lug.core.prompt import (BinarySkillPrompts, ExtractiveSlotPrompts,
-                                     LayeredPrompts, MulticlassSkillPrompts,
-                                     NliPrompts)
-from opencui_lug.core.retriever import (ContextRetriever,
-                                        load_context_retrievers)
-from opencui_lug.inference.schema_parser import load_all_from_directory
+from opencui.core.annotation import (CamelToSnake, DialogExpectation, EntityMetas, Exemplar, FrameValue, ListRecognizer)
+from opencui.core.config import LugConfig
+from opencui.core.prompt import (BinarySkillPrompts, ExtractiveSlotPrompts, LayeredPrompts, MulticlassSkillPrompts, NliPrompts)
+from opencui.core.retriever import (ContextRetriever, load_context_retrievers)
+from opencui.inference.schema_parser import load_all_from_directory
 
 
 # In case you are curious about decoding: https://huggingface.co/blog/how-to-generate

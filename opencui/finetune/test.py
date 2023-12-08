@@ -1,11 +1,10 @@
 import logging
 
-from opencui_lug.core.annotation import CamelToSnake
-from opencui_lug.core.embedding import EmbeddingStore
-from opencui_lug.core.retriever import (build_nodes_from_skills, create_index,
-                                        load_context_retrievers)
-from opencui_lug.finetune.commons import build_nodes_from_dataset
-from opencui_lug.inference.converter import Converter
+from opencui.core.annotation import CamelToSnake
+from opencui.core.embedding import EmbeddingStore
+from opencui.core.retriever import (build_nodes_from_skills, create_index, load_context_retrievers)
+from opencui.finetune.commons import build_nodes_from_dataset
+from opencui.inference.converter import Converter
 
 #
 # Converter is a lower level component of inference. This directly use the model.
@@ -15,8 +14,8 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
-    from core.config import LugConfig
-    from finetune.sgd import SGD
+    from opencui.core.config import LugConfig
+    from opencui.finetune.sgd import SGD
 
     LugConfig.embedding_device = "cuda"
     factories = [SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]

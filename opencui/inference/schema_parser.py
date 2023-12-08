@@ -2,9 +2,8 @@
 
 import json
 
-from opencui_lug.core.annotation import (CamelToSnake, EntityMetas,
-                                         ExemplarStore, FrameSchema, Schema,
-                                         SlotSchema, get_value)
+from opencui.core.annotation import (CamelToSnake, EntityMetas,
+                                     ExemplarStore, FrameSchema, Schema, SlotSchema, get_value)
 
 
 #
