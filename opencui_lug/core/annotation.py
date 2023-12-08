@@ -1,14 +1,14 @@
 import json
 import re
 from abc import abstractmethod
-from dataclasses import field
-from typing import Union, List, TypedDict, Optional, Dict, Literal
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Dict, List, Literal, Optional, TypedDict, Union
+
 from dataclasses_json import dataclass_json
 from llama_index.schema import TextNode
+from pydantic import BaseModel, Field
 from torch.ao.quantization.observer import ABC
 from typing_extensions import Annotated
-from pydantic import BaseModel, Field
 
 
 @dataclass_json
@@ -42,7 +42,9 @@ class FrameId:
 class Schema:
     skills: Dict[str, FrameSchema]
     slots: Dict[str, SlotSchema]
-    backward: Dict[str, str]    # We use snake case inside, so we need this to get back the original name.
+    backward: Dict[
+        str, str
+    ]  # We use snake case inside, so we need this to get back the original name.
 
     def __init__(self, skills, slots, backward=None):
         self.skills = skills
@@ -57,7 +59,11 @@ class SchemaStore:
 
     def __init__(self, schemas: dict[str, Schema]):
         self.schemas = schemas
-        self.func_to_module = {skill["name"]: schema for schema in schemas.values() for skill in schema.skills.values()}
+        self.func_to_module = {
+            skill["name"]: schema
+            for schema in schemas.values()
+            for skill in schema.skills.values()
+        }
 
     def get_skill(self, frame_id: FrameId):
         module = self.schemas[frame_id.module]
@@ -93,12 +99,14 @@ class DialogExpectation(BaseModel):
 
 
 class EntityInstance(BaseModel):
-    label: str = Field(description='the canonical form of the instance')
-    expressions: List[str] = Field(description="the expressions used to identify this instance.")
+    label: str = Field(description="the canonical form of the instance")
+    expressions: List[str] = Field(
+        description="the expressions used to identify this instance."
+    )
 
 
 class ListEntityInfo(BaseModel):
-    rec_type: Literal['list']
+    rec_type: Literal["list"]
     name: str = Field(description="language dependent name")
     description: Optional[str] = Field(description="define what is this type for.")
     instances: List[EntityInstance]
@@ -106,7 +114,9 @@ class ListEntityInfo(BaseModel):
 
 # For now, we only worry about list entity in the python side, as it is mainly designed for function calling.
 class EntityMetas(BaseModel):
-    slots: Dict[str, str] = Field(description="the mapping from slot name to entity name")
+    slots: Dict[str, str] = Field(
+        description="the mapping from slot name to entity name"
+    )
     recognizers: Dict[str, ListEntityInfo] = Field(description="the name to recognizer")
 
 
@@ -117,7 +127,7 @@ class ListRecognizer:
         self.patterns = {}
         for key, info in infos.items():
             instances = [item for instance in info for item in instance.expressions]
-            self.patterns[key] = re.compile('|'.join(map(re.escape, instances)))
+            self.patterns[key] = re.compile("|".join(map(re.escape, instances)))
 
     @staticmethod
     def find_matches(patterns, slot, utterance):
@@ -134,8 +144,12 @@ class ListRecognizer:
 # owner is not needed if exemplars are listed insider function specs.
 class Exemplar(BaseModel):
     owner: str = Field(description="onwer of this exemplar.")
-    template: str = Field(description="the example utterance that should trigger the given skill")
-    context: Optional[str] = Field(description="the context under which this exemplar works.", default=None)
+    template: str = Field(
+        description="the example utterance that should trigger the given skill"
+    )
+    context: Optional[str] = Field(
+        description="the context under which this exemplar works.", default=None
+    )
 
 
 # There are two different use cases for exemplars:
@@ -157,18 +171,18 @@ def get_value(item, key, value=None):
 # This is need to convert the camel casing to snake casing.
 #
 class CamelToSnake:
-    pattern = re.compile(r'(?<!^)(?=[A-Z])')
+    pattern = re.compile(r"(?<!^)(?=[A-Z])")
 
     @classmethod
     def convert(cls, text):
-        return CamelToSnake.pattern.sub('_', text).lower()
+        return CamelToSnake.pattern.sub("_", text).lower()
 
     def __init__(self):
         self.backward = {}
         self.forward = {}
 
     def encode(self, text):
-        snake = CamelToSnake.pattern.sub('_', text).lower()
+        snake = CamelToSnake.pattern.sub("_", text).lower()
         self.backward[snake] = text
         self.forward[text] = snake
         return snake
@@ -177,7 +191,9 @@ class CamelToSnake:
         return self.backward[snake]
 
 
-def build_nodes_from_exemplar_store(module: str, store: ExemplarStore, nodes: List[TextNode]):
+def build_nodes_from_exemplar_store(
+    module: str, store: ExemplarStore, nodes: List[TextNode]
+):
     to_snake = CamelToSnake()
     for label, exemplars in store.items():
         for exemplar in exemplars:
@@ -186,8 +202,14 @@ def build_nodes_from_exemplar_store(module: str, store: ExemplarStore, nodes: Li
                 TextNode(
                     text=exemplar["template"],
                     id_=str(hash(exemplar["template"]))[1:13],
-                    metadata={"owner": label, "context": get_value(exemplar, "context", ""), "module": module},
-                    excluded_embed_metadata_keys=["owner", "context", "module"]))
+                    metadata={
+                        "owner": label,
+                        "context": get_value(exemplar, "context", ""),
+                        "module": module,
+                    },
+                    excluded_embed_metadata_keys=["owner", "context", "module"],
+                )
+            )
 
 
 if __name__ == "__main__":

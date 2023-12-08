@@ -1,15 +1,15 @@
 import logging
 
+from datasets import Dataset
 from langchain.schema import BaseRetriever
 from llama_index.schema import TextNode
 from sentence_transformers import SentenceTransformer, losses
 from sentence_transformers.readers import InputExample
-from datasets import Dataset
 from torch.utils.data import DataLoader
 
-from core.annotation import FrameSchema
-from core.config import LugConfig
-from core.embedding import EmbeddingStore
+from opencui_lug.core.annotation import FrameSchema
+from opencui_lug.core.config import LugConfig
+from opencui_lug.core.embedding import EmbeddingStore
 
 
 def train(model: SentenceTransformer, dataset: Dataset, model_save_path: str):
@@ -18,7 +18,9 @@ def train(model: SentenceTransformer, dataset: Dataset, model_save_path: str):
     # We try to use these special tokens for potential roles.
     tokens = ["[DOC]", "[QRY]"]
     word_embedding_model._tokenizer.add_tokens(tokens, special_tokens=True)
-    word_embedding_model.auto_model.resize_token_embeddings(len(word_embedding_model._tokenizer))
+    word_embedding_model.auto_model.resize_token_embeddings(
+        len(word_embedding_model._tokenizer)
+    )
 
     train_loss = losses.CosineSimilarityLoss(model)
 
@@ -27,10 +29,16 @@ def train(model: SentenceTransformer, dataset: Dataset, model_save_path: str):
         output_path=model_save_path,
         epochs=1,
         warmup_steps=10,
-        show_progress_bar=True)
+        show_progress_bar=True,
+    )
 
 
-def create_sentence_pair_for_description(skills: dict[str, FrameSchema], dataset: Dataset, retriever: BaseRetriever, num_neg=1):
+def create_sentence_pair_for_description(
+    skills: dict[str, FrameSchema],
+    dataset: Dataset,
+    retriever: BaseRetriever,
+    num_neg=1,
+):
     embedding = EmbeddingStore.get_embedding_by_task("desc")
     results = []
     for item in dataset:
@@ -57,7 +65,9 @@ def create_sentence_pair_for_description(skills: dict[str, FrameSchema], dataset
     return results
 
 
-def create_sentence_pair_for_exemplars(dataset: Dataset, retriever: BaseRetriever, num_examples=1):
+def create_sentence_pair_for_exemplars(
+    dataset: Dataset, retriever: BaseRetriever, num_examples=1
+):
     embedding = EmbeddingStore.get_embedding_by_task("exemplar")
     results = []
     for item in dataset:
@@ -66,7 +76,7 @@ def create_sentence_pair_for_exemplars(dataset: Dataset, retriever: BaseRetrieve
         label = item["owner"]
         id = item["id"]
         nodesWithScore = retriever.retrieve(utterance)
-        nodes : list[TextNode] = [item.node for item in nodesWithScore]
+        nodes: list[TextNode] = [item.node for item in nodesWithScore]
         pos = 0
         neg = 0
         for node in nodes:
@@ -92,11 +102,19 @@ def create_sentence_pair_for_exemplars(dataset: Dataset, retriever: BaseRetrieve
 if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
-    from finetune.commons import DatasetCreatorWithIndex, generate_sentence_pairs, has_no_intent
+    from finetune.commons import (
+        DatasetCreatorWithIndex,
+        generate_sentence_pairs,
+        has_no_intent,
+    )
 
     from finetune.sgd import SGDSkills
     print(LugConfig.embedding_model)
-    dsc = [DatasetCreatorWithIndex.build(SGDSkills("/home/sean/src/dstc8-schema-guided-dialogue/"), "./index/sgdskill/")]
+    dsc = [
+        DatasetCreatorWithIndex.build(
+            SGDSkills("/home/sean/src/dstc8-schema-guided-dialogue/"),
+            "./index/sgdskill/")
+    ]
     dataset = DataLoader(generate_sentence_pairs(dsc))
     base_model = EmbeddingStore.get_model(LugConfig.embedding_model)
     train(base_model, dataset, "./output/embedding/")

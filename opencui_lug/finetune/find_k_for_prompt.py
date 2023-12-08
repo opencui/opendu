@@ -1,10 +1,12 @@
-
 import logging
+
 from datasets import Dataset
-from core.config import LugConfig
-from core.embedding import EmbeddingStore
-from core.retriever import build_desc_index, load_context_retrievers, ContextRetriever
-from finetune.commons import build_dataset_index
+
+from opencui_lug.core.config import LugConfig
+from opencui_lug.core.embedding import EmbeddingStore
+from opencui_lug.core.retriever import (ContextRetriever, build_desc_index,
+                                        load_context_retrievers)
+from opencui_lug.finetune.commons import build_dataset_index
 
 
 def compute_k(dataset: Dataset, retrieve: ContextRetriever):
@@ -41,8 +43,7 @@ if __name__ == "__main__":
     LugConfig.embedding_device = "cuda"
     from finetune.sgd import SGD
 
-    factories = [
-        SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]
+    factories = [SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]
 
     # For now, just use the fix path.
     output = "./output"
@@ -50,12 +51,18 @@ if __name__ == "__main__":
     build_index = True
     if build_index:
         for factory in factories:
-            build_desc_index(factory.tag, factory.schema, f"{output}/index/{factory.tag}", EmbeddingStore.for_description())
-            build_dataset_index(factory.tag, factory.build("train"), f"{output}/index/{factory.tag}", EmbeddingStore.for_exemplar())
+            build_desc_index(factory.tag, factory.schema,
+                             f"{output}/index/{factory.tag}",
+                             EmbeddingStore.for_description())
+            build_dataset_index(factory.tag, factory.build("train"),
+                                f"{output}/index/{factory.tag}",
+                                EmbeddingStore.for_exemplar())
 
     retrievers = []
     for factory in factories:
-        retrievers.append(load_context_retrievers({factory.tag: factory.schema}, f"{output}/index/{factory.tag}"))
+        retrievers.append(
+            load_context_retrievers({factory.tag: factory.schema},
+                                    f"{output}/index/{factory.tag}"))
 
     for index in range(len(factories)):
         factory = factories[index]

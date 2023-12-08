@@ -1,10 +1,11 @@
 import logging
 
-from core.annotation import CamelToSnake
-from inference.converter import Converter
-from core.embedding import EmbeddingStore
-from core.retriever import load_context_retrievers, build_nodes_from_skills, create_index
-from finetune.commons import build_nodes_from_dataset
+from opencui_lug.core.annotation import CamelToSnake
+from opencui_lug.core.embedding import EmbeddingStore
+from opencui_lug.core.retriever import (build_nodes_from_skills, create_index,
+                                        load_context_retrievers)
+from opencui_lug.finetune.commons import build_nodes_from_dataset
+from opencui_lug.inference.converter import Converter
 
 #
 # Converter is a lower level component of inference. This directly use the model.
@@ -14,12 +15,11 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
-    from finetune.sgd import SGD
     from core.config import LugConfig
+    from finetune.sgd import SGD
 
     LugConfig.embedding_device = "cuda"
-    factories = [
-        SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]
+    factories = [SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]
 
     # For now, just use the fix path.
     output = "./test"
@@ -33,8 +33,12 @@ if __name__ == "__main__":
         build_nodes_from_dataset(factory.tag, factory[tag], exemplar_nodes)
 
     # For inference, we only create one index.
-    create_index(f"{output}/index", "exemplar", exemplar_nodes, EmbeddingStore.for_exemplar())
-    create_index(f"{output}/index", "desc", desc_nodes, EmbeddingStore.for_description())
+    create_index(
+        f"{output}/index", "exemplar", exemplar_nodes, EmbeddingStore.for_exemplar()
+    )
+    create_index(
+        f"{output}/index", "desc", desc_nodes, EmbeddingStore.for_description()
+    )
 
     schemas = {factory.tag: factory.schema for factory in factories}
 
@@ -49,11 +53,10 @@ if __name__ == "__main__":
         marker = "### Output:"
         for item in dataset:
             # We only support snake function name.
-            target = to_snake.encode(item['owner'])
+            target = to_snake.encode(item["owner"])
             arguments = item["arguments"]
             print(item["utterance"])
             result = converter.understand(item["utterance"])
-
             if result and result.name == target:
                 counts[1] += 1
                 print(f"pred: {result.arguments} target: {arguments}")

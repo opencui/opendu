@@ -1,18 +1,19 @@
+import abc
 import re
 from abc import ABC
-import abc
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
 
 import datasets
 from datasets import Dataset
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode
 
-from core.config import LugConfig
-from core.annotation import Schema
-from core.retriever import create_index, HybridRetriever
-from finetune.embedding import create_sentence_pair_for_description, create_sentence_pair_for_exemplars
+from opencui_lug.core.annotation import Schema
+from opencui_lug.core.config import LugConfig
+from opencui_lug.core.retriever import HybridRetriever, create_index
+from opencui_lug.finetune.embedding import (
+    create_sentence_pair_for_description, create_sentence_pair_for_exemplars)
 
 
 @dataclass
@@ -20,6 +21,7 @@ class AnnotatedExemplar:
     """
     expression examples, if the expected_slots is empty, this can be used for both skills and slots.
     """
+
     id: str
     utterance: str
     template: str
@@ -32,9 +34,9 @@ class AnnotatedExemplar:
             "id": self.id,
             "utterance": self.utterance,
             "template": self.template,
-            'owner': self.owner,
+            "owner": self.owner,
             "arguments": str(self.arguments),
-            "expectations": str(self.expectations)
+            "expectations": str(self.expectations),
         }
 
 
@@ -44,16 +46,22 @@ def has_no_intent(label: str):
 
 def build_nodes_from_dataset(module: str, dataset: Dataset, nodes):
     for item in dataset:
-        utterance = item['template']
+        utterance = item["template"]
         label = item["owner"]
         if has_no_intent(label):
             continue
         nodes.append(
             TextNode(
                 text=utterance,
-                id_=item['id'],
-                metadata={"arguments": item["arguments"], "owner": label, "module": module},
-                excluded_embed_metadata_keys=["arguments", "owner", "module"]))
+                id_=item["id"],
+                metadata={
+                    "arguments": item["arguments"],
+                    "owner": label,
+                    "module": module,
+                },
+                excluded_embed_metadata_keys=["arguments", "owner", "module"],
+            )
+        )
 
 
 def build_dataset_index(tag: str, dsc: Dataset, output: str, embedding: BaseEmbedding):
@@ -63,11 +71,13 @@ def build_dataset_index(tag: str, dsc: Dataset, output: str, embedding: BaseEmbe
     create_index(output, "exemplar", exemplar_nodes, embedding)
 
 
-def create_full_exemplar(id, utterance, intent, slots, spans, expectations=[]) -> AnnotatedExemplar:
-    '''
+def create_full_exemplar(
+    id, utterance, intent, slots, spans, expectations=[]
+) -> AnnotatedExemplar:
+    """
     replacing the slot val with the slot name,to avoid match the short slot val which may be included in other
     long slot val, we need sort by the length of the slot val
-    '''
+    """
     if not spans:
         return AnnotatedExemplar(id, utterance, utterance, intent, slots, expectations)
     single_dict = dict()
@@ -77,15 +87,17 @@ def create_full_exemplar(id, utterance, intent, slots, spans, expectations=[]) -
             single_dict[value] = key
 
     spans = sorted(spans, key=lambda x: x[0])
-    res_utterance = utterance[:spans[0][0]]
+    res_utterance = utterance[: spans[0][0]]
     for i, (cur_start, cur_end) in enumerate(spans):
         # if len(string_list) >=2:
         #     print("sub string",utterance[cur_start:cur_end])
-        res_utterance = res_utterance + ' < ' + single_dict[utterance[cur_start:cur_end]] + ' > '
+        res_utterance = (
+            res_utterance + " < " + single_dict[utterance[cur_start:cur_end]] + " > "
+        )
         if i == len(spans) - 1:
             res_utterance = res_utterance + utterance[cur_end:]
         else:
-            res_utterance = res_utterance + utterance[cur_end:spans[i + 1][0]]
+            res_utterance = res_utterance + utterance[cur_end : spans[i + 1][0]]
     return AnnotatedExemplar(id, utterance, res_utterance, intent, slots, expectations)
 
 
@@ -131,7 +143,10 @@ class DatasetCreatorWithIndex:
         return DatasetCreatorWithIndex(
             creator=creator,
             desc_retriever=HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk),
-            exemplar_retriever=HybridRetriever(path, "exemplar", LugConfig.exemplar_retrieve_topk))
+            exemplar_retriever=HybridRetriever(
+                path, "exemplar", LugConfig.exemplar_retrieve_topk
+            ),
+        )
 
 
 def generate_sentence_pairs(dataset_infos: list[DatasetCreatorWithIndex]) -> Dataset:
@@ -140,15 +155,12 @@ def generate_sentence_pairs(dataset_infos: list[DatasetCreatorWithIndex]) -> Dat
         dataset = dataset_info.creator["train"]
         generators.extend(
             create_sentence_pair_for_description(
-                dataset_info.creator.schema.skills,
-                dataset,
-                dataset_info.desc_retriever
-            ))
+                dataset_info.creator.schema.skills, dataset, dataset_info.desc_retriever
+            )
+        )
         generators.extend(
-            create_sentence_pair_for_exemplars(
-                dataset,
-                dataset_info.exemplar_retriever
-            ))
+            create_sentence_pair_for_exemplars(dataset, dataset_info.exemplar_retriever)
+        )
     return generators
 
 

@@ -8,8 +8,10 @@ from collections import defaultdict
 
 from datasets import Dataset, Features, Value
 
-from core.annotation import Schema, FrameSchema, SlotSchema, CamelToSnake
-from finetune.commons import DatasetFactory, create_full_exemplar
+from opencui_lug.core.annotation import (CamelToSnake, FrameSchema, Schema,
+                                         SlotSchema)
+from opencui_lug.finetune.commons import DatasetFactory, create_full_exemplar
+
 
 # pip install -U gin-config faiss-cpu scikit-learn sentence-transformers
 # python3 generate_intent.py --input=/home/sean/src/dstc8-schema-guided-dialogue/train/ --output=./res/train
@@ -29,33 +31,37 @@ class SGD(DatasetFactory):
         self.counts = [0, 0, 0, 0, 0, 0, 0]
         self.schema = load_schema_as_dict(f"{base_path}/{domain}")
         self.known_skills = set()
-        self.bad_turns = set([
-            'sgd.train.95_00094.4',
-            'sgd.train.95_00065.8',
-            'sgd.train.95_00066.12',
-            'sgd.train.93_00083.8',
-            'sgd.train.8_00121.8',
-            'sgd.train.54_00096.6',
-            'sgd.train.121_00036.10',
-            'sgd.train.52_00020.18',
-            'sgd.train.74_00081.16',
-            'sgd.train.90_00018.16', ' '
-            'sgd.train.27_00113.10',
-            'sgd.train.75_00023.20',
-            'sgd.train.96_00019.12',
-            'sgd.train.96_00048.4',
-            'sgd.train.96_00048.6',
-            'sgd.train.96_00019.10',
-            'sgd.train.42_00002.6',
-        ])
-        self.features = Features({
-            'title': Value(dtype='string', id=None),
-            'utterance': Value(dtype='string', id=None),
-            "template": Value(dtype='string', id=None),
-            "owner": Value(dtype='string', id=None),
-            "arguments": Value(dtype='string', id=None),
-            "expectations": Value(dtype='string', id=None)
-        })
+        self.bad_turns = set(
+            [
+                "sgd.train.95_00094.4",
+                "sgd.train.95_00065.8",
+                "sgd.train.95_00066.12",
+                "sgd.train.93_00083.8",
+                "sgd.train.8_00121.8",
+                "sgd.train.54_00096.6",
+                "sgd.train.121_00036.10",
+                "sgd.train.52_00020.18",
+                "sgd.train.74_00081.16",
+                "sgd.train.90_00018.16",
+                " " "sgd.train.27_00113.10",
+                "sgd.train.75_00023.20",
+                "sgd.train.96_00019.12",
+                "sgd.train.96_00048.4",
+                "sgd.train.96_00048.6",
+                "sgd.train.96_00019.10",
+                "sgd.train.42_00002.6",
+            ]
+        )
+        self.features = Features(
+            {
+                "title": Value(dtype="string", id=None),
+                "utterance": Value(dtype="string", id=None),
+                "template": Value(dtype="string", id=None),
+                "owner": Value(dtype="string", id=None),
+                "arguments": Value(dtype="string", id=None),
+                "expectations": Value(dtype="string", id=None),
+            }
+        )
 
     def __getitem__(self, split):
         if split == "validation":
@@ -73,9 +79,9 @@ class SGD(DatasetFactory):
             s_set = defaultdict(set)
             # For all files.
             for file in files:
-                if file[:6] != 'dialog':
+                if file[:6] != "dialog":
                     continue
-                with open(base_path + file, encoding='utf-8') as f:
+                with open(base_path + file, encoding="utf-8") as f:
                     f = json.load(f)
                     # For all sessions.
                     for dialogue in f:
@@ -89,24 +95,32 @@ class SGD(DatasetFactory):
                         for idx, turn in enumerate(turns):
                             try:
                                 # Getting actions.
-                                if turn['speaker'] != 'USER':
+                                if turn["speaker"] != "USER":
                                     actions = SGD.extract_actions(turn)
                                     continue
 
                                 id = f"sgd.{split}.{dialogue_id}.{idx}"
                                 if id in self.bad_turns:
                                     continue
-                                
+
                                 active_intents = set()
-                                for frame in turn['frames']:
-                                    active_intents.add(frame['state']['active_intent'])
+                                for frame in turn["frames"]:
+                                    active_intents.add(frame["state"]["active_intent"])
 
                                 if len(active_intents) > 1:
                                     continue
 
                                 # this is offered intent from system.
-                                if idx - 1 >= 0 and turns[idx - 1]["frames"][0]["actions"][0]["act"] == "OFFER_INTENT":
-                                    offered_intent = set(turns[idx - 1]["frames"][0]["actions"][0]["values"])
+                                if (
+                                    idx - 1 >= 0
+                                    and turns[idx - 1]["frames"][0]["actions"][0]["act"]
+                                    == "OFFER_INTENT"
+                                ):
+                                    offered_intent = set(
+                                        turns[idx - 1]["frames"][0]["actions"][0][
+                                            "values"
+                                        ]
+                                    )
                                 else:
                                     offered_intent = set()
 
@@ -117,41 +131,54 @@ class SGD(DatasetFactory):
                                     # Particularly assume there are reactive understanding.
                                     continue
 
-                                frame = turn['frames'][0]
-                                skill_name = frame['state']['active_intent']
-                                #skill_name = self.forward[skill_name]
+                                frame = turn["frames"][0]
+                                skill_name = frame["state"]["active_intent"]
+                                # skill_name = self.forward[skill_name]
                                 skill_name = CamelToSnake.convert(skill_name)
 
                                 if skill_name not in self.schema.skills.keys():
                                     continue
 
                                 if skill_name in existing_intents:
-                                    #print(frame)
+                                    # print(frame)
                                     continue
 
                                 if not frame["service"].endswith(self.suffix):
                                     # Only care the servie with suffix _1
                                     continue
 
-                                if frame['state']['active_intent'] not in (active_intents - pre_intents):
+                                if frame["state"]["active_intent"] not in (
+                                    active_intents - pre_intents
+                                ):
                                     self.counts[1] += 1
                                     continue
 
-                                if frame['state']['active_intent'] in offered_intent:
+                                if frame["state"]["active_intent"] in offered_intent:
                                     self.counts[3] += 1
                                     continue
 
-                                if frame['state']['active_intent'] in SGD.intent_taboo_word:
+                                if (
+                                    frame["state"]["active_intent"]
+                                    in SGD.intent_taboo_word
+                                ):
                                     continue
 
                                 spans = []
-                                utterance = turn['utterance'].lower()
+                                utterance = turn["utterance"].lower()
                                 local_slots = defaultdict(list)
-                                for _slot in frame['slots']:
-                                    local_slots[_slot['slot']].append(utterance[_slot['start']:_slot['exclusive_end']])
-                                    spans.append((_slot['start'], _slot['exclusive_end']))
+                                for _slot in frame["slots"]:
+                                    local_slots[_slot["slot"]].append(
+                                        utterance[
+                                            _slot["start"] : _slot["exclusive_end"]
+                                        ]
+                                    )
+                                    spans.append(
+                                        (_slot["start"], _slot["exclusive_end"])
+                                    )
 
-                                exemplar = create_full_exemplar(id, utterance, skill_name, dict(local_slots), spans)
+                                exemplar = create_full_exemplar(
+                                    id, utterance, skill_name, dict(local_slots), spans
+                                )
                                 # yield the example
                                 yield exemplar.flatten()
                             finally:
@@ -170,7 +197,7 @@ class SGD(DatasetFactory):
 
 def load_schema_as_dict(full_path, suffix: str = "_1"):
     domain = Schema(skills={}, slots={})
-    with open(f"{full_path}/schema.json", encoding='utf-8') as f:
+    with open(f"{full_path}/schema.json", encoding="utf-8") as f:
         f = json.load(f)
 
         for service in f:
@@ -182,7 +209,7 @@ def load_schema_as_dict(full_path, suffix: str = "_1"):
             # handle intents
             intents = service["intents"]
             for intent in intents:
-                skill_name = intent['name']
+                skill_name = intent["name"]
                 intent_desc = intent["description"]
                 slots = intent["required_slots"]
                 optional_slots = intent["optional_slots"].keys()
@@ -191,18 +218,21 @@ def load_schema_as_dict(full_path, suffix: str = "_1"):
                 if skill_name in SGD.intent_taboo_word:
                     continue
                 skill_name = CamelToSnake.convert(skill_name)
-                domain.skills[skill_name] = FrameSchema(skill_name, intent_desc, slots).to_dict()
+                domain.skills[skill_name] = FrameSchema(
+                    skill_name, intent_desc, slots
+                ).to_dict()
             slots = service["slots"]
             for slot in slots:
-                slot_name = slot['name']
-                is_categorical = slot['is_categorical']
-                possible_values = slot['possible_values']
+                slot_name = slot["name"]
+                is_categorical = slot["is_categorical"]
+                possible_values = slot["possible_values"]
                 slot_description = slot["description"]
-                domain.slots[slot_name] = SlotSchema(slot_name, slot_description).to_dict()
+                domain.slots[slot_name] = SlotSchema(
+                    slot_name, slot_description
+                ).to_dict()
     return domain
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
@@ -211,7 +241,7 @@ if __name__ == '__main__':
 
     print(f"there are {len(dsc.schema.skills)} skills")
     print(json.dumps(dsc.schema.skills, indent=2))
-    #print(json.dumps(dsc.schema.slots, indent=2))
+    # print(json.dumps(dsc.schema.slots, indent=2))
 
     dataset = dsc.build("train")
     dataset.save_to_disk("./datasets/sgd")

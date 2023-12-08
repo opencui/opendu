@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import json
-import sys
 import getopt
-import shutil
+import json
 import logging
+import shutil
+import sys
 import traceback
 
-from core.config import LugConfig
-from core.embedding import EmbeddingStore
-from inference.schema_parser import load_all_from_directory
-from core.annotation import build_nodes_from_exemplar_store, FrameSchema, Exemplar
-from core.retriever import create_index, build_nodes_from_skills, load_context_retrievers
+from opencui_lug.core.annotation import (Exemplar, FrameSchema,
+                                         build_nodes_from_exemplar_store)
+from opencui_lug.core.config import LugConfig
+from opencui_lug.core.embedding import EmbeddingStore
+from opencui_lug.core.retriever import (build_nodes_from_skills, create_index,
+                                        load_context_retrievers)
+from opencui_lug.inference.schema_parser import load_all_from_directory
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
@@ -58,8 +60,10 @@ if __name__ == "__main__":
         build_nodes_from_skills(module, module_schema.skills, desc_nodes)
         build_nodes_from_exemplar_store(module, examplers, exemplar_nodes)
 
-        create_index(output_path, "exemplar", exemplar_nodes, EmbeddingStore.for_exemplar())
-        create_index(output_path, "desc", desc_nodes, EmbeddingStore.for_description())
+        create_index(output_path, "exemplar", exemplar_nodes,
+                     EmbeddingStore.for_exemplar())
+        create_index(output_path, "desc", desc_nodes,
+                     EmbeddingStore.for_description())
     except:
         traceback.print_exc()
         shutil.rmtree(output_path, ignore_errors=True)
