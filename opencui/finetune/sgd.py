@@ -20,7 +20,7 @@ from opencui.finetune.commons import DatasetFactory, create_full_exemplar, purge
 # the same service.
 #
 class SGD(DatasetFactory):
-    intent_taboo_word = ["SearchOnewayFlight"]
+    intent_taboo_word = ["SearchOnewayFlight", "ReserveOnewayFlight"]
 
     # Which schema do we use? Default to train.
     def __init__(self, base_path, domain="train", suffix: str = "_1"):
@@ -163,12 +163,7 @@ class SGD(DatasetFactory):
                                 local_slots = defaultdict(list)
                                 for _slot in frame["slots"]:
                                     local_slots[_slot["slot"]].append(
-                                        utterance[
-                                            _slot["start"] : _slot["exclusive_end"]
-                                        ]
-                                    )
-                                    spans.append(
-                                        (_slot["start"], _slot["exclusive_end"])
+                                        utterance[_slot["start"] : _slot["exclusive_end"]]
                                     )
 
                                 exemplar = create_full_exemplar(
