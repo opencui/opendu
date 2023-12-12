@@ -1,9 +1,10 @@
 import abc
 
 from abc import ABC
+from collections import defaultdict
 from dataclasses import dataclass
+from random import choices
 from typing import Optional
-
 
 from datasets import Dataset
 from llama_index.embeddings.base import BaseEmbedding
@@ -72,7 +73,7 @@ def build_dataset_index(tag: str, dsc: Dataset, output: str, embedding: BaseEmbe
 
 
 def create_full_exemplar(
-    id, utterance, intent, slots, spans, expectations=[]
+        id, utterance, intent, slots, spans, expectations=[]
 ) -> AnnotatedExemplar:
     """
     replacing the slot val with the slot name,to avoid match the short slot val which may be included in other
@@ -92,12 +93,12 @@ def create_full_exemplar(
         # if len(string_list) >=2:
         #     print("sub string",utterance[cur_start:cur_end])
         res_utterance = (
-            res_utterance + " < " + single_dict[utterance[cur_start:cur_end]] + " > "
+                res_utterance + " < " + single_dict[utterance[cur_start:cur_end]] + " > "
         )
         if i == len(spans) - 1:
             res_utterance = res_utterance + utterance[cur_end:]
         else:
-            res_utterance = res_utterance + utterance[cur_end : spans[i + 1][0]]
+            res_utterance = res_utterance + utterance[cur_end: spans[i + 1][0]]
     return AnnotatedExemplar(id, utterance, res_utterance, intent, slots, expectations)
 
 
@@ -174,6 +175,21 @@ def collect_slot_values(dataset):
             for value in values:
                 entities[key].add(value)
     return entities
+
+
+# Some time, the original data are over sampled, we need to purge the extra things.
+def purge_dataset(dataset, k=32):
+    def uptok(items):
+        if len(items) < k:
+            return items
+        else:
+            return choices(items, k=k)
+
+    intents = defaultdict(list)
+    for item in dataset:
+        intents[item["owner"]].append(item)
+    print(f"There are {len(intents)} intents: {intents.keys()}")
+    return [example for examples in intents.values() for example in uptok(examples)]
 
 
 if __name__ == "__main__":
