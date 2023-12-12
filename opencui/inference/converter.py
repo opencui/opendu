@@ -70,18 +70,20 @@ class LocalGenerator(Generator, ABC):
         peft_encoding = peft_tokenizer(
             input_text, padding=True, return_tensors="pt"
         ).to("cuda:0")
-        peft_outputs = peft_model.generate(
-            input_ids=peft_encoding.input_ids,
-            generation_config=GenerationConfig(
-                max_new_tokens=128,
-                pad_token_id=peft_tokenizer.eos_token_id,
-                eos_token_id=peft_tokenizer.eos_token_id,
-                attention_mask=peft_encoding.attention_mask,
-                do_sample=False,
-                repetition_penalty=1.2,
-                num_return_sequences=1,
-            ),
-        )
+
+        with torch.no_grad():
+            peft_outputs = peft_model.generate(
+                input_ids=peft_encoding.input_ids,
+                generation_config=GenerationConfig(
+                    max_new_tokens=128,
+                    pad_token_id=peft_tokenizer.eos_token_id,
+                    eos_token_id=peft_tokenizer.eos_token_id,
+                    attention_mask=peft_encoding.attention_mask,
+                    do_sample=False,
+                    repetition_penalty=1.2,
+                    num_return_sequences=1,
+                ),
+            )
 
         return peft_tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
 
