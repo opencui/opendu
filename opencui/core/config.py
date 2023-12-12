@@ -25,12 +25,12 @@ class LugConfig:
     skill_arity = 1
     llm_device = "cpu"
 
-    skill_prompt = "default"
+    skill_prompt = "natural"
     slot_prompt = "default"
     nli_prompt = "default"
 
-    skill_model = "OpenCUI/skill-tinyllama-2t-1.0"
-    extractive_slot_model = "OpenCUI/extractive-tinyllama-2t-1.0"
-    nli_model = "OpenCUI/nli-tinyllama-2t-1.0"
+    skill_model = "OpenCUI/skill-tinyllama2t-1.0"
+    extractive_slot_model = "OpenCUI/extractive-tinyllama2t-1.0"
+    nli_model = ""
 
-    converter_debug = True
+    converter_debug = False

@@ -8,7 +8,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 
 from opencui.core.annotation import (CamelToSnake, DialogExpectation, EntityMetas, Exemplar, FrameValue, ListRecognizer)
 from opencui.core.config import LugConfig
-from opencui.core.prompt import (BinarySkillPrompts, ExtractiveSlotPrompts, LayeredPrompts, MulticlassSkillPrompts, NliPrompts)
+from opencui.core.prompt import (BinarySkillPrompts, ExtractiveSlotPrompts, LayeredPrompts, MulticlassSkillPrompts,
+                                 NliPrompts)
 from opencui.core.retriever import (ContextRetriever, load_context_retrievers)
 from opencui.inference.schema_parser import load_all_from_directory
 
@@ -49,6 +50,7 @@ class LocalGenerator(Generator, ABC):
             device_map="auto",
             trust_remote_code=True,
             torch_dtype=torch.float16,
+            offload_folder="offload/"
         )
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
@@ -56,28 +58,32 @@ class LocalGenerator(Generator, ABC):
         self.tokenizer.padding_side = "left"
 
         self.lora_model = PeftModel.from_pretrained(
-            base_model, LugConfig.skill_model, adapter_name="skill")
+            base_model, LugConfig.skill_model, adapter_name="skill", offload_folder="offload/")
         self.lora_model.load_adapter(
-            LugConfig.extractive_slot_model, adapter_name="extractive_slot")
-        self.lora_model.load_adapter(LugConfig.nli_model, adapter_name="nli")
+            LugConfig.extractive_slot_model, adapter_name="extractive_slot", offload_folder="offload/")
+
+        if LugConfig.nli_model != "":
+            self.lora_model.load_adapter(LugConfig.nli_model, adapter_name="nli")
 
     @classmethod
     def generate(cls, peft_model, peft_tokenizer, input_text):
         peft_encoding = peft_tokenizer(
             input_text, padding=True, return_tensors="pt"
         ).to("cuda:0")
-        peft_outputs = peft_model.generate(
-            input_ids=peft_encoding.input_ids,
-            generation_config=GenerationConfig(
-                max_new_tokens=128,
-                pad_token_id=peft_tokenizer.eos_token_id,
-                eos_token_id=peft_tokenizer.eos_token_id,
-                attention_mask=peft_encoding.attention_mask,
-                do_sample=False,
-                repetition_penalty=1.2,
-                num_return_sequences=1,
-            ),
-        )
+
+        with torch.no_grad():
+            peft_outputs = peft_model.generate(
+                input_ids=peft_encoding.input_ids,
+                generation_config=GenerationConfig(
+                    max_new_tokens=128,
+                    pad_token_id=peft_tokenizer.eos_token_id,
+                    eos_token_id=peft_tokenizer.eos_token_id,
+                    attention_mask=peft_encoding.attention_mask,
+                    do_sample=False,
+                    repetition_penalty=1.2,
+                    num_return_sequences=1,
+                ),
+            )
 
         return peft_tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
 
@@ -85,19 +91,20 @@ class LocalGenerator(Generator, ABC):
         self.lora_model.set_adapter("skill")
         outputs = LocalGenerator.generate(self.lora_model, self.tokenizer, input_texts)
         return [
-            output[len(input_texts[index]) :] for index, output in enumerate(outputs)
+            output[len(input_texts[index]):] for index, output in enumerate(outputs)
         ]
 
     def for_nli(self, input_text):
         self.lora_model.set_adapter("nli")
         output = LocalGenerator.generate(self.lora_model, self.tokenizer, input_text)
-        return output[len(input_text) :]
+        print(output)
+        return output[len(input_text):]
 
     def for_extractive_slot(self, input_texts):
         self.lora_model.set_adapter("extractive_slot")
         outputs = LocalGenerator.generate(self.lora_model, self.tokenizer, input_texts)
         return [
-            output[len(input_texts[index]) :] for index, output in enumerate(outputs)
+            output[len(input_texts[index]):] for index, output in enumerate(outputs)
         ]
 
 
@@ -279,11 +286,11 @@ class SSkillConverter(SkillConverter):
 
 class Converter:
     def __init__(
-        self,
-        retriever: ContextRetriever,
-        entity_metas: EntityMetas = None,
-        generator=LocalGenerator(),
-        with_arguments=True,
+            self,
+            retriever: ContextRetriever,
+            entity_metas: EntityMetas = None,
+            generator=LocalGenerator(),
+            with_arguments=True,
     ):
         self.retrieve = retriever
         self.recognizer = None
@@ -305,7 +312,7 @@ class Converter:
         self.nli_labels = {"entailment": True, "neutral": None, "contradiction": False}
 
     def understand(
-        self, text: str, expectation: DialogExpectation = None
+            self, text: str, expectation: DialogExpectation = None
     ) -> FrameValue:
         # low level get skill.
         func_names = self.skill_converter.get_skill(text)
@@ -325,8 +332,7 @@ class Converter:
         # We assume the function_name is global unique for now. From UI perspective, I think
         module = self.retrieve.module.get_module(func_name)
         slot_labels_of_func = module.skills[func_name]["slots"]
-        print(slot_labels_of_func)
-        print(module.slots)
+
         # Then we need to create the prompt for the parameters.
         slot_prompts = []
         for slot in slot_labels_of_func:
@@ -357,9 +363,9 @@ class Converter:
         return FrameValue(name=final_name, arguments=slot_values)
 
     # There are three different
-    def decide(self, utterance, question, lang="en") -> bool:
+    def decide(self, question, utterance, lang="en") -> bool:
         # For now, we ignore the language
-        input_dict = {"premise": utterance, "hypothesis": f"{question} yes."}
+        input_dict = {"premise": utterance, "hypothesis": f"{question}."}
         input_prompt = self.nli_prompt(input_dict)
         output = self.generator.for_nli(input_prompt)
         if LugConfig.converter_debug:

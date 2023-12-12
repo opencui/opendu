@@ -20,7 +20,7 @@ from opencui.finetune.commons import DatasetFactory, create_full_exemplar
 # the same service.
 #
 class SGD(DatasetFactory):
-    intent_taboo_word = ["SearchOnewayFlight", "BookHouse", "SearchHouse"]
+    intent_taboo_word = ["SearchOnewayFlight", "BookHouse", "SearchHouse", "BuyBusTicket"]
 
     # Which schema do we use? Default to train.
     def __init__(self, base_path, domain="train", suffix: str = "_1"):
@@ -49,6 +49,7 @@ class SGD(DatasetFactory):
                 "sgd.train.96_00048.6",
                 "sgd.train.96_00019.10",
                 "sgd.train.42_00002.6",
+                "sgd.dev.9_00058.0",
             ]
         )
         self.features = Features(
@@ -112,14 +113,9 @@ class SGD(DatasetFactory):
                                 # this is offered intent from system.
                                 if (
                                     idx - 1 >= 0
-                                    and turns[idx - 1]["frames"][0]["actions"][0]["act"]
-                                    == "OFFER_INTENT"
+                                    and turns[idx - 1]["frames"][0]["actions"][0]["act"] == "OFFER_INTENT"
                                 ):
-                                    offered_intent = set(
-                                        turns[idx - 1]["frames"][0]["actions"][0][
-                                            "values"
-                                        ]
-                                    )
+                                    offered_intent = set(turns[idx - 1]["frames"][0]["actions"][0]["values"])
                                 else:
                                     offered_intent = set()
 
