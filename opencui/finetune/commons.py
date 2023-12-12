@@ -3,7 +3,7 @@ import abc
 from abc import ABC
 from collections import defaultdict
 from dataclasses import dataclass
-from random import choices
+from random import sample
 from typing import Optional
 
 from datasets import Dataset
@@ -24,19 +24,19 @@ class AnnotatedExemplar:
     """
 
     id: str
+    owner: str
     utterance: str
     template: str
-    owner: str
     arguments: Optional[dict] = None
     expectations: Optional[list] = None
 
     def flatten(self):
         return {
             "id": self.id,
-            "utterance": self.utterance,
-            "template": self.template,
             "owner": self.owner,
+            "utterance": self.utterance,
             "arguments": str(self.arguments),
+            "template": self.template,
             "expectations": str(self.expectations),
         }
 
@@ -80,7 +80,7 @@ def create_full_exemplar(
     long slot val, we need sort by the length of the slot val
     """
     if not spans:
-        return AnnotatedExemplar(id, utterance, utterance, intent, slots, expectations)
+        return AnnotatedExemplar(id, intent, utterance, utterance, slots, expectations)
     single_dict = dict()
 
     for key, values in slots.items():
@@ -99,7 +99,7 @@ def create_full_exemplar(
             res_utterance = res_utterance + utterance[cur_end:]
         else:
             res_utterance = res_utterance + utterance[cur_end: spans[i + 1][0]]
-    return AnnotatedExemplar(id, utterance, res_utterance, intent, slots, expectations)
+    return AnnotatedExemplar(id, intent, utterance, res_utterance, slots, expectations)
 
 
 #
@@ -183,7 +183,7 @@ def purge_dataset(dataset, k=32):
         if len(items) < k:
             return items
         else:
-            return choices(items, k=k)
+            return sample(items, k=k)
 
     intents = defaultdict(list)
     for item in dataset:

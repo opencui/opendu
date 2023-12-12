@@ -1,0 +1,517 @@
+{
+  "skills": {
+    "find_bus": {
+      "name": "find_bus",
+      "description": "Find a bus itinerary between cities for a given date",
+      "slots": [
+        "origin",
+        "destination",
+        "departure_date",
+        "fare_type",
+        "group_size"
+      ]
+    },
+    "buy_bus_ticket": {
+      "name": "buy_bus_ticket",
+      "description": "Buy tickets for a bus itinerary",
+      "slots": [
+        "origin",
+        "destination",
+        "departure_date",
+        "departure_time",
+        "group_size",
+        "fare_type"
+      ]
+    },
+    "find_events": {
+      "name": "find_events",
+      "description": "Find concerts and games happening in your area",
+      "slots": [
+        "event_type",
+        "city",
+        "date",
+        "category"
+      ]
+    },
+    "get_event_dates": {
+      "name": "get_event_dates",
+      "description": "Get dates on which a given event is taking place",
+      "slots": [
+        "event_name",
+        "city"
+      ]
+    },
+    "buy_event_tickets": {
+      "name": "buy_event_tickets",
+      "description": "Buy tickets for an event",
+      "slots": [
+        "event_name",
+        "number_of_tickets",
+        "date",
+        "city"
+      ]
+    },
+    "search_roundtrip_flights": {
+      "name": "search_roundtrip_flights",
+      "description": "Search for round trip flights with your set of preferences",
+      "slots": [
+        "origin",
+        "destination",
+        "departure_date",
+        "return_date",
+        "airlines",
+        "passengers",
+        "seating_class"
+      ]
+    },
+    "book_house": {
+      "name": "book_house",
+      "description": "Book the selected house for given dates and number of adults",
+      "slots": [
+        "where_to",
+        "number_of_adults",
+        "check_in_date",
+        "check_out_date"
+      ]
+    },
+    "search_house": {
+      "name": "search_house",
+      "description": "Find a house at a given location",
+      "slots": [
+        "where_to",
+        "rating",
+        "has_laundry_service",
+        "number_of_adults"
+      ]
+    },
+    "reserve_hotel": {
+      "name": "reserve_hotel",
+      "description": "Reserve a selected hotel for given dates",
+      "slots": [
+        "hotel_name",
+        "location",
+        "check_in_date",
+        "check_out_date",
+        "number_of_rooms"
+      ]
+    },
+    "search_hotel": {
+      "name": "search_hotel",
+      "description": "Search for a hotel based on location",
+      "slots": [
+        "location",
+        "number_of_rooms",
+        "pets_welcome"
+      ]
+    },
+    "lookup_music": {
+      "name": "lookup_music",
+      "description": "Search for a song based on the name and optionally other attributes",
+      "slots": [
+        "genre",
+        "artist",
+        "album"
+      ]
+    },
+    "play_media": {
+      "name": "play_media",
+      "description": "Play a song by its name and optionally artist",
+      "slots": [
+        "song_name",
+        "artist",
+        "playback_device"
+      ]
+    },
+    "get_cars_available": {
+      "name": "get_cars_available",
+      "description": "See available cars for rental in a particular city and a date",
+      "slots": [
+        "pickup_city",
+        "pickup_date",
+        "pickup_time",
+        "dropoff_date",
+        "car_type"
+      ]
+    },
+    "reserve_car": {
+      "name": "reserve_car",
+      "description": "Reserve a rental car for specified pickup location and dates",
+      "slots": [
+        "pickup_location",
+        "pickup_date",
+        "pickup_time",
+        "dropoff_date",
+        "car_type"
+      ]
+    },
+    "get_ride": {
+      "name": "get_ride",
+      "description": "Book a cab for any destination, number of seats and ride type",
+      "slots": [
+        "destination",
+        "number_of_seats",
+        "ride_type"
+      ]
+    },
+    "book_appointment": {
+      "name": "book_appointment",
+      "description": "Book an appointment with a specific doctor for the given date and time",
+      "slots": [
+        "doctor_name",
+        "appointment_time",
+        "appointment_date"
+      ]
+    },
+    "find_provider": {
+      "name": "find_provider",
+      "description": "Find a medical service provider based on their location and speciality",
+      "slots": [
+        "city",
+        "type"
+      ]
+    }
+  },
+  "slots": {
+    "origin": {
+      "name": "origin",
+      "description": "City of origin for the flight",
+      "type": null
+    },
+    "destination": {
+      "name": "destination",
+      "description": "Destination address or location for cab",
+      "type": null
+    },
+    "origin_station_name": {
+      "name": "origin_station_name",
+      "description": "Name of the bus terminus at the origin",
+      "type": null
+    },
+    "destination_station_name": {
+      "name": "destination_station_name",
+      "description": "Name of the bus terminus at the destination",
+      "type": null
+    },
+    "departure_date": {
+      "name": "departure_date",
+      "description": "Date of departure flight on the ticket",
+      "type": null
+    },
+    "price": {
+      "name": "price",
+      "description": "Total price for the stay",
+      "type": null
+    },
+    "departure_time": {
+      "name": "departure_time",
+      "description": "Time of bus departure",
+      "type": null
+    },
+    "group_size": {
+      "name": "group_size",
+      "description": "Size of group for the booking",
+      "type": null
+    },
+    "fare_type": {
+      "name": "fare_type",
+      "description": "Type of fare for the booking",
+      "type": null
+    },
+    "event_type": {
+      "name": "event_type",
+      "description": "Type of event",
+      "type": null
+    },
+    "category": {
+      "name": "category",
+      "description": "The sport or music subcategory",
+      "type": null
+    },
+    "event_name": {
+      "name": "event_name",
+      "description": "Name of match or artist for event",
+      "type": null
+    },
+    "date": {
+      "name": "date",
+      "description": "Date of event",
+      "type": null
+    },
+    "time": {
+      "name": "time",
+      "description": "Starting time for event",
+      "type": null
+    },
+    "number_of_tickets": {
+      "name": "number_of_tickets",
+      "description": "Number of tickets to buy for event",
+      "type": null
+    },
+    "city": {
+      "name": "city",
+      "description": "City where the doctor is located",
+      "type": null
+    },
+    "venue": {
+      "name": "venue",
+      "description": "Exact venue of event",
+      "type": null
+    },
+    "venue_address": {
+      "name": "venue_address",
+      "description": "Address of event venue",
+      "type": null
+    },
+    "passengers": {
+      "name": "passengers",
+      "description": "Number of passengers to book tickets for",
+      "type": null
+    },
+    "seating_class": {
+      "name": "seating_class",
+      "description": "Seating class for the flight tickets",
+      "type": null
+    },
+    "origin_airport": {
+      "name": "origin_airport",
+      "description": "Airport where the flight is departing from",
+      "type": null
+    },
+    "destination_airport": {
+      "name": "destination_airport",
+      "description": "Airport where the flight is arriving to",
+      "type": null
+    },
+    "return_date": {
+      "name": "return_date",
+      "description": "Date of return flight on the ticket",
+      "type": null
+    },
+    "number_stops": {
+      "name": "number_stops",
+      "description": "Number of stopovers made by the flight",
+      "type": null
+    },
+    "outbound_departure_time": {
+      "name": "outbound_departure_time",
+      "description": "Departure time of the origin-destination flight",
+      "type": null
+    },
+    "outbound_arrival_time": {
+      "name": "outbound_arrival_time",
+      "description": "Arrival time of the origin-destination flight",
+      "type": null
+    },
+    "inbound_arrival_time": {
+      "name": "inbound_arrival_time",
+      "description": "Arrival time of the destination-origin flight",
+      "type": null
+    },
+    "inbound_departure_time": {
+      "name": "inbound_departure_time",
+      "description": "Departure time of the destination-origin flight",
+      "type": null
+    },
+    "fare": {
+      "name": "fare",
+      "description": "Ticket fare for each passenger",
+      "type": null
+    },
+    "is_redeye": {
+      "name": "is_redeye",
+      "description": "Boolean flag indicating whether the flight is a red-eye flight",
+      "type": null
+    },
+    "airlines": {
+      "name": "airlines",
+      "description": "Name of the airline to book with",
+      "type": null
+    },
+    "where_to": {
+      "name": "where_to",
+      "description": "Location of the house",
+      "type": null
+    },
+    "number_of_adults": {
+      "name": "number_of_adults",
+      "description": "Number of people for the reservation",
+      "type": null
+    },
+    "check_in_date": {
+      "name": "check_in_date",
+      "description": "Start date for the hotel reservation",
+      "type": null
+    },
+    "check_out_date": {
+      "name": "check_out_date",
+      "description": "End date for the hotel reservation",
+      "type": null
+    },
+    "rating": {
+      "name": "rating",
+      "description": "Review rating of the house",
+      "type": null
+    },
+    "address": {
+      "name": "address",
+      "description": "Address of the dentist",
+      "type": null
+    },
+    "phone_number": {
+      "name": "phone_number",
+      "description": "Contact number for the doctor or the medical practice",
+      "type": null
+    },
+    "total_price": {
+      "name": "total_price",
+      "description": "Total price of rental reservation",
+      "type": null
+    },
+    "has_laundry_service": {
+      "name": "has_laundry_service",
+      "description": "Boolean flag indicating if the house has laundry service",
+      "type": null
+    },
+    "location": {
+      "name": "location",
+      "description": "Location of the hotel",
+      "type": null
+    },
+    "number_of_rooms": {
+      "name": "number_of_rooms",
+      "description": "Number of rooms to book",
+      "type": null
+    },
+    "average_rating": {
+      "name": "average_rating",
+      "description": "Average review rating of the doctor",
+      "type": null
+    },
+    "hotel_name": {
+      "name": "hotel_name",
+      "description": "Name of the hotel",
+      "type": null
+    },
+    "street_address": {
+      "name": "street_address",
+      "description": "Address of the doctor",
+      "type": null
+    },
+    "pets_welcome": {
+      "name": "pets_welcome",
+      "description": "Boolean flag indicating if pets are allowed in the hotel",
+      "type": null
+    },
+    "song_name": {
+      "name": "song_name",
+      "description": "Name of the song",
+      "type": null
+    },
+    "artist": {
+      "name": "artist",
+      "description": "Name of the artist the song is performed by",
+      "type": null
+    },
+    "album": {
+      "name": "album",
+      "description": "Album the song belongs to",
+      "type": null
+    },
+    "genre": {
+      "name": "genre",
+      "description": "Genre of the song",
+      "type": null
+    },
+    "playback_device": {
+      "name": "playback_device",
+      "description": "Playback device on which the song is to be played",
+      "type": null
+    },
+    "car_type": {
+      "name": "car_type",
+      "description": "Type of car for rental",
+      "type": null
+    },
+    "car_name": {
+      "name": "car_name",
+      "description": "Name of car model",
+      "type": null
+    },
+    "pickup_location": {
+      "name": "pickup_location",
+      "description": "Pickup location for car rental",
+      "type": null
+    },
+    "pickup_date": {
+      "name": "pickup_date",
+      "description": "Date of pickup for car rental",
+      "type": null
+    },
+    "pickup_time": {
+      "name": "pickup_time",
+      "description": "Time of pickup for car rental",
+      "type": null
+    },
+    "pickup_city": {
+      "name": "pickup_city",
+      "description": "City in which to pick up rental car",
+      "type": null
+    },
+    "dropoff_date": {
+      "name": "dropoff_date",
+      "description": "End date of car rental reservation",
+      "type": null
+    },
+    "ride_type": {
+      "name": "ride_type",
+      "description": "Type of cab ride",
+      "type": null
+    },
+    "ride_fare": {
+      "name": "ride_fare",
+      "description": "Total fare for cab ride",
+      "type": null
+    },
+    "wait_time": {
+      "name": "wait_time",
+      "description": "Expected waiting time for pick-up by cab",
+      "type": null
+    },
+    "number_of_seats": {
+      "name": "number_of_seats",
+      "description": "Number of seats to reserve in the cab",
+      "type": null
+    },
+    "dentist_name": {
+      "name": "dentist_name",
+      "description": "Name of the dentist",
+      "type": null
+    },
+    "appointment_date": {
+      "name": "appointment_date",
+      "description": "Date for scheduling the appointment with the doctor",
+      "type": null
+    },
+    "appointment_time": {
+      "name": "appointment_time",
+      "description": "Time for the appointment with the doctor",
+      "type": null
+    },
+    "offers_cosmetic_services": {
+      "name": "offers_cosmetic_services",
+      "description": "Boolean flag indicating if the dentist offers cosmetic services",
+      "type": null
+    },
+    "doctor_name": {
+      "name": "doctor_name",
+      "description": "Name of the doctor or the medical practice",
+      "type": null
+    },
+    "type": {
+      "name": "type",
+      "description": "Speciality of the doctor",
+      "type": null
+    }
+  },
+  "backward": null
+}

@@ -235,6 +235,9 @@ if __name__ == "__main__":
     output = "./index/sgdskill/"
     dsc = SGD("/home/sean/src/dstc8-schema-guided-dialogue/")
 
+    with open(f"./datasets/sgd/schema.json", "w") as file:
+        json.dump(dsc.schema.to_dict(), file, indent=2)
+
     print(f"there are {len(dsc.schema.skills)} skills")
     print(json.dumps(dsc.schema.skills, indent=2))
     # print(json.dumps(dsc.schema.slots, indent=2))
@@ -242,7 +245,7 @@ if __name__ == "__main__":
     for tag in ["train", "test", "validation"]:
         dataset = dsc[tag]
         examples = purge_dataset(dataset)
-        with open(f"./datasets/sgd/{tag}.jsonl", "w+") as file:
+        with open(f"./datasets/sgd/{tag}.jsonl", "w") as file:
             print(f"there are {len(examples)} examples left for {tag}.")
             for example in examples:
                 file.write(f"{json.dumps(example)}\n")
