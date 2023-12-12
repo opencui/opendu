@@ -9,7 +9,7 @@ from collections import defaultdict
 from datasets import Dataset, Features, Value
 
 from opencui.core.annotation import (CamelToSnake, FrameSchema, Schema, SlotSchema)
-from opencui.finetune.commons import DatasetFactory, create_full_exemplar
+from opencui.finetune.commons import DatasetFactory, create_full_exemplar, purge_dataset
 
 
 # pip install -U gin-config faiss-cpu scikit-learn sentence-transformers
@@ -20,7 +20,7 @@ from opencui.finetune.commons import DatasetFactory, create_full_exemplar
 # the same service.
 #
 class SGD(DatasetFactory):
-    intent_taboo_word = ["SearchOnewayFlight", "BookHouse", "SearchHouse", "BuyBusTicket"]
+    intent_taboo_word = ["SearchOnewayFlight"]
 
     # Which schema do we use? Default to train.
     def __init__(self, base_path, domain="train", suffix: str = "_1"):
@@ -227,6 +227,7 @@ def load_schema_as_dict(full_path, suffix: str = "_1"):
                 ).to_dict()
     return domain
 
+
 if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
@@ -238,5 +239,11 @@ if __name__ == "__main__":
     print(json.dumps(dsc.schema.skills, indent=2))
     # print(json.dumps(dsc.schema.slots, indent=2))
 
-    dataset = dsc.build("train")
-    dataset.save_to_disk("./datasets/sgd")
+    for tag in ["train", "test", "validation"]:
+        dataset = dsc[tag]
+        examples = purge_dataset(dataset)
+        with open(f"./datasets/sgd/{tag}.jsonl", "w+") as file:
+            print(f"there are {len(examples)} examples left for {tag}.")
+            for example in examples:
+                file.write(f"{json.dumps(example)}\n")
+

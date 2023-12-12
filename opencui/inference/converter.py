@@ -47,20 +47,24 @@ class LocalGenerator(Generator, ABC):
         base_model = AutoModelForCausalLM.from_pretrained(
             skill_config.base_model_name_or_path,
             return_dict=True,
-            device_map="auto",
+            device_map=LugConfig.llm_device,
             trust_remote_code=True,
-            torch_dtype=torch.float16,
-            offload_folder="offload/"
+            load_in_4bit=True,
         )
+
+
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "left"
 
         self.lora_model = PeftModel.from_pretrained(
-            base_model, LugConfig.skill_model, adapter_name="skill", offload_folder="offload/")
+            base_model, LugConfig.skill_model, adapter_name="skill")
+
+        self.lora_model.to(LugConfig.llm_device)
+
         self.lora_model.load_adapter(
-            LugConfig.extractive_slot_model, adapter_name="extractive_slot", offload_folder="offload/")
+            LugConfig.extractive_slot_model, adapter_name="extractive_slot")
 
         if LugConfig.nli_model != "":
             self.lora_model.load_adapter(LugConfig.nli_model, adapter_name="nli")
@@ -69,7 +73,7 @@ class LocalGenerator(Generator, ABC):
     def generate(cls, peft_model, peft_tokenizer, input_text):
         peft_encoding = peft_tokenizer(
             input_text, padding=True, return_tensors="pt"
-        ).to("cuda:0")
+        ).to(LugConfig.llm_device)
 
         with torch.no_grad():
             peft_outputs = peft_model.generate(
