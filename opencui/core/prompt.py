@@ -159,6 +159,9 @@ ExtractiveSlotPrompts = {
 
 NliPrompts = {
     "default": Prompt(
-        'With the respect to the premise: "{{premise}}", the hypothesis: "{{hypothesis}}" is'
+        'Given the premise: "{{premise}}", the hypothesis: "{{hypothesis}}" is its '
+    ),
+    "boolq": Prompt(
+        'Given the premise: "{{premise}}", the hypothesis: "{{hypothesis}}" is its '
     ),
 }
