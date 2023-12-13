@@ -82,6 +82,19 @@
         "city_of_event"
       ]
     },
+    "search_oneway_flight": {
+      "name": "search_oneway_flight",
+      "description": "Search for one-way flights to a destination",
+      "slots": [
+        "origin_city",
+        "destination_city",
+        "departure_date",
+        "airlines",
+        "refundable",
+        "passengers",
+        "seating_class"
+      ]
+    },
     "search_roundtrip_flights": {
       "name": "search_roundtrip_flights",
       "description": "Search for round-trip flights to a destination",
@@ -91,6 +104,19 @@
         "departure_date",
         "return_date",
         "airlines",
+        "refundable",
+        "passengers",
+        "seating_class"
+      ]
+    },
+    "reserve_oneway_flight": {
+      "name": "reserve_oneway_flight",
+      "description": "Reserve a one-way flight",
+      "slots": [
+        "origin_city",
+        "destination_city",
+        "airlines",
+        "departure_date",
         "refundable",
         "passengers",
         "seating_class"
@@ -118,8 +144,6 @@
       "slots": [
         "area",
         "number_of_beds",
-        "furnished",
-        "pets_allowed",
         "number_of_baths"
       ]
     },
@@ -148,7 +172,6 @@
       "slots": [
         "destination",
         "number_of_rooms",
-        "has_wifi",
         "star_rating"
       ]
     },
@@ -166,8 +189,7 @@
       "name": "play_movie",
       "description": "Play the selected movie",
       "slots": [
-        "title",
-        "subtitles"
+        "title"
       ]
     },
     "buy_movie_tickets": {
@@ -251,9 +273,7 @@
       "slots": [
         "cuisine",
         "city",
-        "price_range",
-        "has_live_music",
-        "serves_alcohol"
+        "price_range"
       ]
     },
     "get_ride": {
@@ -261,8 +281,7 @@
       "description": "Call a taxi to head to a given destination",
       "slots": [
         "destination",
-        "number_of_riders",
-        "shared_ride"
+        "number_of_riders"
       ]
     },
     "book_appointment": {
@@ -278,8 +297,7 @@
       "name": "find_provider",
       "description": "Search for a hair stylist by city and optionally other attributes",
       "slots": [
-        "city",
-        "is_unisex"
+        "city"
       ]
     },
     "find_attractions": {
@@ -287,9 +305,7 @@
       "description": "Browse attractions in a given city",
       "slots": [
         "location",
-        "category",
-        "free_entry",
-        "good_for_kids"
+        "category"
       ]
     },
     "get_weather": {

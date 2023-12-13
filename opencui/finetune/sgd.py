@@ -20,7 +20,10 @@ from opencui.finetune.commons import DatasetFactory, create_full_exemplar, purge
 # the same service.
 #
 class SGD(DatasetFactory):
-    intent_taboo_word = ["SearchOnewayFlight", "ReserveOnewayFlight"]
+    intent_taboo_word = []
+    boolean_slots = set([
+        "furnished", "pets_allowed",  "has_wifi",  "subtitles",  "serves_alcohol",
+        "has_live_music", "shared_ride", "is_unisex", "free_entry", "good_for_kids"])
 
     # Which schema do we use? Default to train.
     def __init__(self, base_path, domain="train", suffix: str = "_1"):
@@ -204,13 +207,17 @@ def load_schema_as_dict(full_path, suffix: str = "_1"):
                 slots = intent["required_slots"]
                 optional_slots = intent["optional_slots"].keys()
                 slots.extend(list(optional_slots))
-
+                # We will handle the boolean slot separately.
+                print(slots)
+                slots = list(filter(lambda x: x not in SGD.boolean_slots, slots))
+                print(slots)
                 if skill_name in SGD.intent_taboo_word:
                     continue
                 skill_name = CamelToSnake.convert(skill_name)
                 domain.skills[skill_name] = FrameSchema(
                     skill_name, intent_desc, slots
                 ).to_dict()
+
             slots = service["slots"]
             for slot in slots:
                 slot_name = slot["name"]
