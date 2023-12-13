@@ -239,7 +239,7 @@ if __name__ == "__main__":
 
     for tag in ["train", "test", "validation"]:
         dataset = dsc[tag]
-        examples = purge_dataset(dataset)
+        examples = purge_dataset(dataset, 20)
         with open(f"./datasets/sgd/{tag}.jsonl", "w") as file:
             print(f"there are {len(examples)} examples left for {tag}.")
             for example in examples:
