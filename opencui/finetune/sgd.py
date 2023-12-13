@@ -193,7 +193,7 @@ def load_schema_as_dict(full_path, suffix: str = "_1"):
         for service in f:
             service_name = service["service_name"]
 
-            if service_name.endswith(suffix):
+            if not service_name.endswith(suffix):
                 continue
 
             # handle intents
