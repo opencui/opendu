@@ -3,7 +3,7 @@ import abc
 from abc import ABC
 from collections import defaultdict
 from dataclasses import dataclass
-from random import sample
+from random import sample, seed
 from typing import Optional
 
 from datasets import Dataset
@@ -179,6 +179,9 @@ def collect_slot_values(dataset):
 
 # Some time, the original data are over sampled, we need to purge the extra things.
 def purge_dataset(dataset, k=32):
+    # make it somewhat repeatable
+    seed(42)
+
     def uptok(items):
         if len(items) < k:
             return items
@@ -186,9 +189,16 @@ def purge_dataset(dataset, k=32):
             return sample(items, k=k)
 
     intents = defaultdict(list)
+    utterances = set()
+    count = 0
     for item in dataset:
-        intents[item["owner"]].append(item)
-    print(f"There are {len(intents)} intents: {intents.keys()}")
+        utterance = item["utterance"].lower()
+        if utterance not in utterances:
+            utterances.add(utterance)
+            intents[item["owner"]].append(item)
+        else:
+            count += 1
+    print(f"There are {len(intents)} intents: {intents.keys()} with {count} duplicates.")
     return [example for examples in intents.values() for example in uptok(examples)]
 
 

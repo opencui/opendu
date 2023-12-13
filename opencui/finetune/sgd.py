@@ -20,7 +20,7 @@ from opencui.finetune.commons import DatasetFactory, create_full_exemplar, purge
 # the same service.
 #
 class SGD(DatasetFactory):
-    intent_taboo_word = ["SearchOnewayFlight"]
+    intent_taboo_word = ["SearchOnewayFlight", "ReserveOnewayFlight"]
 
     # Which schema do we use? Default to train.
     def __init__(self, base_path, domain="train", suffix: str = "_1"):
@@ -163,12 +163,7 @@ class SGD(DatasetFactory):
                                 local_slots = defaultdict(list)
                                 for _slot in frame["slots"]:
                                     local_slots[_slot["slot"]].append(
-                                        utterance[
-                                            _slot["start"] : _slot["exclusive_end"]
-                                        ]
-                                    )
-                                    spans.append(
-                                        (_slot["start"], _slot["exclusive_end"])
+                                        utterance[_slot["start"] : _slot["exclusive_end"]]
                                     )
 
                                 exemplar = create_full_exemplar(
@@ -198,7 +193,7 @@ def load_schema_as_dict(full_path, suffix: str = "_1"):
         for service in f:
             service_name = service["service_name"]
 
-            if service_name.endswith(suffix):
+            if not service_name.endswith(suffix):
                 continue
 
             # handle intents
@@ -244,7 +239,7 @@ if __name__ == "__main__":
 
     for tag in ["train", "test", "validation"]:
         dataset = dsc[tag]
-        examples = purge_dataset(dataset)
+        examples = purge_dataset(dataset, 20)
         with open(f"./datasets/sgd/{tag}.jsonl", "w") as file:
             print(f"there are {len(examples)} examples left for {tag}.")
             for example in examples:
