@@ -38,6 +38,7 @@ if __name__ == "__main__":
     tag = "sgd"
     factory = JsonDatasetFactory(path, tag)
     prompted_factory = build_skill_factory(path, factory)
+    json.dump(prompted_factory.extra_tokens(), open(f"{path}/extra.tokens", "w"))
     tags = ["train", "test", "validation"]
     for tag in tags:
         examples = prompted_factory[tag]

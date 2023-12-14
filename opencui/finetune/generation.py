@@ -587,6 +587,7 @@ def train(peft_config=None):
 
 # Here we create the dataset factory for skills
 def build_skill_factory(output):
+    # make sure run build_skill_dataset first.
     factories = [
         JsonDatasetFactory("./datasets/sgd/", "sgd", "prompted."),
     ]
