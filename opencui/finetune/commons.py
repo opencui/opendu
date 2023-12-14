@@ -1,4 +1,5 @@
 import abc
+import json
 
 from abc import ABC
 from collections import defaultdict
@@ -6,7 +7,7 @@ from dataclasses import dataclass
 from random import sample, seed
 from typing import Optional
 
-from datasets import Dataset
+from datasets import Dataset, load_dataset
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode
 
@@ -202,5 +203,28 @@ def purge_dataset(dataset, k=32):
     return [example for examples in intents.values() for example in uptok(examples)]
 
 
+class JsonDatasetFactory(DatasetFactory, ABC):
+    def __init__(self, path, tag=None):
+        self.path = path
+        schema_dict = json.load(open(f"{path}/schema.json"))
+        self.schema = Schema.from_dict(schema_dict)
+        files = {
+            "train": f"{self.path}/train.jsonl",
+            "test": f"{self.path}/test.jsonl",
+            "validation": f"{self.path}/validation.jsonl",
+        }
+        self.datasets = load_dataset('json', data_files=files)
+        self.tag = tag
+
+    def __getitem__(self, item):
+        return self.datasets[item]
+
+
 if __name__ == "__main__":
-    print(LugConfig.embedding_model)
+    factory = JsonDatasetFactory("./datasets/sgd/")
+    dataset = factory["train"]
+    count = 0
+    for item in dataset:
+        print(item)
+        count += 1
+    print(count)

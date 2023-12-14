@@ -29,9 +29,9 @@ from opencui.core.prompt import (BinarySkillPrompts, ExtractiveSlotPrompts,
 from opencui.core.retriever import (ContextRetriever, build_desc_index,
                                         load_context_retrievers)
 from opencui.finetune.commons import (AnnotatedExemplar, DatasetFactory,
-                                          MappedDatasetDict,
-                                          build_dataset_index,
-                                          collect_slot_values)
+                                      MappedDatasetDict,
+                                      build_dataset_index,
+                                      collect_slot_values, JsonDatasetFactory)
 
 logger = logging.getLogger(__name__)
 
@@ -452,7 +452,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
         default="./output", metadata={"help": "The output dir for logs and checkpoints"}
     )
     optim: str = field(
-        default="adamw_torch", metadata={"help": "The optimizer to be used"}
+        default="adamw_hf", metadata={"help": "The optimizer to be used"}
     )
     per_device_train_batch_size: int = field(
         default=16,
@@ -899,8 +899,8 @@ def train(peft_config=None):
         all_metrics.update(metrics)
 
         # append save the config
-        shutil.copy("./finetune/generation.sh", f"{args.output_dir}/")
-        shutil.copy("./core/config.py", f"{args.output_dir}/")
+        shutil.copy("./opencui/finetune/generation.sh", f"{args.output_dir}/")
+        shutil.copy("./opencui/core/config.py", f"{args.output_dir}/")
 
     # Evaluation
     if args.do_eval:
@@ -942,8 +942,9 @@ def train(peft_config=None):
 # Here we create the dataset factory for skills
 def build_skill_factory(output):
     factories = [
-        SGD("/home/sean/src/dstc8-schema-guided-dialogue/"),
+        JsonDatasetFactory("./datasets/sgd/", "sgd"),
     ]
+
     # Save the things to disk first, for training we keep each module separate.
     # Down the road, we might
     for factory in factories:
@@ -980,7 +981,7 @@ def build_skill_factory(output):
 
 def build_extractive_slot_factory():
     factories = [
-        SGD("/home/sean/src/dstc8-schema-guided-dialogue/"),
+        JsonDatasetFactory("./datasets/sgd/", "sgd"),
     ]
     converted_factories = []
     for index, factory in enumerate(factories):

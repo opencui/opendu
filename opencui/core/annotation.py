@@ -1,14 +1,11 @@
 import json
 import re
-from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Optional, TypedDict, Union
 
 from dataclasses_json import dataclass_json
 from llama_index.schema import TextNode
 from pydantic import BaseModel, Field
-from torch.ao.quantization.observer import ABC
-from typing_extensions import Annotated
 
 
 @dataclass_json
@@ -18,6 +15,17 @@ class SlotSchema:
     description: str = field(metadata={"required": True})
     type: str = field(metadata={"required": False}, default=None)
 
+    def __getitem__(self, item):
+        match item:
+            case "description":
+                return self.description
+            case "name":
+                return self.name
+            case "type":
+                return self.type
+            case _:
+                raise RuntimeError("wrong property.")
+
 
 @dataclass_json
 @dataclass
@@ -25,6 +33,17 @@ class FrameSchema:
     name: str = field(metadata={"required": True})
     description: str = field(metadata={"required": True})
     slots: list[str] = field(default_factory=list)
+
+    def __getitem__(self, item):
+        match item:
+            case "description":
+                return self.description
+            case "name":
+                return self.name
+            case "slots":
+                return self.slots
+            case _:
+                raise RuntimeError("wrong property.")
 
 
 @dataclass_json
@@ -42,9 +61,8 @@ class FrameId:
 class Schema:
     skills: Dict[str, FrameSchema]
     slots: Dict[str, SlotSchema]
-    backward: Dict[
-        str, str
-    ]  # We use snake case inside, so we need this to get back the original name.
+    # We use snake case inside, so we need this to get back the original name.
+    backward: Dict[str, str]
 
     def __init__(self, skills, slots, backward=None):
         self.skills = skills
