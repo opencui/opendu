@@ -109,22 +109,9 @@
         "seating_class"
       ]
     },
-    "reserve_oneway_flight": {
-      "name": "reserve_oneway_flight",
-      "description": "Reserve a one-way flight",
-      "slots": [
-        "origin_city",
-        "destination_city",
-        "airlines",
-        "departure_date",
-        "refundable",
-        "passengers",
-        "seating_class"
-      ]
-    },
-    "reserve_roundtrip_flights": {
-      "name": "reserve_roundtrip_flights",
-      "description": "Reserve a round-trip flight",
+    "reserve_flights": {
+      "name": "reserve_flights",
+      "description": "Reserve a flight",
       "slots": [
         "origin_city",
         "destination_city",
