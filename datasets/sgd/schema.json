@@ -143,7 +143,7 @@
       "description": "Find an apartment in a city for a given number of bedrooms",
       "slots": [
         "area",
-        "number_of_beds",
+        "number_of_bedrooms",
         "number_of_baths"
       ]
     },
