@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from random import sample, seed
 from typing import Optional
 
+from dataclasses_json import dataclass_json
 from datasets import Dataset, load_dataset
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode
@@ -21,6 +22,7 @@ from opencui.finetune.embedding import (
     create_sentence_pair_for_description, create_sentence_pair_for_exemplars)
 
 
+@dataclass_json
 @dataclass
 class AnnotatedExemplar:
     """
@@ -30,8 +32,9 @@ class AnnotatedExemplar:
     id: str
     owner: str
     utterance: str
-    template: str
     arguments: Optional[dict] = None
+    flag: str = None
+    template: str = None
     expectations: Optional[list] = None
 
     def flatten(self):
@@ -40,9 +43,45 @@ class AnnotatedExemplar:
             "owner": self.owner,
             "utterance": self.utterance,
             "arguments": str(self.arguments),
+            "flag": str(self.flag),
             "template": self.template,
             "expectations": str(self.expectations),
         }
+
+    def get_span(self, word, sentence):
+        # Construct a regular expression pattern to find the word with boundaries and punctuation
+        pattern = r'\b' + re.escape(word) + r'\b'
+
+        # Search for the pattern in the sentence
+        return (re.findall(pattern, sentence), re.search(pattern, sentence))
+
+    def template(self):
+        if len(self.arguments) == 0:
+            return self.utterance
+
+        single_dict = dict()
+        spans = []
+        for key, values in self.arguments.items():
+            for value in values:
+                single_dict[value] = key
+                match = self.get_span(value, self.utterance)
+                if len(match) != 1:
+                    return None
+                spans.append(match[1].span())
+
+        spans = sorted(spans, key=lambda x: x[0])
+        res_utterance = self.utterance[: spans[0][0]]
+        for i, (cur_start, cur_end) in enumerate(spans):
+            # if len(string_list) >=2:
+            #     print("sub string",utterance[cur_start:cur_end])
+            res_utterance = (
+                    res_utterance + " < " + single_dict[self.utterance[cur_start:cur_end]] + " > "
+            )
+            if i == len(spans) - 1:
+                res_utterance = res_utterance + self.utterance[cur_end:]
+            else:
+                res_utterance = res_utterance + self.utterance[cur_end: spans[i + 1][0]]
+        return res_utterance
 
 
 def has_no_intent(label: str):
@@ -51,7 +90,13 @@ def has_no_intent(label: str):
 
 def build_nodes_from_dataset(module: str, dataset: Dataset, nodes):
     for item in dataset:
-        utterance = item["template"]
+        exemplar = AnnotatedExemplar.from_dict(item)
+        template = exemplar.template()
+        if template is None:
+            utterance = item["template"]
+        else:
+            utterance = template
+
         label = item["owner"]
         if has_no_intent(label):
             continue
@@ -224,8 +269,6 @@ class JsonDatasetFactory(DatasetFactory, ABC):
 
     def __getitem__(self, item):
         return self.datasets[item]
-
-
 
 
 # This inference is responsible for convert the exemplars in the original dataset into what is needed
