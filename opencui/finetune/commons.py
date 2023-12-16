@@ -113,9 +113,10 @@ def build_nodes_from_dataset(module: str, dataset: Dataset, nodes):
                 metadata={
                     "arguments": item["arguments"],
                     "owner": label,
+                    "owner_mode": item["owner_mode"],
                     "module": module,
                 },
-                excluded_embed_metadata_keys=["arguments", "owner", "module"],
+                excluded_embed_metadata_keys=["arguments", "owner", "module", "owner_mode"],
             )
         )
 
@@ -573,7 +574,7 @@ class PromptedFactory(DatasetFactory):
         "utterance",
         "template",
         "owner",
-        "extended",
+        "owner_mode",
         "arguments",
         "expectations",
     ]

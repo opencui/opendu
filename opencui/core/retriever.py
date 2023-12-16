@@ -18,8 +18,7 @@ from opencui.core.config import LugConfig
 from opencui.core.embedding import EmbeddingStore
 
 
-def build_nodes_from_skills(module: str, skills: dict[str, FrameSchema],
-                            nodes):
+def build_nodes_from_skills(module: str, skills: dict[str, FrameSchema], nodes):
     for label, skill in skills.items():
         desc = skill["description"]
         name = skill["name"]
@@ -29,10 +28,10 @@ def build_nodes_from_skills(module: str, skills: dict[str, FrameSchema],
                 id_=label,
                 metadata={
                     "owner": name,
-                    "extended": skill["extended"],
-                    "module": module
+                    "module": module,
+                    "owner_mode": "desc"
                 },
-                excluded_embed_metadata_keys=["owner", "module", "extended"],
+                excluded_embed_metadata_keys=["owner", "module", "owner_mode"],
             ))
 
 
@@ -141,7 +140,7 @@ def dedup_nodes(old_results: list[TextNode], arity=1):
     new_results = []
     intents = defaultdict(int)
     for item in old_results:
-        intent = f'{item.metadata["extended"] == "true"}.{item.metadata["owner"]}'
+        intent = f'{item.metadata["owner_mode"]}.{item.metadata["owner"]}'
         if intents[intent] < arity:
             intents[intent] += 1
             new_results.append(item)

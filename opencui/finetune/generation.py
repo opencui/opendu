@@ -589,7 +589,7 @@ def train(peft_config=None):
 def build_skill_factory(output):
     # make sure run build_skill_dataset first.
     factories = [
-        JsonDatasetFactory("./datasets/sgd/", "sgd", "prompted."),
+        JsonDatasetFactory("./datasets/sgd/", "sgd", f"{LugConfig.skill_mode}-{LugConfig.skill_prompt}."),
     ]
     return factories
 
