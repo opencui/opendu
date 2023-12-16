@@ -518,7 +518,7 @@ class OneSlotExtractConverter(SlotExtractConverter):
                 # Most likely we do not need to add the negatives.
                 # self.add_one_negative(slot_label, values)
                 input_dict = {"utterance": utterance}
-                input_dict.update(slot)
+                input_dict.update(slot.to_dict())
                 if slot_name in arguments:
                     value = arguments[slot_name]
                     # First without values. We assume that value is
