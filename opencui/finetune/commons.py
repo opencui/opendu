@@ -32,8 +32,8 @@ class AnnotatedExemplar:
     id: str
     owner: str
     utterance: str
-    arguments: Optional[dict] = None
-    extended: bool = False
+    arguments: dict
+    owner_mode: str = "normal"
     template: str = None
     expectations: Optional[list] = None
 
@@ -43,44 +43,46 @@ class AnnotatedExemplar:
             "owner": self.owner,
             "utterance": self.utterance,
             "arguments": str(self.arguments),
-            "extended": bool(self.extended),
+            "owner_mode": str(self.extended),
             "template": self.template,
             "expectations": str(self.expectations),
         }
 
-    def get_span(self, word, sentence):
+    @staticmethod
+    def get_span(word, sentence):
         # Construct a regular expression pattern to find the word with boundaries and punctuation
         pattern = r'\b' + re.escape(word) + r'\b'
 
         # Search for the pattern in the sentence
-        return (re.findall(pattern, sentence), re.search(pattern, sentence))
+        return re.findall(pattern, sentence), re.search(pattern, sentence)
 
-    def template(self):
-        if len(self.arguments) == 0:
-            return self.utterance
+    @staticmethod
+    def extract_template(utterance, arguments):
+        if len(arguments) == 0:
+            return utterance
 
         single_dict = dict()
         spans = []
-        for key, values in self.arguments.items():
+        for key, values in arguments.items():
             for value in values:
                 single_dict[value] = key
-                match = self.get_span(value, self.utterance)
-                if len(match) != 1:
+                found, match = AnnotatedExemplar.get_span(value, utterance)
+                if len(found) != 1:
                     return None
-                spans.append(match[1].span())
+                spans.append(match.span())
 
         spans = sorted(spans, key=lambda x: x[0])
-        res_utterance = self.utterance[: spans[0][0]]
+        res_utterance = utterance[: spans[0][0]]
         for i, (cur_start, cur_end) in enumerate(spans):
             # if len(string_list) >=2:
             #     print("sub string",utterance[cur_start:cur_end])
             res_utterance = (
-                    res_utterance + " < " + single_dict[self.utterance[cur_start:cur_end]] + " > "
+                    res_utterance + " < " + single_dict[utterance[cur_start:cur_end]] + " > "
             )
             if i == len(spans) - 1:
-                res_utterance = res_utterance + self.utterance[cur_end:]
+                res_utterance = res_utterance + utterance[cur_end:]
             else:
-                res_utterance = res_utterance + self.utterance[cur_end: spans[i + 1][0]]
+                res_utterance = res_utterance + utterance[cur_end: spans[i + 1][0]]
         return res_utterance
 
 
@@ -90,8 +92,12 @@ def has_no_intent(label: str):
 
 def build_nodes_from_dataset(module: str, dataset: Dataset, nodes):
     for item in dataset:
-        exemplar = AnnotatedExemplar.from_dict(item)
-        template = exemplar.template()
+        print(item["arguments"])
+        arguments = json.loads(item["arguments"].replace("\'", "\""))
+        utterance = item["utterance"]
+        template = AnnotatedExemplar.extract_template(utterance, arguments)
+
+        print(template)
         if template is None:
             utterance = item["template"]
         else:
@@ -567,6 +573,7 @@ class PromptedFactory(DatasetFactory):
         "utterance",
         "template",
         "owner",
+        "extended",
         "arguments",
         "expectations",
     ]
