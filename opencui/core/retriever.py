@@ -18,8 +18,7 @@ from opencui.core.config import LugConfig
 from opencui.core.embedding import EmbeddingStore
 
 
-def build_nodes_from_skills(module: str, skills: dict[str, FrameSchema],
-                            nodes):
+def build_nodes_from_skills(module: str, skills: dict[str, FrameSchema], nodes):
     for label, skill in skills.items():
         desc = skill["description"]
         name = skill["name"]
@@ -29,9 +28,10 @@ def build_nodes_from_skills(module: str, skills: dict[str, FrameSchema],
                 id_=label,
                 metadata={
                     "owner": name,
-                    "module": module
+                    "module": module,
+                    "owner_mode": "desc"
                 },
-                excluded_embed_metadata_keys=["owner", "module"],
+                excluded_embed_metadata_keys=["owner", "module", "owner_mode"],
             ))
 
 
@@ -140,7 +140,7 @@ def dedup_nodes(old_results: list[TextNode], arity=1):
     new_results = []
     intents = defaultdict(int)
     for item in old_results:
-        intent = item.metadata["owner"]
+        intent = f'{item.metadata["owner_mode"]}.{item.metadata["owner"]}'
         if intents[intent] < arity:
             intents[intent] += 1
             new_results.append(item)
@@ -157,6 +157,7 @@ class ContextRetriever:
         self.nones = ["NONE"]
         self.arity = LugConfig.exemplar_retrieve_arity
         self.num_exemplars = LugConfig.exemplar_combined_topk
+        self.extended_mode = False
 
     def __call__(self, query):
         # The goal here is to find the combined descriptions and exemplars.
@@ -166,9 +167,9 @@ class ContextRetriever:
         exemplar_nodes = [
             item.node for item in self.exemplar_retriever.retrieve(query)
         ]
-        exemplar_nodes = dedup_nodes(exemplar_nodes,
-                                     self.arity)[0:self.num_exemplars]
+        exemplar_nodes = dedup_nodes(exemplar_nodes, self.arity)[0:self.num_exemplars]
         all_nodes = dedup_nodes(desc_nodes + exemplar_nodes)
+
         owners = [
             FrameId(item.metadata["module"], item.metadata["owner"])
             for item in all_nodes if item.metadata["owner"] not in self.nones
@@ -192,6 +193,8 @@ def load_context_retrievers(module_dict: dict[str, Schema], path: str):
             LugConfig.exemplar_retriever_mode,
         ),
     )
+
+
 if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
