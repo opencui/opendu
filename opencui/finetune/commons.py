@@ -33,7 +33,7 @@ class AnnotatedExemplar:
     owner: str
     utterance: str
     arguments: Optional[dict] = None
-    flag: str = None
+    extended: bool = False
     template: str = None
     expectations: Optional[list] = None
 
@@ -43,7 +43,7 @@ class AnnotatedExemplar:
             "owner": self.owner,
             "utterance": self.utterance,
             "arguments": str(self.arguments),
-            "flag": str(self.flag),
+            "extended": bool(self.extended),
             "template": self.template,
             "expectations": str(self.expectations),
         }
