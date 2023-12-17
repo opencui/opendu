@@ -3,7 +3,7 @@ import logging
 from opencui.core.annotation import CamelToSnake
 from opencui.core.embedding import EmbeddingStore
 from opencui.core.retriever import (build_nodes_from_skills, create_index, load_context_retrievers)
-from opencui.finetune.commons import build_nodes_from_dataset
+from opencui.finetune.commons import build_nodes_from_dataset, JsonDatasetFactory
 from opencui.inference.converter import Converter
 
 #
@@ -15,10 +15,10 @@ if __name__ == "__main__":
     logger.setLevel(logging.CRITICAL)
 
     from opencui.core.config import LugConfig
-    from opencui.finetune.sgd import SGD
 
-    LugConfig.embedding_device = "cuda"
-    factories = [SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]
+    LugConfig.embedding_device = "cuda:0"
+    LugConfig.llm_device = "cpu"
+    factories = [JsonDatasetFactory("./datasets/sgd/", "sgd")]
 
     # For now, just use the fix path.
     output = "./test"
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     # Save the things to disk first.
     desc_nodes = []
     exemplar_nodes = []
-    tag = "validation"
+    tag = "test"
     for factory in factories:
         build_nodes_from_skills(factory.tag, factory.schema.skills, desc_nodes)
         build_nodes_from_dataset(factory.tag, factory[tag], exemplar_nodes)

@@ -204,7 +204,7 @@ if __name__ == "__main__":
 
     dsc = SGD("/home/sean/src/dstc8-schema-guided-dialogue/")
 
-    LugConfig.embedding_device = "cuda"
+    LugConfig.embedding_device = "cuda:0"
     dataset = dsc.build("train")
     # print(compute_hits(dataset, output, 8))
     # print(compute_k(dataset, output, "exemplar"))

@@ -39,7 +39,7 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
-    LugConfig.embedding_device = "cuda"
+    LugConfig.embedding_device = "cuda:0"
     from opencui.finetune.sgd import SGD
 
     factories = [SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]

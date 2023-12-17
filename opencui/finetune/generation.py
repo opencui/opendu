@@ -16,10 +16,8 @@ from datasets import Dataset, concatenate_datasets, load_dataset
 from peft import LoraConfig, get_peft_model
 from torch.nn.utils.rnn import pad_sequence
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed)
-from opencui.core.embedding import EmbeddingStore
 from opencui.core.prompt import (ExtractiveSlotPrompts, NliPrompts)
-from opencui.core.retriever import (build_desc_index, load_context_retrievers)
-from opencui.finetune.commons import (MappedDatasetDict, build_dataset_index, collect_slot_values, JsonDatasetFactory,
+from opencui.finetune.commons import (MappedDatasetDict, collect_slot_values, JsonDatasetFactory,
                                       OneSlotExtractConverter, PromptedFactory, NliConverter)
 
 logger = logging.getLogger(__name__)
@@ -637,7 +635,7 @@ if __name__ == "__main__":
     from opencui.finetune.sgd import SGD
     from opencui.core.config import LugConfig
 
-    LugConfig.embedding_device = "cuda"
+    LugConfig.embedding_device = "cuda:0"
 
     # Now we need to create the converters.
     train(get_lora_config())
