@@ -23,7 +23,7 @@ class LugConfig:
     # multiclass, classification, simple
     skill_mode = "binary"
     skill_arity = 1
-    llm_device = "cpu"
+    llm_device = "cuda:0"
 
     skill_prompt = "natural"
     slot_prompt = "default"

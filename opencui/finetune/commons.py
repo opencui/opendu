@@ -15,7 +15,7 @@ from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode
 
 from opencui import Prompt, MulticlassSkillPrompts, BinarySkillPrompts, LayeredPrompts
-from opencui.core.annotation import Schema, Exemplar, ListRecognizer
+from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode
 from opencui.core.config import LugConfig
 from opencui.core.retriever import HybridRetriever, create_index, ContextRetriever
 from opencui.finetune.embedding import (
@@ -296,6 +296,7 @@ class SlotExtractConverter(TrainConverter, ABC):
 
 # This is needed to determine the intention, intended function or skill
 # https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/
+# This only works with simple use case where we only match in normal/exact/literal sense.
 class SkillTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever):
         self.prompt = MulticlassSkillPrompts[LugConfig.skill_prompt]
@@ -309,7 +310,7 @@ class SkillTrainConverter(TrainConverter):
             # remove the identical exemplar
             nodes = [node for node in nodes if node.id_ != batch["id"][idx]]
             exemplars = [
-                Exemplar(owner=node.metadata["owner"], template=node.text)
+                Exemplar(owner=node.metadata["owner"], template=node.text, owner_mode=node.metadata["owner_mode"])
                 for node in nodes
             ]
             owner = batch["owner"][idx]
@@ -384,6 +385,7 @@ class OneSkillTrainConverter(TrainConverter):
         self.prompt = BinarySkillPrompts[LugConfig.skill_prompt]
         self.context_retrieve = retriever
         self.neg_k = 1
+        self.match_mode = "normal"
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # Working on the batched dataset, with first dimension is column then index.
@@ -393,28 +395,35 @@ class OneSkillTrainConverter(TrainConverter):
             # remove the identical exemplar
             nodes = [node for node in nodes if node.id_ != batch["id"][idx]]
             exemplars = [
-                Exemplar(owner=node.metadata["owner"], template=node.text)
+                Exemplar(
+                    owner=node.metadata["owner"],
+                    template=node.text,
+                    owner_mode=node.metadata["owner_mode"]
+                )
                 for node in nodes
             ]
             owner = batch["owner"][idx]
+            owner_mode = batch["owner_mode"][idx]
 
             skill_map = {}
 
-            # for the skills
+            # Just using the skill name/descriptions
             for skill in skills:
                 input_dict = {"utterance": utterance, "examples": [], "skill": skill}
                 ins.append(self.prompt(input_dict))
-                outs.append(f"{json.dumps(owner == skill['name'])}</s>")
+                outs.append(f"{json.dumps(owner == skill['name'] and OwnerMode[owner_mode] == OwnerMode.normal)}</s>")
                 skill_map[skill["name"]] = skill
 
-            for o_exemplar in exemplars:
-                target = o_exemplar.owner
+            # Add the examples for each skill.
+            for skill in skills:
+                # Need to project each examples in the view of this skill.
+                target = skill["name"]
                 # Try not to have more than two examples.
                 exemplar_dicts = [
                     {
                         "template": exemplar.template,
                         "target": target,
-                        "decision": target == exemplar.owner,
+                        "decision": target == exemplar.owner and OwnerMode[exemplar.owner_mode] == OwnerMode.normal
                     }
                     for exemplar in exemplars
                 ]
@@ -425,7 +434,7 @@ class OneSkillTrainConverter(TrainConverter):
                     "skill": skill_map[target],
                 }
                 ins.append(self.prompt(input_dict))
-                outs.append(f"{json.dumps(owner == target)}</s>")
+                outs.append(f"{json.dumps(owner == target) and OwnerMode[owner_mode] == OwnerMode.normal}</s>")
 
 
 # For this one, we first use example based prediction, and then description based prediction.

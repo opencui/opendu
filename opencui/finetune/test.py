@@ -14,10 +14,6 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
-    from opencui.core.config import LugConfig
-
-    LugConfig.embedding_device = "cuda:0"
-    LugConfig.llm_device = "cpu"
     factories = [JsonDatasetFactory("./datasets/sgd/", "sgd")]
 
     # For now, just use the fix path.
@@ -26,7 +22,7 @@ if __name__ == "__main__":
     # Save the things to disk first.
     desc_nodes = []
     exemplar_nodes = []
-    tag = "test"
+    tag = "train"
     for factory in factories:
         build_nodes_from_skills(factory.tag, factory.schema.skills, desc_nodes)
         build_nodes_from_dataset(factory.tag, factory[tag], exemplar_nodes)
