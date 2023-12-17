@@ -45,6 +45,12 @@ class FrameSchema:
             case _:
                 raise RuntimeError("wrong property.")
 
+    def __setitem__(self, key, value):
+        if key == "name":
+            self.name = value
+        else:
+            raise RuntimeError("wrong property.")
+
 
 @dataclass_json
 @dataclass

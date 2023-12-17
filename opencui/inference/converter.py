@@ -49,10 +49,7 @@ class LocalGenerator(Generator, ABC):
             return_dict=True,
             device_map=LugConfig.llm_device,
             trust_remote_code=True,
-            load_in_4bit=True,
         )
-
-
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -344,7 +341,7 @@ class Converter:
             if self.recognizer is not None:
                 values = self.recognizer.extract_values(slot, text)
             slot_input_dict = {"utterance": text, "values": values}
-            slot_input_dict.update(module.slots[slot])
+            slot_input_dict.update(module.slots[slot].to_dict())
             slot_prompts.append(self.slot_prompt(slot_input_dict))
 
         if LugConfig.converter_debug:

@@ -29,8 +29,7 @@ class LugConfig:
     slot_prompt = "default"
     nli_prompt = "default"
 
-    skill_model = "OpenCUI/skill-tinyllama2t-1.0"
-    extractive_slot_model = "OpenCUI/extractive-tinyllama2t-1.0"
+    skill_model = "OpenCUI/skill-tinyllama2.5t-1.0"
+    extractive_slot_model = "OpenCUI/extractive-tinyllama2.5t-1.0"
     nli_model = ""
-
     converter_debug = False
