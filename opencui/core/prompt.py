@@ -137,7 +137,7 @@ BinarySkillPrompts = {
     ),
 }
 
-LayeredPrompts = {
+InstancePrompts = {
     "default": (
         Prompt(
             'Does "{{utterance}}" fit the description: "{{skill.description}}"? Answer: '

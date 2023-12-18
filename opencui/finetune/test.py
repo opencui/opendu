@@ -1,6 +1,6 @@
 import logging
 
-from opencui.core.annotation import CamelToSnake
+from opencui.core.annotation import CamelToSnake, OwnerMode
 from opencui.core.embedding import EmbeddingStore
 from opencui.core.retriever import (build_nodes_from_skills, create_index, load_context_retrievers)
 from opencui.finetune.commons import build_nodes_from_dataset, JsonDatasetFactory
@@ -52,7 +52,7 @@ if __name__ == "__main__":
             arguments = item["arguments"]
 
             result = converter.understand(item["utterance"])
-            if result and result.name == target:
+            if result and result.name == target and OwnerMode[item["owner_mode"]] == OwnerMode.normal:
                 counts[1] += 1
             else:
                 counts[0] += 1

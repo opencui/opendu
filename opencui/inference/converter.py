@@ -9,7 +9,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 from opencui.core.annotation import (CamelToSnake, DialogExpectation, EntityMetas, Exemplar, FrameValue, ListRecognizer,
                                      OwnerMode)
 from opencui.core.config import LugConfig
-from opencui.core.prompt import (BinarySkillPrompts, ExtractiveSlotPrompts, LayeredPrompts, MulticlassSkillPrompts,
+from opencui.core.prompt import (BinarySkillPrompts, ExtractiveSlotPrompts, InstancePrompts, MulticlassSkillPrompts,
                                  NliPrompts)
 from opencui.core.retriever import (ContextRetriever, load_context_retrievers)
 from opencui.inference.schema_parser import load_all_from_directory
@@ -184,9 +184,11 @@ class BSkillConverter(SkillConverter):
             Exemplar(
                 owner=to_snake.encode(node.metadata["owner"]),
                 template=node.text,
-                owner_mode=nodes.metadata["owner_mode"])
+                owner_mode=node.metadata["owner_mode"])
             for node in nodes
         ]
+
+        exampled = set([node.metadata["owner"] for node in nodes])
 
         for skill in skills:
             skill["name"] = to_snake.encode(skill["name"])
@@ -202,6 +204,10 @@ class BSkillConverter(SkillConverter):
         for skill in skills:
             # Need to project each examples in the view of this skill.
             target = skill["name"]
+            # If there is no example for this skill, ignore.
+            if target not in exampled:
+                continue
+
             # Try not to have more than two examples.
             exemplar_dicts = [
                 {
@@ -241,12 +247,12 @@ class BSkillConverter(SkillConverter):
         return func_names
 
 
-class SSkillConverter(SkillConverter):
+class ISkillConverter(SkillConverter):
     def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
         self.retrieve = retriever
         self.generator = generator
-        self.desc_prompt = LayeredPrompts[LugConfig.skill_prompt][0]
-        self.example_prompt = LayeredPrompts[LugConfig.skill_prompt][1]
+        self.desc_prompt = InstancePrompts[LugConfig.skill_prompt][0]
+        self.example_prompt = InstancePrompts[LugConfig.skill_prompt][1]
 
     def get_skill(self, text):
         to_snake = CamelToSnake()
@@ -312,8 +318,8 @@ class Converter:
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r"\[([^]]*)\]")
         self.skill_converter = None
-        if LugConfig.skill_mode == "simple":
-            self.skill_converter = SSkillConverter(retriever, generator)
+        if LugConfig.skill_mode == "instance":
+            self.skill_converter = ISkillConverter(retriever, generator)
         if LugConfig.skill_mode == "binary":
             self.skill_converter = BSkillConverter(retriever, generator)
         if LugConfig.skill_mode == "multiclass":

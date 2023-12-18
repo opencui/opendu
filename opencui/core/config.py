@@ -32,4 +32,4 @@ class LugConfig:
     skill_model = "OpenCUI/skill-tinyllama2.5t-1.0"
     extractive_slot_model = "OpenCUI/extractive-tinyllama2.5t-1.0"
     nli_model = ""
-    converter_debug = False
+    converter_debug = True

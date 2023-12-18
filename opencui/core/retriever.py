@@ -136,11 +136,11 @@ class HybridRetriever(BaseRetriever):
         return retrieve_nodes
 
 
-def dedup_nodes(old_results: list[TextNode], arity=1):
+def dedup_nodes(old_results: list[TextNode], with_mode, arity=1):
     new_results = []
     intents = defaultdict(int)
     for item in old_results:
-        intent = f'{item.metadata["owner_mode"]}.{item.metadata["owner"]}'
+        intent = f'{item.metadata["owner_mode"]}.{item.metadata["owner"]}' if with_mode else item.metadata["owner"]
         if intents[intent] < arity:
             intents[intent] += 1
             new_results.append(item)
@@ -154,7 +154,7 @@ class ContextRetriever:
         self.module = module
         self.desc_retriever = d_retrievers
         self.exemplar_retriever = e_retriever
-        self.nones = ["NONE"]
+        self.nones = ["NONE", "null"]
         self.arity = LugConfig.exemplar_retrieve_arity
         self.num_exemplars = LugConfig.exemplar_combined_topk
         self.extended_mode = False
@@ -167,8 +167,8 @@ class ContextRetriever:
         exemplar_nodes = [
             item.node for item in self.exemplar_retriever.retrieve(query)
         ]
-        exemplar_nodes = dedup_nodes(exemplar_nodes, self.arity)[0:self.num_exemplars]
-        all_nodes = dedup_nodes(desc_nodes + exemplar_nodes)
+        exemplar_nodes = dedup_nodes(exemplar_nodes, True, self.arity)[0:self.num_exemplars]
+        all_nodes = dedup_nodes(desc_nodes + exemplar_nodes, False, 1)
 
         owners = [
             FrameId(item.metadata["module"], item.metadata["owner"])

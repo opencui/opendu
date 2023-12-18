@@ -1,6 +1,6 @@
 import json
 from opencui import EmbeddingStore, PromptedFactory, build_dataset_index, JsonDatasetFactory, \
-    LugConfig, OneSkillTrainConverter, SkillTrainConverter, LayeredTrainConverter
+    LugConfig, OneSkillTrainConverter, SkillTrainConverter, InstanceTrainConverter
 from opencui.core.retriever import build_desc_index, load_context_retrievers, ContextRetriever
 
 
@@ -9,8 +9,8 @@ def skill_converter(retriever: ContextRetriever):
         return OneSkillTrainConverter(retriever)
     if LugConfig.skill_mode == "multiclass":
         return SkillTrainConverter(retriever)
-    if LugConfig.skill_mode == "simple":
-        return LayeredTrainConverter(retriever)
+    if LugConfig.skill_mode == "instance":
+        return InstanceTrainConverter(retriever)
 
 
 def build_skill_factory(output, factory):

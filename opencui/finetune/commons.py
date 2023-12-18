@@ -14,7 +14,7 @@ from datasets import Dataset, load_dataset
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode
 
-from opencui import Prompt, MulticlassSkillPrompts, BinarySkillPrompts, LayeredPrompts
+from opencui import Prompt, MulticlassSkillPrompts, BinarySkillPrompts, InstancePrompts
 from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode
 from opencui.core.config import LugConfig
 from opencui.core.retriever import HybridRetriever, create_index, ContextRetriever
@@ -402,6 +402,7 @@ class OneSkillTrainConverter(TrainConverter):
                 )
                 for node in nodes
             ]
+            exampled = set([node.metadata["owner"] for node in nodes])
             owner = batch["owner"][idx]
             owner_mode = batch["owner_mode"][idx]
 
@@ -418,6 +419,10 @@ class OneSkillTrainConverter(TrainConverter):
             for skill in skills:
                 # Need to project each examples in the view of this skill.
                 target = skill["name"]
+                # Should be somehow related.
+                if target not in exampled:
+                    continue
+
                 # Try not to have more than two examples.
                 exemplar_dicts = [
                     {
@@ -434,14 +439,14 @@ class OneSkillTrainConverter(TrainConverter):
                     "skill": skill_map[target],
                 }
                 ins.append(self.prompt(input_dict))
-                outs.append(f"{json.dumps(owner == target) and OwnerMode[owner_mode] == OwnerMode.normal}</s>")
+                outs.append(f"{json.dumps(owner == target and OwnerMode[owner_mode] == OwnerMode.normal)}</s>")
 
 
 # For this one, we first use example based prediction, and then description based prediction.
-class LayeredTrainConverter(TrainConverter):
+class InstanceTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever):
-        self.desc_prompt = LayeredPrompts[LugConfig.skill_prompt][0]
-        self.example_prompt = LayeredPrompts[LugConfig.skill_prompt][1]
+        self.desc_prompt = InstancePrompts[LugConfig.skill_prompt][0]
+        self.example_prompt = InstancePrompts[LugConfig.skill_prompt][1]
         self.context_retrieve = retriever
         self.neg_k = 1
 
