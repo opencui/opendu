@@ -21,15 +21,15 @@ class LugConfig:
     exemplar_combined_topk = 4
 
     # multiclass, classification, simple
-    skill_mode = "binary"
+    skill_mode = "instance"
     skill_arity = 1
-    llm_device = "cpu"
+    llm_device = "cuda:0"
 
-    skill_prompt = "natural"
+    skill_prompt = "default"
     slot_prompt = "default"
     nli_prompt = "default"
 
     skill_model = "OpenCUI/skill-tinyllama2.5t-1.0"
     extractive_slot_model = "OpenCUI/extractive-tinyllama2.5t-1.0"
     nli_model = ""
-    converter_debug = False
+    converter_debug = True

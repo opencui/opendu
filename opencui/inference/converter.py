@@ -6,9 +6,10 @@ import torch
 from peft import PeftConfig, PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 
-from opencui.core.annotation import (CamelToSnake, DialogExpectation, EntityMetas, Exemplar, FrameValue, ListRecognizer)
+from opencui.core.annotation import (CamelToSnake, DialogExpectation, EntityMetas, Exemplar, FrameValue, ListRecognizer,
+                                     OwnerMode)
 from opencui.core.config import LugConfig
-from opencui.core.prompt import (BinarySkillPrompts, ExtractiveSlotPrompts, LayeredPrompts, MulticlassSkillPrompts,
+from opencui.core.prompt import (BinarySkillPrompts, ExtractiveSlotPrompts, InstancePrompts, MulticlassSkillPrompts,
                                  NliPrompts)
 from opencui.core.retriever import (ContextRetriever, load_context_retrievers)
 from opencui.inference.schema_parser import load_all_from_directory
@@ -44,11 +45,15 @@ class LocalGenerator(Generator, ABC):
 
         model_path = skill_config.base_model_name_or_path
 
+        # Is this the right place to clean cache.
+        torch.cuda.empty_cache()
+
         base_model = AutoModelForCausalLM.from_pretrained(
             skill_config.base_model_name_or_path,
             return_dict=True,
             device_map=LugConfig.llm_device,
             trust_remote_code=True,
+            torch_dtype=torch.bfloat16
         )
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
@@ -58,13 +63,13 @@ class LocalGenerator(Generator, ABC):
         self.lora_model = PeftModel.from_pretrained(
             base_model, LugConfig.skill_model, adapter_name="skill")
 
-        self.lora_model.to(LugConfig.llm_device)
-
         self.lora_model.load_adapter(
             LugConfig.extractive_slot_model, adapter_name="extractive_slot")
 
         if LugConfig.nli_model != "":
             self.lora_model.load_adapter(LugConfig.nli_model, adapter_name="nli")
+
+        self.lora_model.to(LugConfig.llm_device)
 
     @classmethod
     def generate(cls, peft_model, peft_tokenizer, input_text):
@@ -76,7 +81,7 @@ class LocalGenerator(Generator, ABC):
             peft_outputs = peft_model.generate(
                 input_ids=peft_encoding.input_ids,
                 generation_config=GenerationConfig(
-                    max_new_tokens=128,
+                    max_new_tokens=32,
                     pad_token_id=peft_tokenizer.eos_token_id,
                     eos_token_id=peft_tokenizer.eos_token_id,
                     attention_mask=peft_encoding.attention_mask,
@@ -163,6 +168,7 @@ class MSkillConverter(SkillConverter):
         return [func_name]
 
 
+# This is the exact match based.
 class BSkillConverter(SkillConverter):
     def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
         self.retrieve = retriever
@@ -175,9 +181,14 @@ class BSkillConverter(SkillConverter):
         # nodes owner are always included in the
         skills, nodes = self.retrieve(text)
         exemplars = [
-            Exemplar(owner=to_snake.encode(node.metadata["owner"]), template=node.text)
+            Exemplar(
+                owner=to_snake.encode(node.metadata["owner"]),
+                template=node.text,
+                owner_mode=node.metadata["owner_mode"])
             for node in nodes
         ]
+
+        exampled = set([node.metadata["owner"] for node in nodes])
 
         for skill in skills:
             skill["name"] = to_snake.encode(skill["name"])
@@ -186,33 +197,37 @@ class BSkillConverter(SkillConverter):
 
         skill_prompts = []
         owners = []
-        processed = set()
-        # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
-        for o_exemplar in exemplars:
-            target = o_exemplar.owner
+        utterance = text
+
+        # First test with examples if we found positive, we stop.
+        # This can be done in two steps, but we are doing one step, by using examples first.
+        for skill in skills:
+            # Need to project each examples in the view of this skill.
+            target = skill["name"]
+            # If there is no example for this skill, ignore.
+            if target not in exampled:
+                continue
+
             # Try not to have more than two examples.
             exemplar_dicts = [
                 {
                     "template": exemplar.template,
                     "target": target,
-                    "decision": target == exemplar.owner,
+                    "decision": target == exemplar.owner and OwnerMode[exemplar.owner_mode] == OwnerMode.normal
                 }
                 for exemplar in exemplars
             ]
 
             input_dict = {
-                "utterance": text,
+                "utterance": utterance,
                 "examples": exemplar_dicts,
                 "skill": skill_map[target],
             }
             skill_prompts.append(self.prompt(input_dict))
             owners.append(target)
 
-            processed.add(target)
-
+        # Now we just use descriptions.
         for skill in skills:
-            if skill["name"] in processed:
-                continue
             input_dict = {"utterance": text, "examples": [], "skill": skill}
             skill_prompts.append(self.prompt(input_dict))
             owners.append(skill["name"])
@@ -229,16 +244,15 @@ class BSkillConverter(SkillConverter):
         ]
 
         func_names = [owners[index] for index, flag in enumerate(flags) if flag]
-
         return func_names
 
 
-class SSkillConverter(SkillConverter):
+class ISkillConverter(SkillConverter):
     def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
         self.retrieve = retriever
         self.generator = generator
-        self.desc_prompt = LayeredPrompts[LugConfig.skill_prompt][0]
-        self.example_prompt = LayeredPrompts[LugConfig.skill_prompt][1]
+        self.desc_prompt = InstancePrompts[LugConfig.skill_prompt][0]
+        self.example_prompt = InstancePrompts[LugConfig.skill_prompt][1]
 
     def get_skill(self, text):
         to_snake = CamelToSnake()
@@ -246,7 +260,11 @@ class SSkillConverter(SkillConverter):
         # nodes owner are always included in the
         skills, nodes = self.retrieve(text)
         exemplars = [
-            Exemplar(owner=to_snake.encode(node.metadata["owner"]), template=node.text)
+            Exemplar(
+                owner=to_snake.encode(node.metadata["owner"]),
+                template=node.text,
+                owner_mode=node.metadata["owner_mode"]
+            )
             for node in nodes
         ]
 
@@ -267,7 +285,6 @@ class SSkillConverter(SkillConverter):
             skill_prompts.append(self.desc_prompt(input_dict))
             owners.append(skill["name"])
 
-        print(skill_prompts)
         skill_outputs = self.generator.for_skill(skill_prompts)
 
         if LugConfig.converter_debug:
@@ -304,8 +321,8 @@ class Converter:
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r"\[([^]]*)\]")
         self.skill_converter = None
-        if LugConfig.skill_mode == "simple":
-            self.skill_converter = SSkillConverter(retriever, generator)
+        if LugConfig.skill_mode == "instance":
+            self.skill_converter = ISkillConverter(retriever, generator)
         if LugConfig.skill_mode == "binary":
             self.skill_converter = BSkillConverter(retriever, generator)
         if LugConfig.skill_mode == "multiclass":

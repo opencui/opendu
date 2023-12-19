@@ -6,6 +6,8 @@ from typing import Dict, List, Literal, Optional, TypedDict, Union
 from dataclasses_json import dataclass_json
 from llama_index.schema import TextNode
 from pydantic import BaseModel, Field
+from enum import Enum
+
 
 
 @dataclass_json
@@ -100,6 +102,8 @@ class SchemaStore:
         return func_name in self.func_to_module
 
 
+OwnerMode = Enum('OwnerMode', ["normal", "extended"])
+
 @dataclass_json
 @dataclass
 class FrameValue:
@@ -171,6 +175,7 @@ class Exemplar(BaseModel):
     template: str = Field(
         description="the example utterance that should trigger the given skill"
     )
+    owner_mode: str = Field(description="the matching mode between template and owner")
     context: Optional[str] = Field(
         description="the context under which this exemplar works.", default=None
     )
