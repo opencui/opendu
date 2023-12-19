@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import json
 import logging
 import shutil
 from collections import defaultdict
 
-from llama_index import (QueryBundle, ServiceContext, SimpleKeywordTableIndex,
-                         StorageContext, VectorStoreIndex,
-                         load_index_from_storage)
+from llama_index import (QueryBundle, ServiceContext, StorageContext, VectorStoreIndex, load_index_from_storage)
 from llama_index.embeddings.base import BaseEmbedding
 # Retrievers
-from llama_index.retrievers import (BaseRetriever, KeywordTableSimpleRetriever,
-                                    VectorIndexRetriever)
+from llama_index.retrievers import (BaseRetriever, BM25Retriever, VectorIndexRetriever)
+
 from llama_index.schema import NodeWithScore, TextNode
 
 from opencui.core.annotation import (FrameId, FrameSchema, Schema, SchemaStore)
@@ -50,19 +49,12 @@ def create_index(base: str, tag: str, nodes: list[TextNode],
     storage_context.docstore.add_documents(nodes)
 
     try:
-        embedding_index = VectorStoreIndex(nodes,
-                                           storage_context=storage_context,
-                                           service_context=service_context)
-
-        keyword_index = SimpleKeywordTableIndex(
+        embedding_index = VectorStoreIndex(
             nodes,
             storage_context=storage_context,
             service_context=service_context)
-
         embedding_index.set_index_id("embedding")
         embedding_index.storage_context.persist(persist_dir=path)
-        keyword_index.set_index_id("keyword")
-        keyword_index.storage_context.persist(persist_dir=path)
     except Exception as e:
         print(str(e))
         shutil.rmtree(path, ignore_errors=True)
@@ -75,65 +67,58 @@ def build_desc_index(module: str, dsc: Schema, output: str,
     create_index(output, "desc", desc_nodes, embedding)
 
 
+# This merge the result.
+def merge_nodes(nodes0: list[NodeWithScore], nodes1: list[NodeWithScore])-> list[NodeWithScore]:
+    nodes = {}
+    scores = {}
+    for ns in nodes0:
+        nodes[ns.node.node_id] = ns.node
+        scores[ns.node.node_id] = ns.score
+
+    for ns in nodes1:
+        if ns.node.node_id in nodes:
+            scores[ns.node.node_id] += ns.score
+        else:
+            nodes[ns.node.node_id] = ns.node
+            scores[ns.node.node_id] = ns.score
+
+    res = [NodeWithScore(node=nodes[nid], score=scores[nid]) for nid in nodes.keys()]
+    return sorted(res, key=lambda x: x.score, reverse=True)
+
+
 #
 # There are four kinds of mode: embedding, keyword, AND and OR.
 #
 class HybridRetriever(BaseRetriever):
     """Custom retriever that performs both semantic search and hybrid search."""
 
-    def __init__(self,
-                 path: str,
-                 tag: str,
-                 topk: int = 8,
-                 mode: str = "embedding") -> None:
-        """Init params."""
-        if mode not in ("embedding", "keyword", "AND", "OR"):
-            raise ValueError("Invalid mode.")
-
+    def __init__(self, path: str, tag: str, topk: int = 8) -> None:
         embedding = EmbeddingStore.get_embedding_by_task(tag)
-        service_context = ServiceContext.from_defaults(llm=None,
-                                                       llm_predictor=None,
-                                                       embed_model=embedding)
+        service_context = ServiceContext.from_defaults(
+            llm=None,
+            llm_predictor=None,
+            embed_model=embedding)
+
         storage_context = StorageContext.from_defaults(
             persist_dir=f"{path}/{tag}/")
+
         embedding_index = load_index_from_storage(
             storage_context,
             index_id="embedding",
             service_context=service_context)
-        keyword_index = load_index_from_storage(
-            storage_context,
-            index_id="keyword",
-            service_context=service_context)
+        self._vector_retriever = VectorIndexRetriever(
+            index=embedding_index,
+            similarity_top_k=topk)
 
-        self._vector_retriever = VectorIndexRetriever(index=embedding_index,
-                                                      similarity_top_k=topk)
-        self._keyword_retriever = KeywordTableSimpleRetriever(
-            index=keyword_index)
-        self._mode = mode
+        self._keyword_retriever = BM25Retriever.from_defaults(
+            docstore=embedding_index.docstore,
+            similarity_top_k=topk)
 
     def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
         """Retrieve nodes given query."""
-
         vector_nodes = self._vector_retriever.retrieve(query_bundle)
         keyword_nodes = self._keyword_retriever.retrieve(query_bundle)
-
-        vector_ids = {n.node.node_id for n in vector_nodes}
-        keyword_ids = {n.node.node_id for n in keyword_nodes}
-
-        combined_dict = {n.node.node_id: n for n in vector_nodes}
-        combined_dict.update({n.node.node_id: n for n in keyword_nodes})
-
-        if self._mode == "embedding":
-            retrieve_ids = vector_ids
-        elif self._mode == "keyword":
-            retrieve_ids = keyword_ids
-        elif self._mode == "AND":
-            retrieve_ids = vector_ids.intersection(keyword_ids)
-        else:
-            retrieve_ids = vector_ids.union(keyword_ids)
-
-        retrieve_nodes = [combined_dict[rid] for rid in retrieve_ids]
-        return retrieve_nodes
+        return merge_nodes(vector_nodes, keyword_nodes)
 
 
 def dedup_nodes(old_results: list[TextNode], with_mode, arity=1):
@@ -167,6 +152,7 @@ class ContextRetriever:
         exemplar_nodes = [
             item.node for item in self.exemplar_retriever.retrieve(query)
         ]
+
         exemplar_nodes = dedup_nodes(exemplar_nodes, True, self.arity)[0:self.num_exemplars]
         all_nodes = dedup_nodes(desc_nodes + exemplar_nodes, False, 1)
 
@@ -177,21 +163,14 @@ class ContextRetriever:
 
         # Need to remove the bad owner/func/skill/intent.
         skills = [self.module.get_skill(owner) for owner in owners]
-        exemplars = [node for node in exemplar_nodes]
-        return skills, exemplars
+        return skills, exemplar_nodes
 
 
 def load_context_retrievers(module_dict: dict[str, Schema], path: str):
     return ContextRetriever(
         SchemaStore(module_dict),
-        HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk,
-                        LugConfig.desc_retriever_mode),
-        HybridRetriever(
-            path,
-            "exemplar",
-            LugConfig.exemplar_retrieve_topk,
-            LugConfig.exemplar_retriever_mode,
-        ),
+        HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk),
+        HybridRetriever(path,"exemplar", LugConfig.exemplar_retrieve_topk),
     )
 
 

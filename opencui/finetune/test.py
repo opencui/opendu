@@ -45,11 +45,11 @@ if __name__ == "__main__":
     counts = [0, 0]
     for factory in factories:
         dataset = factory[tag]
-        marker = "### Output:"
         for item in dataset:
             # We only support snake function name.
             target = to_snake.encode(item["owner"])
             arguments = item["arguments"]
+            owner_mode = OwnerMode[item["owner_mode"]]
 
             result = converter.understand(item["utterance"])
             if result and result.name == target and OwnerMode[item["owner_mode"]] == OwnerMode.normal:
@@ -58,4 +58,5 @@ if __name__ == "__main__":
                 counts[0] += 1
                 print(item["utterance"])
                 print(f"{result} != {target} for {item['utterance']} \n")
+                exit(0)
     print(counts)

@@ -21,11 +21,11 @@ class LugConfig:
     exemplar_combined_topk = 4
 
     # multiclass, classification, simple
-    skill_mode = "binary"
+    skill_mode = "instance"
     skill_arity = 1
     llm_device = "cuda:0"
 
-    skill_prompt = "natural"
+    skill_prompt = "default"
     slot_prompt = "default"
     nli_prompt = "default"
 

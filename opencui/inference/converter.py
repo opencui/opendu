@@ -260,7 +260,11 @@ class ISkillConverter(SkillConverter):
         # nodes owner are always included in the
         skills, nodes = self.retrieve(text)
         exemplars = [
-            Exemplar(owner=to_snake.encode(node.metadata["owner"]), template=node.text)
+            Exemplar(
+                owner=to_snake.encode(node.metadata["owner"]),
+                template=node.text,
+                owner_mode=node.metadata["owner_mode"]
+            )
             for node in nodes
         ]
 
@@ -281,7 +285,6 @@ class ISkillConverter(SkillConverter):
             skill_prompts.append(self.desc_prompt(input_dict))
             owners.append(skill["name"])
 
-        print(skill_prompts)
         skill_outputs = self.generator.for_skill(skill_prompts)
 
         if LugConfig.converter_debug:

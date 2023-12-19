@@ -140,9 +140,9 @@ BinarySkillPrompts = {
 InstancePrompts = {
     "default": (
         Prompt(
-            'Does "{{utterance}}" fit the description: "{{skill.description}}"? Answer: '
+            'Does the sentence: "{{utterance}}", fit the description: "{{skill.description}}"? Answer only in true or false:'
         ),
-        Prompt('Does "{{utterance}}" mean "{{template}}"? Answer: '),
+        Prompt('Does the sentence: "{{utterance}}", means the same as: "{{template}}"? Answer only in true or false:'),
     ),
 }
 
