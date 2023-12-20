@@ -81,9 +81,8 @@ class LocalGenerator(Generator, ABC):
         self.lora_model.to(LugConfig.llm_device)
 
     def generate(self, mode: GenerateMode, input_texts: list[str]):
-        peft_tokenizer = self.tokenizer
         self.lora_model.set_adapter(mode.name)
-        peft_encoding = peft_tokenizer(
+        peft_encoding = self.tokenizer(
             input_texts, padding=True, return_tensors="pt"
         ).to(LugConfig.llm_device)
 
@@ -92,8 +91,8 @@ class LocalGenerator(Generator, ABC):
                 input_ids=peft_encoding.input_ids,
                 generation_config=GenerationConfig(
                     max_new_tokens=32,
-                    pad_token_id=peft_tokenizer.eos_token_id,
-                    eos_token_id=peft_tokenizer.eos_token_id,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                    eos_token_id=self.tokenizer.eos_token_id,
                     attention_mask=peft_encoding.attention_mask,
                     do_sample=False,
                     repetition_penalty=1.2,
@@ -101,7 +100,7 @@ class LocalGenerator(Generator, ABC):
                 ),
             )
 
-        outputs = peft_tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
+        outputs = self.tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
         return [
             output[len(input_texts[index]):] for index, output in enumerate(outputs)
         ]
@@ -190,7 +189,7 @@ class ISkillConverter(SkillConverter):
             if len(functions) != 0:
                 return functions
 
-        if self.use_exemplar:
+        if self.use_desc:
             skill_prompts, owners = self.build_prompts_by_desc(text, skills, to_snake)
             skill_outputs = self.generator.generate(GenerateMode.desc, skill_prompts)
             return self.parse_results(skill_prompts, owners, skill_outputs)

@@ -13,7 +13,7 @@ import numpy as np
 import torch
 import transformers
 from datasets import Dataset, concatenate_datasets, load_dataset
-from peft import LoraConfig, get_peft_model
+from peft import LoraConfig, get_peft_model, PromptTuningConfig, TaskType
 from torch.nn.utils.rnn import pad_sequence
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed)
 from opencui.core.prompt import (ExtractiveSlotPrompts, NliPrompts)
@@ -168,7 +168,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
         default=False, metadata={"help": "print out dataset instead"}
     )
     training_mode: str = field(default="skill", metadata={"help": "skill or slot"})
-
+    peft_mode: str = field(default="lora", metadata={"help": "lora or prompt-tuning"})
 
 @dataclass
 class GenerationArguments:
@@ -206,26 +206,21 @@ class GenerationArguments:
 
 def get_lora_config():
     lora_alpha = 16  # 16
-    lora_dropout = 0.05  # 0.1
+    lora_dropout = 0.1  # 0.1
     lora_rank = 8  # 64
-
+    all_layers = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "down_proj", "up_proj", "lm_head"]
+    three_layers = ["gate_proj", "up_proj", "down_proj"],
+    modules_to_save = ["lm_head", "embed_tokens"]  # for llama
     return LoraConfig(
         lora_alpha=lora_alpha,
         lora_dropout=lora_dropout,
         r=lora_rank,
         bias="none",
         task_type="CAUSAL_LM",
-        target_modules=[
-            "q_proj",
-            "k_proj",
-            "v_proj",
-            "o_proj",
-            "gate_proj",
-            "down_proj",
-            "up_proj",
-            "lm_head",
-        ],
+        target_modules=all_layers,
     )
+
+
 
 
 def get_accelerate_model(args, extra_special_tokens: set[str], peft_config=None):
@@ -432,7 +427,7 @@ def get_last_checkpoint(checkpoint_dir):
     return None, False  # first training
 
 
-def train(peft_config=None):
+def train():
     hfparser = transformers.HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments, GenerationArguments)
     )
@@ -452,14 +447,24 @@ def train(peft_config=None):
         **vars(model_args), **vars(data_args), **vars(training_args)
     )
 
+    peft_config = get_lora_config()
+    if args.peft_mode == "prompt-tuning":
+        peft_config = PromptTuningConfig(
+            task_type=TaskType.CAUSAL_LM,
+            num_virtual_tokens=8,
+            prompt_tuning_init_text="Classify if the tweet is a complaint or not:",
+        )
+
     # For now, just use the fix path.
     output = "../output"
 
     # Save the things to disk first, for training we keep each module separate.
     # Down the road, we might
     converted_factories = []
-    if args.training_mode == "skill":
-        converted_factories = build_skill_factory(output)
+    if args.training_mode == "desc":
+        converted_factories = build_skill_factory("desc")
+    if args.training_mode == "exemplar":
+        converted_factories = build_skill_factory("exemplar")
     if args.training_mode == "extractive_slot":
         converted_factories = build_extractive_slot_factory()
     if args.training_mode == "nli":
@@ -584,10 +589,10 @@ def train(peft_config=None):
 
 
 # Here we create the dataset factory for skills
-def build_skill_factory(output):
+def build_skill_factory(skill_mode):
     # make sure run build_skill_dataset first.
     factories = [
-        JsonDatasetFactory("./datasets/sgd/", "sgd", f"{LugConfig.skill_mode}-{LugConfig.skill_prompt}."),
+        JsonDatasetFactory("./datasets/sgd/", "sgd", f"{skill_mode}-{LugConfig.skill_prompt}."),
     ]
     return factories
 
@@ -638,4 +643,4 @@ if __name__ == "__main__":
     LugConfig.embedding_device = "cuda:0"
 
     # Now we need to create the converters.
-    train(get_lora_config())
+    train()

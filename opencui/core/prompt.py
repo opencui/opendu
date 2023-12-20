@@ -140,15 +140,29 @@ BinarySkillPrompts = {
 
 DescriptionPrompts = {
     "default": Prompt(
-        'Does "{{utterance}}" fit the description "{{skill.description}}"? True of false?'
+        'Is it true that "{{utterance}}" fits the description "{{skill.description}}"?'
     ),
+    "structural": Prompt(
+        '### Instruction:\n'
+        'Decide whether the input fit the function {{skill.name}} with description: {{skill.description}}.'
+        '### Input:\n'
+        '{{utterance}}'
+        '### Answer(only in "true" or "false"):'
+    )
 }
 
 # This should have the same exact key as the above prompt dictionary.
 ExemplarPrompts = {
     "default": Prompt(
-        'Does "{{utterance}}" mean the same as the example: "{{template}}"? True or false?'
+        'Is it true that "{{utterance}}" means the same as the example: "{{template}}"?'
     ),
+    "structural": Prompt(
+        '### Instruction:\n'
+        'Decide whether the input means the same as the template: {{template}}.'
+        '### Input:\n'
+        '{{utterance}}'
+        '### Answer(only in "true" or "false"):'
+    )
 }
 
 # For the slots of enum type, we used different prompt in order to improve the

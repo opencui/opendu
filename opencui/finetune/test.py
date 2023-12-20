@@ -59,5 +59,4 @@ if __name__ == "__main__":
                 counts[0] += 1
                 print(item["utterance"])
                 print(f"{result} != {target} for {item['utterance']} \n")
-                exit(0)
     print(counts)

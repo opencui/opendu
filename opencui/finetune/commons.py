@@ -448,6 +448,10 @@ class InstanceTrainConverter(TrainConverter):
         self.match_mode = OwnerMode.normal
         self.mode = mode
 
+    @staticmethod
+    def dumps(value):
+        return "true</s>" if value else "false</s>"
+
     def extra_tokens(self):
         return self.desc_prompt.extra_tokens + self.example_prompt.extra_tokens
 
@@ -478,7 +482,7 @@ class InstanceTrainConverter(TrainConverter):
                 # Try not to have more than two examples.
                 input_dict = {"utterance": utterance, "template": exemplar.template}
                 ins.append(self.example_prompt(input_dict))
-                outs.append(f"{json.dumps(owner == target and exact_match and self.is_match(exemplar.owner_mode))}</s>")
+                outs.append(f"{self.dumps(owner == target and exact_match and self.is_match(exemplar.owner_mode))}")
 
             # Then descriptions.
             for skill in skills:
@@ -486,7 +490,7 @@ class InstanceTrainConverter(TrainConverter):
                     continue
                 input_dict = {"utterance": utterance, "skill": skill}
                 ins.append(self.desc_prompt(input_dict))
-                outs.append(f"{json.dumps(owner == skill['name'] and exact_match)}</s>")
+                outs.append(f"{self.dumps(owner == skill['name'] and exact_match)}")
                 skill_map[skill["name"]] = skill
 
 
