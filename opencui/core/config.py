@@ -17,11 +17,11 @@ class LugConfig:
     exemplar_retriever_mode = "OR"
     desc_retrieve_topk = 4
     exemplar_retrieve_topk = 16
-    exemplar_retrieve_arity = 1
-    exemplar_combined_topk = 4
+    exemplar_retrieve_arity = 4
 
     # multiclass, classification, simple
-    skill_mode = "instance"
+    # should move this to training only, eventually.
+    skill_mode = "instance.exemplar"
     skill_arity = 1
     llm_device = "cuda:0"
 
@@ -29,7 +29,8 @@ class LugConfig:
     slot_prompt = "default"
     nli_prompt = "default"
 
-    skill_model = "OpenCUI/skill-tinyllama2.5t-1.0"
+    # We will append instance.desc/instance.exemplar to this.
+    skill_model = "OpenCUI/skill-tinyllama-0.1"
     extractive_slot_model = "OpenCUI/extractive-tinyllama2.5t-1.0"
     nli_model = ""
     converter_debug = True

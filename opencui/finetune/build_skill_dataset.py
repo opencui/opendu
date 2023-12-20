@@ -1,6 +1,6 @@
 import json
 from opencui import EmbeddingStore, PromptedFactory, build_dataset_index, JsonDatasetFactory, \
-    LugConfig, OneSkillTrainConverter, SkillTrainConverter, InstanceTrainConverter
+    LugConfig, OneSkillTrainConverter, SkillTrainConverter, InstanceTrainConverter, InstanceMode
 from opencui.core.retriever import build_desc_index, load_context_retrievers, ContextRetriever
 
 
@@ -11,6 +11,10 @@ def skill_converter(retriever: ContextRetriever):
         return SkillTrainConverter(retriever)
     if LugConfig.skill_mode == "instance":
         return InstanceTrainConverter(retriever)
+    if LugConfig.skill_mode == "instance.desc":
+        return InstanceTrainConverter(retriever, InstanceMode.desc)
+    if LugConfig.skill_mode == "instance.exemplar":
+        return InstanceTrainConverter(retriever, InstanceMode.example)
 
 
 def build_skill_factory(output, factory, index=True):

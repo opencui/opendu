@@ -71,23 +71,17 @@ def build_desc_index(module: str, dsc: Schema, output: str,
 def merge_nodes(nodes0: list[NodeWithScore], nodes1: list[NodeWithScore])-> list[NodeWithScore]:
     nodes = {}
     scores = {}
-    for ns in nodes0:
-        nodes[ns.node.node_id] = ns.node
-        scores[ns.node.node_id] = ns.score
-
-    for ns in nodes1:
-        if ns.node.node_id in nodes:
-            scores[ns.node.node_id] += ns.score
+    for ns in nodes0 + nodes1:
+        if ns.node.text in nodes:
+            scores[ns.node.text] += ns.score
         else:
-            nodes[ns.node.node_id] = ns.node
-            scores[ns.node.node_id] = ns.score
+            nodes[ns.node.text] = ns.node
+            scores[ns.node.text] = ns.score
 
     res = [NodeWithScore(node=nodes[nid], score=scores[nid]) for nid in nodes.keys()]
     return sorted(res, key=lambda x: x.score, reverse=True)
 
 
-#
-# There are four kinds of mode: embedding, keyword, AND and OR.
 #
 class HybridRetriever(BaseRetriever):
     """Custom retriever that performs both semantic search and hybrid search."""
@@ -139,9 +133,7 @@ class ContextRetriever:
         self.module = module
         self.desc_retriever = d_retrievers
         self.exemplar_retriever = e_retriever
-        self.nones = ["NONE", "null"]
         self.arity = LugConfig.exemplar_retrieve_arity
-        self.num_exemplars = LugConfig.exemplar_combined_topk
         self.extended_mode = False
 
     def __call__(self, query):
@@ -153,12 +145,12 @@ class ContextRetriever:
             item.node for item in self.exemplar_retriever.retrieve(query)
         ]
 
-        exemplar_nodes = dedup_nodes(exemplar_nodes, True, self.arity)[0:self.num_exemplars]
+        exemplar_nodes = dedup_nodes(exemplar_nodes, True, self.arity)
         all_nodes = dedup_nodes(desc_nodes + exemplar_nodes, False, 1)
 
         owners = [
             FrameId(item.metadata["module"], item.metadata["owner"])
-            for item in all_nodes if item.metadata["owner"] not in self.nones
+            for item in all_nodes
         ]
 
         # Need to remove the bad owner/func/skill/intent.

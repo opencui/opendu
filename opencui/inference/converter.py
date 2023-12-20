@@ -1,6 +1,7 @@
 import json
 import re
 from abc import ABC, abstractmethod
+from enum import Enum
 
 import torch
 from peft import PeftConfig, PeftModel
@@ -9,10 +10,14 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 from opencui.core.annotation import (CamelToSnake, DialogExpectation, EntityMetas, Exemplar, FrameValue, ListRecognizer,
                                      OwnerMode)
 from opencui.core.config import LugConfig
-from opencui.core.prompt import (BinarySkillPrompts, ExtractiveSlotPrompts, InstancePrompts, MulticlassSkillPrompts,
-                                 NliPrompts)
+from opencui.core.prompt import (BinarySkillPrompts, ExtractiveSlotPrompts, MulticlassSkillPrompts,
+                                 NliPrompts, DescriptionPrompts, ExemplarPrompts)
 from opencui.core.retriever import (ContextRetriever, load_context_retrievers)
 from opencui.inference.schema_parser import load_all_from_directory
+
+
+# The modes that we will support.
+GenerateMode = Enum("GenerateMode", ["desc", "exemplar", "extractive", "nli"])
 
 
 # In case you are curious about decoding: https://huggingface.co/blog/how-to-generate
@@ -27,21 +32,20 @@ from opencui.inference.schema_parser import load_all_from_directory
 # local/s-lora. Converter is built on top of generator.
 class Generator(ABC):
     @abstractmethod
-    def for_skill(self, input_texts):
-        pass
-
-    @abstractmethod
-    def for_extractive_slot(self, input_texts):
-        pass
-
-    @abstractmethod
-    def for_nli(self, input_texts):
+    def generate(self, mode: GenerateMode, input_texts: list[str]):
         pass
 
 
+# This should be desc/exemplar based.
 class LocalGenerator(Generator, ABC):
     def __init__(self):
-        skill_config = PeftConfig.from_pretrained(LugConfig.skill_model)
+
+        parts = LugConfig.skill_model.split("/")
+
+        desc_model = f"{parts[0]}/desc-{parts[1]}"
+        exemplar_model = f"{parts[0]}/exemplar-{parts[1]}"
+
+        skill_config = PeftConfig.from_pretrained(desc_model)
 
         model_path = skill_config.base_model_name_or_path
 
@@ -59,26 +63,32 @@ class LocalGenerator(Generator, ABC):
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "left"
+        self.models = {}
 
         self.lora_model = PeftModel.from_pretrained(
-            base_model, LugConfig.skill_model, adapter_name="skill")
+            base_model, desc_model, adapter_name=GenerateMode.desc.name)
 
         self.lora_model.load_adapter(
-            LugConfig.extractive_slot_model, adapter_name="extractive_slot")
+            exemplar_model, adapter_name=GenerateMode.exemplar.name)
+
+        self.lora_model.load_adapter(
+            LugConfig.extractive_slot_model, adapter_name=GenerateMode.extractive.name)
 
         if LugConfig.nli_model != "":
-            self.lora_model.load_adapter(LugConfig.nli_model, adapter_name="nli")
+            self.lora_model.load_adapter(LugConfig.nli_model, adapter_name=GenerateMode.nli.name)
 
+        # Move to device
         self.lora_model.to(LugConfig.llm_device)
 
-    @classmethod
-    def generate(cls, peft_model, peft_tokenizer, input_text):
+    def generate(self, mode: GenerateMode, input_texts: list[str]):
+        peft_tokenizer = self.tokenizer
+        self.lora_model.set_adapter(mode.name)
         peft_encoding = peft_tokenizer(
-            input_text, padding=True, return_tensors="pt"
+            input_texts, padding=True, return_tensors="pt"
         ).to(LugConfig.llm_device)
 
         with torch.no_grad():
-            peft_outputs = peft_model.generate(
+            peft_outputs = self.lora_model.generate(
                 input_ids=peft_encoding.input_ids,
                 generation_config=GenerationConfig(
                     max_new_tokens=32,
@@ -91,24 +101,7 @@ class LocalGenerator(Generator, ABC):
                 ),
             )
 
-        return peft_tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
-
-    def for_skill(self, input_texts):
-        self.lora_model.set_adapter("skill")
-        outputs = LocalGenerator.generate(self.lora_model, self.tokenizer, input_texts)
-        return [
-            output[len(input_texts[index]):] for index, output in enumerate(outputs)
-        ]
-
-    def for_nli(self, input_text):
-        self.lora_model.set_adapter("nli")
-        output = LocalGenerator.generate(self.lora_model, self.tokenizer, input_text)
-        print(output)
-        return output[len(input_text):]
-
-    def for_extractive_slot(self, input_texts):
-        self.lora_model.set_adapter("extractive_slot")
-        outputs = LocalGenerator.generate(self.lora_model, self.tokenizer, input_texts)
+        outputs = peft_tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
         return [
             output[len(input_texts[index]):] for index, output in enumerate(outputs)
         ]
@@ -127,138 +120,21 @@ def parse_json_from_string(text, default=None):
         return default
 
 
-class MSkillConverter(SkillConverter):
-    def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
-        self.retrieve = retriever
-        self.generator = generator
-        self.skill_prompt = MulticlassSkillPrompts[LugConfig.skill_prompt]
-
-    def get_skill(self, text):
-        to_snake = CamelToSnake()
-
-        # first we figure out what is the
-        skills, nodes = self.retrieve(text)
-        exemplars = [
-            Exemplar(owner=to_snake.encode(node.metadata["owner"]), template=node.text)
-            for node in nodes
-        ]
-
-        for skill in skills:
-            skill["name"] = to_snake.encode(skill["name"])
-
-        skill_input_dict = {
-            "utterance": text.strip(),
-            "examples": exemplars,
-            "skills": skills,
-        }
-        skill_prompt = self.skill_prompt([skill_input_dict])
-
-        skill_outputs = self.generator.for_skill(skill_prompt)
-
-        if LugConfig.converter_debug:
-            print(skill_prompt)
-            print(skill_outputs)
-
-        func_name = parse_json_from_string(skill_outputs[0])
-        if LugConfig.converter_debug:
-            print(
-                f"{skill_outputs} is converted to {func_name}, valid: {self.retrieve.module.has_module(func_name)}"
-            )
-
-        return [func_name]
-
-
-# This is the exact match based.
-class BSkillConverter(SkillConverter):
-    def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
-        self.retrieve = retriever
-        self.generator = generator
-        self.prompt = BinarySkillPrompts[LugConfig.skill_prompt]
-
-    def get_skill(self, text):
-        to_snake = CamelToSnake()
-
-        # nodes owner are always included in the
-        skills, nodes = self.retrieve(text)
-        exemplars = [
-            Exemplar(
-                owner=to_snake.encode(node.metadata["owner"]),
-                template=node.text,
-                owner_mode=node.metadata["owner_mode"])
-            for node in nodes
-        ]
-
-        exampled = set([node.metadata["owner"] for node in nodes])
-
-        for skill in skills:
-            skill["name"] = to_snake.encode(skill["name"])
-
-        skill_map = {skill["name"]: skill for skill in skills}
-
-        skill_prompts = []
-        owners = []
-        utterance = text
-
-        # First test with examples if we found positive, we stop.
-        # This can be done in two steps, but we are doing one step, by using examples first.
-        for skill in skills:
-            # Need to project each examples in the view of this skill.
-            target = skill["name"]
-            # If there is no example for this skill, ignore.
-            if target not in exampled:
-                continue
-
-            # Try not to have more than two examples.
-            exemplar_dicts = [
-                {
-                    "template": exemplar.template,
-                    "target": target,
-                    "decision": target == exemplar.owner and OwnerMode[exemplar.owner_mode] == OwnerMode.normal
-                }
-                for exemplar in exemplars
-            ]
-
-            input_dict = {
-                "utterance": utterance,
-                "examples": exemplar_dicts,
-                "skill": skill_map[target],
-            }
-            skill_prompts.append(self.prompt(input_dict))
-            owners.append(target)
-
-        # Now we just use descriptions.
-        for skill in skills:
-            input_dict = {"utterance": text, "examples": [], "skill": skill}
-            skill_prompts.append(self.prompt(input_dict))
-            owners.append(skill["name"])
-
-        skill_outputs = self.generator.for_skill(skill_prompts)
-
-        if LugConfig.converter_debug:
-            print(json.dumps(skill_prompts, indent=2))
-            print(json.dumps(skill_outputs, indent=2))
-
-        flags = [
-            parse_json_from_string(raw_flag, False)
-            for index, raw_flag in enumerate(skill_outputs)
-        ]
-
-        func_names = [owners[index] for index, flag in enumerate(flags) if flag]
-        return func_names
-
-
 class ISkillConverter(SkillConverter):
     def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
         self.retrieve = retriever
         self.generator = generator
-        self.desc_prompt = InstancePrompts[LugConfig.skill_prompt][0]
-        self.example_prompt = InstancePrompts[LugConfig.skill_prompt][1]
+        self.desc_prompt = DescriptionPrompts[LugConfig.skill_prompt]
+        self.example_prompt = ExemplarPrompts[LugConfig.skill_prompt]
+        self.use_exemplar = False
+        self.use_desc = True
+        assert self.use_desc or self.use_exemplar
 
-    def get_skill(self, text):
-        to_snake = CamelToSnake()
+    def build_prompts_by_examples(self, text, nodes, to_snake):
+        skill_prompts = []
+        owners = []
 
-        # nodes owner are always included in the
-        skills, nodes = self.retrieve(text)
+        # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
         exemplars = [
             Exemplar(
                 owner=to_snake.encode(node.metadata["owner"]),
@@ -268,25 +144,30 @@ class ISkillConverter(SkillConverter):
             for node in nodes
         ]
 
+        for exemplar in exemplars:
+            input_dict = {"utterance": text, "template": exemplar.template}
+            skill_prompts.append(self.example_prompt(input_dict))
+            owners.append(exemplar.owner)
+
+        return skill_prompts, owners
+
+    def build_prompts_by_desc(self, text, skills, to_snake):
+        skill_prompts = []
+        owners = []
+
         for skill in skills:
             skill["name"] = to_snake.encode(skill["name"])
 
-        skill_prompts = []
-        owners = []
         # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
-        for exemplar in exemplars:
-            owners.append(exemplar.owner)
-            input_dict = {"utterance": text, "template": exemplar.template}
-            skill_prompts.append(self.example_prompt(input_dict))
-
         # for now, we process it once.
         for skill in skills:
             input_dict = {"utterance": text, "skill": skill}
             skill_prompts.append(self.desc_prompt(input_dict))
             owners.append(skill["name"])
+        return skill_prompts, owners
 
-        skill_outputs = self.generator.for_skill(skill_prompts)
-
+    @staticmethod
+    def parse_results(skill_prompts, owners, skill_outputs):
         if LugConfig.converter_debug:
             print(json.dumps(skill_prompts, indent=2))
             print(json.dumps(skill_outputs, indent=2))
@@ -295,11 +176,26 @@ class ISkillConverter(SkillConverter):
             parse_json_from_string(raw_flag, False)
             for index, raw_flag in enumerate(skill_outputs)
         ]
+        return [owners[index] for index, flag in enumerate(flags) if flag]
 
-        # We only pick the first function for now, example wins.
-        func_names = [owners[index] for index, flag in enumerate(flags) if flag]
+    def get_skill(self, text):
+        to_snake = CamelToSnake()
+        # nodes owner are always included in the
+        skills, nodes = self.retrieve(text)
 
-        return func_names
+        if self.use_exemplar:
+            skill_prompts, owners = self.build_prompts_by_examples(text, nodes, to_snake)
+            skill_outputs = self.generator.generate(GenerateMode.exemplar, skill_prompts)
+            functions = self.parse_results(skill_prompts, owners, skill_outputs)
+            if len(functions) != 0:
+                return functions
+
+        if self.use_exemplar:
+            skill_prompts, owners = self.build_prompts_by_desc(text, skills, to_snake)
+            skill_outputs = self.generator.generate(GenerateMode.desc, skill_prompts)
+            return self.parse_results(skill_prompts, owners, skill_outputs)
+
+        return []
 
 
 class Converter:
@@ -321,12 +217,8 @@ class Converter:
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r"\[([^]]*)\]")
         self.skill_converter = None
-        if LugConfig.skill_mode == "instance":
-            self.skill_converter = ISkillConverter(retriever, generator)
-        if LugConfig.skill_mode == "binary":
-            self.skill_converter = BSkillConverter(retriever, generator)
-        if LugConfig.skill_mode == "multiclass":
-            self.skill_converter = MSkillConverter(retriever, generator)
+
+        self.skill_converter = ISkillConverter(retriever, generator)
         self.nli_labels = {"entailment": True, "neutral": None, "contradiction": False}
 
     def understand(
@@ -344,6 +236,7 @@ class Converter:
         if not self.retrieve.module.has_module(func_name):
             print(f"{func_name} is not recognized.")
             return None
+
         if not self.with_arguments:
             return FrameValue(name=func_name, arguments={})
 
@@ -363,7 +256,7 @@ class Converter:
 
         if LugConfig.converter_debug:
             print(json.dumps(slot_prompts, indent=2))
-        slot_outputs = self.generator.for_extractive_slot(slot_prompts)
+        slot_outputs = self.generator.generate(GenerateMode.extractive, slot_prompts)
 
         if LugConfig.converter_debug:
             print(json.dumps(slot_outputs, indent=2))

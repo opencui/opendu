@@ -137,12 +137,17 @@ BinarySkillPrompts = {
     ),
 }
 
-InstancePrompts = {
-    "default": (
-        Prompt(
-            'Does the sentence: "{{utterance}}", fit the description: "{{skill.description}}"? Answer only in true or false:'
-        ),
-        Prompt('Does the sentence: "{{utterance}}", means the same as: "{{template}}"? Answer only in true or false:'),
+
+DescriptionPrompts = {
+    "default": Prompt(
+        'Does "{{utterance}}" fit the description "{{skill.description}}"? True of false?'
+    ),
+}
+
+# This should have the same exact key as the above prompt dictionary.
+ExemplarPrompts = {
+    "default": Prompt(
+        'Does "{{utterance}}" mean the same as the example: "{{template}}"? True or false?'
     ),
 }
 

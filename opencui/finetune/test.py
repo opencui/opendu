@@ -46,6 +46,7 @@ if __name__ == "__main__":
     for factory in factories:
         dataset = factory[tag]
         for item in dataset:
+            print(item)
             # We only support snake function name.
             target = to_snake.encode(item["owner"])
             arguments = item["arguments"]

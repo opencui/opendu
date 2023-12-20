@@ -6,6 +6,7 @@ import re
 from abc import ABC
 from collections import defaultdict
 from dataclasses import dataclass
+from enum import Enum
 from random import sample, seed
 from typing import Optional
 
@@ -14,7 +15,7 @@ from datasets import Dataset, load_dataset
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode
 
-from opencui import Prompt, MulticlassSkillPrompts, BinarySkillPrompts, InstancePrompts
+from opencui import Prompt, MulticlassSkillPrompts, BinarySkillPrompts, ExemplarPrompts, DescriptionPrompts
 from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode
 from opencui.core.config import LugConfig
 from opencui.core.retriever import HybridRetriever, create_index, ContextRetriever
@@ -433,14 +434,19 @@ class OneSkillTrainConverter(TrainConverter):
                 outs.append(f"{json.dumps(owner == target and OwnerMode[owner_mode] == OwnerMode.normal)}</s>")
 
 
+InstanceMode = Enum("InstanceMode", ["desc", "example", "both"])
+
+
 # For this one, we first use example based prediction, and then description based prediction.
 class InstanceTrainConverter(TrainConverter):
-    def __init__(self, retriever: ContextRetriever):
-        self.desc_prompt = InstancePrompts[LugConfig.skill_prompt][0]
-        self.example_prompt = InstancePrompts[LugConfig.skill_prompt][1]
+    def __init__(self, retriever: ContextRetriever, mode=InstanceMode.both):
+        # Make sure that we have the same key for Desc and exemplar prompt.
+        self.desc_prompt = DescriptionPrompts[LugConfig.skill_prompt]
+        self.example_prompt = ExemplarPrompts[LugConfig.skill_prompt]
         self.context_retrieve = retriever
         self.neg_k = 1
         self.match_mode = OwnerMode.normal
+        self.mode = mode
 
     def extra_tokens(self):
         return self.desc_prompt.extra_tokens + self.example_prompt.extra_tokens
@@ -466,6 +472,8 @@ class InstanceTrainConverter(TrainConverter):
 
             # First handle exemplars.
             for exemplar in exemplars:
+                if self.mode == InstanceMode.desc:
+                    continue
                 target = exemplar.owner
                 # Try not to have more than two examples.
                 input_dict = {"utterance": utterance, "template": exemplar.template}
@@ -474,6 +482,8 @@ class InstanceTrainConverter(TrainConverter):
 
             # Then descriptions.
             for skill in skills:
+                if self.mode == InstanceMode.example:
+                    continue
                 input_dict = {"utterance": utterance, "skill": skill}
                 ins.append(self.desc_prompt(input_dict))
                 outs.append(f"{json.dumps(owner == skill['name'] and exact_match)}</s>")
