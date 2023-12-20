@@ -104,6 +104,7 @@ class SchemaStore:
 
 OwnerMode = Enum('OwnerMode', ["normal", "extended"])
 
+
 @dataclass_json
 @dataclass
 class FrameValue:
