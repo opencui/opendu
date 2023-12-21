@@ -16,7 +16,7 @@ class LugConfig:
     desc_retrieve_topk = 6
     exemplar_retrieve_topk = 32
     exemplar_retrieve_arity = 6
-    
+
     skill_arity = 1
     llm_device = "cuda:0"
 
@@ -25,6 +25,7 @@ class LugConfig:
     nli_prompt = "default"
 
     # We will append instance.desc/instance.exemplar to this.
+    generator = "FftGenerator"
     skill_model = "OpenCUI/skill-tinyllama-0.1"
     extractive_slot_model = "OpenCUI/extractive-tinyllama2.5t-1.0"
     nli_model = ""

@@ -22,9 +22,9 @@ python3 opencui/finetune/generation.py \
     --do_eval \
     --warmup_ratio 0.05 \
     --lr_scheduler_type constant \
-    --source_max_len 512 \
+    --source_max_len 256 \
     --target_max_len 32 \
-    --per_device_train_batch_size 64 \
+    --per_device_train_batch_size 16 \
     --max_steps 0 \
     --num_train_epochs 4 \
     --learning_rate 3e-5 \
@@ -34,6 +34,6 @@ python3 opencui/finetune/generation.py \
     --seed 0 \
     --debug_dataset False \
     --training_mode skill \
-    --peft_mode lora \
+    --peft_mode null \
     --trust_remote_code \
     --report_to wandb

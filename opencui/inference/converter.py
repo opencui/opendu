@@ -37,9 +37,8 @@ class Generator(ABC):
 
 
 # This should be desc/exemplar based.
-class LocalGenerator(Generator, ABC):
+class LoraGenerator(Generator, ABC):
     def __init__(self):
-
         parts = LugConfig.skill_model.split("/")
 
         desc_model = f"{parts[0]}/desc-{parts[1]}"
@@ -106,6 +105,53 @@ class LocalGenerator(Generator, ABC):
         ]
 
 
+# Full finetuned generator
+class FftGenerator(Generator, ABC):
+    def __init__(self):
+        # Is this the right place to clean cache.
+        torch.cuda.empty_cache()
+        self.model = AutoModelForCausalLM.from_pretrained(
+            LugConfig.model,
+            return_dict=True,
+            device_map=LugConfig.llm_device,
+            trust_remote_code=True,
+            torch_dtype=torch.bfloat16
+        )
+
+        self.tokenizer = AutoTokenizer.from_pretrained(LugConfig.model)
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.tokenizer.padding_side = "left"
+
+        # Move to device
+        self.model.to(LugConfig.llm_device)
+
+    def generate(self, mode: GenerateMode, input_texts: list[str]):
+        encoding = self.tokenizer(
+            input_texts, padding=True, return_tensors="pt"
+        ).to(LugConfig.llm_device)
+
+        with torch.no_grad():
+            peft_outputs = self.model.generate(
+                input_ids=encoding.input_ids,
+                generation_config=GenerationConfig(
+                    max_new_tokens=32,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                    eos_token_id=self.tokenizer.eos_token_id,
+                    attention_mask=encoding.attention_mask,
+                    do_sample=False,
+                    repetition_penalty=1.2,
+                    num_return_sequences=1,
+                ),
+            )
+        outputs = self.tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
+        return [
+            output[len(input_texts[index]):] for index, output in enumerate(outputs)
+        ]
+
+
+GeneratorType = Enum("Generator", ["FftGenerator", "LoraGenerator"])
+
+
 class SkillConverter(ABC):
     @abstractmethod
     def get_skill(self, text) -> list[str]:
@@ -120,7 +166,7 @@ def parse_json_from_string(text, default=None):
 
 
 class ISkillConverter(SkillConverter):
-    def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
+    def __init__(self, retriever: ContextRetriever, generator):
         self.retrieve = retriever
         self.generator = generator
         self.desc_prompt = DescriptionPrompts[LugConfig.skill_prompt]
@@ -202,7 +248,6 @@ class Converter:
             self,
             retriever: ContextRetriever,
             entity_metas: EntityMetas = None,
-            generator=LocalGenerator(),
             with_arguments=True,
     ):
         self.retrieve = retriever
@@ -210,15 +255,22 @@ class Converter:
         if entity_metas is not None:
             self.recognizer = ListRecognizer(entity_metas)
 
-        self.generator = generator
+        self.generator = Converter.generator()
         self.slot_prompt = ExtractiveSlotPrompts[LugConfig.slot_prompt]
         self.nli_prompt = NliPrompts[LugConfig.nli_prompt]
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r"\[([^]]*)\]")
         self.skill_converter = None
 
-        self.skill_converter = ISkillConverter(retriever, generator)
+        self.skill_converter = ISkillConverter(retriever, self.generator)
         self.nli_labels = {"entailment": True, "neutral": None, "contradiction": False}
+
+    @staticmethod
+    def generator():
+        if GeneratorType[LugConfig.generator] == GeneratorType.FftGenerator:
+            return FftGenerator()
+        if GeneratorType[LugConfig.generator] == GeneratorType.LoraGenerator:
+            return LoraGenerator()
 
     def understand(
             self, text: str, expectation: DialogExpectation = None

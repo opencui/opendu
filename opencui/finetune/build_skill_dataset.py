@@ -35,15 +35,17 @@ def build_skill_factory(output, factory, mode, index=True):
 if __name__ == "__main__":
     path = "./datasets/sgd"
     tag = "sgd"
-    skill_mode = "desc"
+
     factory = JsonDatasetFactory(path, tag)
-    prompted_factory = build_skill_factory(path, factory, mode=skill_mode, index=True)
-    json.dump(prompted_factory.extra_tokens(), open(f"{path}/extra.tokens", "w"))
-    tags = ["train", "test", "validation"]
-    for tag in tags:
-        examples = prompted_factory[tag]
-        with open(f"{path}/{skill_mode}-{LugConfig.skill_prompt}.{tag}.jsonl", "w") as file:
-            print(f"there are {len(examples)} examples left for {tag}.")
-            for example in examples:
-                file.write(f"{json.dumps(example)}\n")
+    # this should build both desc and exemplar dataset
+    for skill_mode in ["desc", "exemplar"]:
+        prompted_factory = build_skill_factory(path, factory, mode=skill_mode, index=True)
+        json.dump(prompted_factory.extra_tokens(), open(f"{path}/extra.tokens", "w"))
+        tags = ["train", "test", "validation"]
+        for tag in tags:
+            examples = prompted_factory[tag]
+            with open(f"{path}/{skill_mode}-{LugConfig.skill_prompt}.{tag}.jsonl", "w") as file:
+                print(f"there are {len(examples)} examples left for {tag}.")
+                for example in examples:
+                    file.write(f"{json.dumps(example)}\n")
 
