@@ -22,7 +22,7 @@ if __name__ == "__main__":
     # Save the things to disk first.
     desc_nodes = []
     exemplar_nodes = []
-    tag = "train"
+    tag = "test"
     for factory in factories:
         build_nodes_from_skills(factory.tag, factory.schema.skills, desc_nodes)
         build_nodes_from_dataset(factory.tag, factory[tag], exemplar_nodes)
@@ -44,12 +44,18 @@ if __name__ == "__main__":
 
     counts = {
         "exemplar": [0, 0, 0, 0],
-        "desc": [0, 0, 0, 0]
+        "desc": [0, 0, 0, 0],
+        "skill": [0, 0]
     }
 
+    total = 0
+    max = -1
     for factory in factories:
         dataset = factory[tag]
         for item in dataset:
+            if 0 < max < total:
+                break
+            total += 1
             # We only support snake function name.
             owner = to_snake.encode(item["owner"])
             arguments = item["arguments"]

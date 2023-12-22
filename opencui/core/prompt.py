@@ -157,7 +157,14 @@ DescriptionPrompts = {
         '<func_name> {{skill.name}} </func_name> with its description: <func_desc> {{skill.description}} </func_desc>, '
         'decide whether <utterance> {{utterance}} </utterance> means this function.'
         'The answer is'
-    )
+    ),
+    "struct-token1": Prompt(
+        'Given:\n'
+        'the utterance: <utterance> {{utterance}} </utterance>\n'  
+        'the function description: <func_desc> {{skill.description}} </func_desc>\n'
+        'Is it true that the utterance fit the function description?'
+        '<desc> The answer is '
+    ),
 }
 
 # This should have the same exact key as the above prompt dictionary.
@@ -179,6 +186,13 @@ ExemplarPrompts = {
         'Given the template <template> {{template}} </template>, '
         'decide whether <utterance> {{utterance}} </utterance> means the same as this template.'
         'The answer is '
+    ),
+    "struct-token1": Prompt(
+        'Given:\n'
+        'the utterance: <utterance> {{utterance}} </utterance>\n'  
+        'the template: <template> {{template}} </template>\n'
+        'Is it true that the utterance means the same as the template?'
+        '<exemplar> The answer is '
     ),
 }
 
