@@ -472,7 +472,6 @@ class InstanceTrainConverter(TrainConverter):
             ]
             owner = batch["owner"][idx]
             exact_match = self.is_match(batch["owner_mode"][idx])
-            exact_match = True
             skill_map = {}
 
             # First handle exemplars.

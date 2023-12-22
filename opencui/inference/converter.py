@@ -158,7 +158,7 @@ class SkillConverter(ABC):
         pass
 
     @abstractmethod
-    def grade(self, text, owner):
+    def grade(self, text, owner, owner_mode, counts_dict):
         pass
 
 
@@ -258,7 +258,7 @@ class ISkillConverter(SkillConverter, ABC):
             index += 1 if pair[1] else 0
             counts[index] += 1
 
-    def grade(self, text, owner, owner_mode, counts):
+    def grade(self, text, owner, owner_mode, count_dict):
         to_snake = CamelToSnake()
         # nodes owner are always included in the
         skills, nodes = self.retrieve(text)
@@ -273,8 +273,8 @@ class ISkillConverter(SkillConverter, ABC):
         truth = [owner == lowner and OwnerMode[owner_mode] == OwnerMode.normal for lowner in owners]
         assert len(preds) == len(truth)
 
-        if "exemplar" in counts:
-            self.update(preds, truth, counts["exemplar"], skill_prompts, skill_outputs)
+        if "exemplar" in count_dict:
+            self.update(preds, truth, count_dict["exemplar"], skill_prompts, skill_outputs)
 
         # for desc
         skill_prompts, owners = self.build_prompts_by_desc(text, skills, to_snake)
@@ -285,8 +285,8 @@ class ISkillConverter(SkillConverter, ABC):
         ]
         truth = [owner == lowner and OwnerMode[owner_mode] == OwnerMode.normal for lowner in owners]
         assert len(preds) == len(truth)
-        if "desc" in counts:
-            self.update(preds, truth, counts["desc"], skill_prompts, skill_outputs)
+        if "desc" in count_dict:
+            self.update(preds, truth, count_dict["desc"], skill_prompts, skill_outputs)
 
 
 class Converter:
