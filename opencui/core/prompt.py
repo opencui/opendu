@@ -180,6 +180,12 @@ ExemplarPrompts = {
         'decide whether <utterance> {{utterance}} </utterance> means the same as this template.'
         'The answer is '
     ),
+    "struct-token1": Prompt(
+        'Is it true that the following input means the same as the template?'
+        'Given the template <template> {{template}} </template>, '
+        'decide whether <utterance> {{utterance}} </utterance> means the same as this template.'
+        'The answer is '
+    ),
 }
 
 # For the slots of enum type, we used different prompt in order to improve the

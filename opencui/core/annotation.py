@@ -105,6 +105,29 @@ class SchemaStore:
 OwnerMode = Enum('OwnerMode', ["normal", "extended"])
 
 
+# This considers the match under the exact sense.
+class ExactMatcher:
+    @staticmethod
+    def agree(owner, owner_mode, target, target_mode):
+        label_match = owner == target
+        if not label_match:
+            return label_match
+
+        # We should not use this example.
+        if OwnerMode[owner_mode] != OwnerMode.normal and OwnerMode[target_mode] != OwnerMode.normal:
+            return None
+
+        # now we have match, but mode does not match.
+        if OwnerMode[owner_mode] != OwnerMode.normal or OwnerMode[target_mode] != OwnerMode.normal:
+            return False
+
+        return True
+
+    @staticmethod
+    def match(owner, mode_in_str):
+        OwnerMode[mode_in_str] == OwnerMode.normal
+
+
 @dataclass_json
 @dataclass
 class FrameValue:

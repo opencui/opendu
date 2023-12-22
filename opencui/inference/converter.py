@@ -1,6 +1,7 @@
 import json
 import re
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from enum import Enum
 
 import torch
@@ -169,6 +170,30 @@ def parse_json_from_string(text, default=None):
         return default
 
 
+# This is used to pick the owner by first accumulate on the exemplars by weight 2
+# then accumulate on desc by weight 1.
+class OwnerPicker:
+    def __init__(self):
+        self.counts = defaultdict(int)
+        # This we make sure that
+        self.modes = [OwnerMode.normal]
+
+    def accumulate(self, flags: list[bool], owners:list[str], weight=2) -> str:
+        assert len(flags) == len(owners)
+        for index, flag in enumerate(flags):
+            if flag:
+                self.counts[owners[index]] += weight
+
+    def decide(self, owner, owner_mode, counts):
+        pairs = list(self.counts.items())
+        pairs.sort(key=lambda x: -x[1])
+        pred = None if len(pairs) == 0 else pairs[0][0]
+        if pred == owner and OwnerMode[owner_mode] in self.modes:
+            counts[1] += 1
+        else:
+            counts[0] += 1
+
+
 class ISkillConverter(SkillConverter, ABC):
     def __init__(self, retriever: ContextRetriever, generator):
         self.retrieve = retriever
@@ -253,12 +278,14 @@ class ISkillConverter(SkillConverter, ABC):
             if pair[0] != pair[1]:
                 print(f"{skill_prompts[index]} {skill_outputs[index]}, not correct.")
 
+        pairs = zip(preds, truth)
         for pair in pairs:
             index = 2 if pair[0] else 0
             index += 1 if pair[1] else 0
             counts[index] += 1
 
     def grade(self, text, owner, owner_mode, count_dict):
+        picker = OwnerPicker()
         to_snake = CamelToSnake()
         # nodes owner are always included in the
         skills, nodes = self.retrieve(text)
@@ -272,9 +299,8 @@ class ISkillConverter(SkillConverter, ABC):
         ]
         truth = [owner == lowner and OwnerMode[owner_mode] == OwnerMode.normal for lowner in owners]
         assert len(preds) == len(truth)
-
-        if "exemplar" in count_dict:
-            self.update(preds, truth, count_dict["exemplar"], skill_prompts, skill_outputs)
+        picker.accumulate(preds, owners, 2)
+        self.update(preds, truth, count_dict["exemplar"], skill_prompts, skill_outputs)
 
         # for desc
         skill_prompts, owners = self.build_prompts_by_desc(text, skills, to_snake)
@@ -285,8 +311,11 @@ class ISkillConverter(SkillConverter, ABC):
         ]
         truth = [owner == lowner and OwnerMode[owner_mode] == OwnerMode.normal for lowner in owners]
         assert len(preds) == len(truth)
-        if "desc" in count_dict:
-            self.update(preds, truth, count_dict["desc"], skill_prompts, skill_outputs)
+
+        self.update(preds, truth, count_dict["desc"], skill_prompts, skill_outputs)
+
+        picker.accumulate(preds, owners, 1)
+        picker.decide(owner, owner_mode, count_dict["skill"])
 
 
 class Converter:

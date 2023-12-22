@@ -15,8 +15,9 @@ from datasets import Dataset, load_dataset
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode
 
-from opencui import Prompt, MulticlassSkillPrompts, BinarySkillPrompts, ExemplarPrompts, DescriptionPrompts, BoolPrompts
-from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode
+from opencui import Prompt, MulticlassSkillPrompts, BinarySkillPrompts, ExemplarPrompts, DescriptionPrompts, \
+    BoolPrompts
+from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher
 from opencui.core.config import LugConfig
 from opencui.core.retriever import HybridRetriever, create_index, ContextRetriever
 from opencui.finetune.embedding import (
@@ -445,8 +446,8 @@ class InstanceTrainConverter(TrainConverter):
         self.example_prompt = ExemplarPrompts[LugConfig.skill_prompt]
         self.context_retrieve = retriever
         self.neg_k = 1
-        self.match_mode = OwnerMode.normal
         self.mode = mode
+        self.matcher = ExactMatcher
 
     @staticmethod
     def label(value):
@@ -455,9 +456,6 @@ class InstanceTrainConverter(TrainConverter):
 
     def extra_tokens(self):
         return self.desc_prompt.extra_tokens + self.example_prompt.extra_tokens
-
-    def is_match(self, mode_in_str):
-        return OwnerMode[mode_in_str] == self.match_mode
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # Working on the batched dataset, with first dimension is column then index.
@@ -471,18 +469,20 @@ class InstanceTrainConverter(TrainConverter):
                 for node in nodes
             ]
             owner = batch["owner"][idx]
-            exact_match = self.is_match(batch["owner_mode"][idx])
-            skill_map = {}
+            owner_mode = batch["owner_mode"][idx]
 
             # First handle exemplars.
             for exemplar in exemplars:
                 if self.mode == InstanceMode.desc:
                     continue
-                target = exemplar.owner
+                match_status = self.matcher.agree(owner, owner_mode, exemplar.owner, exemplar.owner_mode)
+                if match_status is None:
+                    continue
+
                 # Try not to have more than two examples.
                 input_dict = {"utterance": utterance, "template": exemplar.template}
                 ins.append(self.example_prompt(input_dict))
-                outs.append(f"{self.label(owner == target and exact_match and self.is_match(exemplar.owner_mode))}")
+                outs.append(f"{self.label(match_status)}")
 
             # Then descriptions.
             for skill in skills:
@@ -490,8 +490,7 @@ class InstanceTrainConverter(TrainConverter):
                     continue
                 input_dict = {"utterance": utterance, "skill": skill}
                 ins.append(self.desc_prompt(input_dict))
-                outs.append(f"{self.label(owner == skill['name'] and exact_match)}")
-                skill_map[skill["name"]] = skill
+                outs.append(f"{self.label(owner == skill['name'] and self.matcher.match(owner, owner_mode))}")
 
 
 #
