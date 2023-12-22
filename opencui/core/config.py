@@ -13,23 +13,22 @@ class LugConfig:
     embedding_desc_prompt = "baai_desc"
     embedding_exemplar_prompt = "baai_exemplar"
 
-    desc_retriever_mode = "embedding"
-    exemplar_retriever_mode = "OR"
-    desc_retrieve_topk = 4
-    exemplar_retrieve_topk = 16
-    exemplar_retrieve_arity = 4
+    desc_retrieve_topk = 6
+    exemplar_retrieve_topk = 32
+    exemplar_retrieve_arity = 6
 
-    # multiclass, classification, simple
-    # should move this to training only, eventually.
-    skill_mode = "instance.exemplar"
     skill_arity = 1
     llm_device = "cuda:0"
 
-    skill_prompt = "default"
+    skill_prompt = "struct-token"
     slot_prompt = "default"
     nli_prompt = "default"
+    bool_prompt = "default"
 
     # We will append instance.desc/instance.exemplar to this.
+    generator = "FftGenerator"
+    model="./output/tinyllama2.5t-st/checkpoint-5580/"
+
     skill_model = "OpenCUI/skill-tinyllama-0.1"
     extractive_slot_model = "OpenCUI/extractive-tinyllama2.5t-1.0"
     nli_model = ""

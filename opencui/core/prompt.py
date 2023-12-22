@@ -55,9 +55,9 @@ class ObjectLister:
 # Assume the source have examples, slots, skills, values as well as utterance.
 # This prompt template is designed to address template for full skill.
 class Prompt:
-    def __init__(self, source: str, extra_tokens=[]):
+    def __init__(self, source: str):
         self.template = Compiler().compile(source)
-        self.extra_tokens = extra_tokens
+        self.extra_tokens = []
         self.helpers = {
             "list_examples": ObjectLister(),
             "list_skills": ObjectLister(
@@ -140,14 +140,45 @@ BinarySkillPrompts = {
 
 DescriptionPrompts = {
     "default": Prompt(
-        'Does "{{utterance}}" fit the description "{{skill.description}}"? True of false?'
+        'Is it true that "{{utterance}}" fits the description "{{skill.description}}"?'
     ),
+    "structural": Prompt(
+        '### Instruction:\n'
+        'Decide whether the input fit the function {{skill.name}} with description: {{skill.description}}.'
+        '### Input:\n'
+        '{{utterance}}'
+        '### Answer(only in "true" or "false"):'
+    ),
+    "token": Prompt(
+        '<utterance> {{utterance}} </utterance> <func> {{skill.name}} : {{skill.description}} </func> <description>'
+    ),
+    "struct-token": Prompt(
+        'Given the function '
+        '<func_name> {{skill.name}} </func_name> with its description: <func_desc> {{skill.description}} </func_desc>, '
+        'decide whether <utterance> {{utterance}} </utterance> means this function.'
+        'The answer is'
+    )
 }
 
 # This should have the same exact key as the above prompt dictionary.
 ExemplarPrompts = {
     "default": Prompt(
-        'Does "{{utterance}}" mean the same as the example: "{{template}}"? True or false?'
+        'Is it true that "{{utterance}}" means the same as the example: "{{template}}"?'
+    ),
+    "structural": Prompt(
+        '### Instruction:\n'
+        'Decide whether the input means the same as the template: <>{{template}}.'
+        '### Input:\n'
+        '{{utterance}}'
+        '### Answer(only in "true" or "false"):'
+    ),
+    "token": Prompt(
+        '<utterance> {{utterance}} </utterance> <exemplar> {{template}} </exemplar> <exemplar>'
+    ),
+    "struct-token": Prompt(
+        'Given the template <template> {{template}} </template>, '
+        'decide whether <utterance> {{utterance}} </utterance> means the same as this template.'
+        'The answer is '
     ),
 }
 
@@ -169,4 +200,10 @@ NliPrompts = {
     "boolq": Prompt(
         'Given the premise: "{{premise}}", the hypothesis: "{{hypothesis}}" is its '
     ),
+}
+
+BoolPrompts = {
+    "default": Prompt('{{label}}</s>'),
+    "truefalse": Prompt('{{label}}</true_false_response></s>'),
+    "yesno": Prompt('{{label}}</yes_no_response></s>')
 }

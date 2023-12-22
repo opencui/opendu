@@ -42,22 +42,18 @@ if __name__ == "__main__":
 
     converter = Converter(context_retriever)
 
-    counts = [0, 0]
+    counts = {
+        "exemplar": [0, 0, 0, 0],
+        "desc": [0, 0, 0, 0]
+    }
+
     for factory in factories:
         dataset = factory[tag]
         for item in dataset:
-            print(item)
             # We only support snake function name.
-            target = to_snake.encode(item["owner"])
+            owner = to_snake.encode(item["owner"])
             arguments = item["arguments"]
-            owner_mode = OwnerMode[item["owner_mode"]]
+            owner_mode = item["owner_mode"]
+            converter.skill_converter.grade(item["utterance"], owner, owner_mode, counts)
 
-            result = converter.understand(item["utterance"])
-            if result and result.name == target and OwnerMode[item["owner_mode"]] == OwnerMode.normal:
-                counts[1] += 1
-            else:
-                counts[0] += 1
-                print(item["utterance"])
-                print(f"{result} != {target} for {item['utterance']} \n")
-                exit(0)
     print(counts)

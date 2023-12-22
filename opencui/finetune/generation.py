@@ -13,10 +13,13 @@ import numpy as np
 import torch
 import transformers
 from datasets import Dataset, concatenate_datasets, load_dataset
-from peft import LoraConfig, get_peft_model
+from peft import LoraConfig, get_peft_model, TaskType, PrefixTuningConfig
 from torch.nn.utils.rnn import pad_sequence
-from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed)
+from tqdm import tqdm
+from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed,
+                          get_linear_schedule_with_warmup)
 from opencui.core.prompt import (ExtractiveSlotPrompts, NliPrompts)
+from opencui.core.special_tokens import SpecialTokens
 from opencui.finetune.commons import (MappedDatasetDict, collect_slot_values, JsonDatasetFactory,
                                       OneSlotExtractConverter, PromptedFactory, NliConverter)
 
@@ -168,6 +171,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
         default=False, metadata={"help": "print out dataset instead"}
     )
     training_mode: str = field(default="skill", metadata={"help": "skill or slot"})
+    peft_mode: str = field(default="null", metadata={"help": "lora or prompt-tuning"})
 
 
 @dataclass
@@ -204,30 +208,6 @@ class GenerationArguments:
     no_repeat_ngram_size: Optional[int] = field(default=0)
 
 
-def get_lora_config():
-    lora_alpha = 16  # 16
-    lora_dropout = 0.05  # 0.1
-    lora_rank = 8  # 64
-
-    return LoraConfig(
-        lora_alpha=lora_alpha,
-        lora_dropout=lora_dropout,
-        r=lora_rank,
-        bias="none",
-        task_type="CAUSAL_LM",
-        target_modules=[
-            "q_proj",
-            "k_proj",
-            "v_proj",
-            "o_proj",
-            "gate_proj",
-            "down_proj",
-            "up_proj",
-            "lm_head",
-        ],
-    )
-
-
 def get_accelerate_model(args, extra_special_tokens: set[str], peft_config=None):
     device_map = "auto"
 
@@ -245,13 +225,13 @@ def get_accelerate_model(args, extra_special_tokens: set[str], peft_config=None)
     )
 
     if peft_config is not None:
-        print("Using lora instead.")
+        print("Using peft instead.")
         model = get_peft_model(model, peft_config)
         model.config.use_cache = False
-        # Do not know what this actually does.
+        # Using torch.bfloat16
         for name, module in model.named_modules():
             if "norm" in name:
-                module = module.to(torch.bfloat16)
+                module.to(torch.bfloat16)
 
     # Tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
@@ -264,6 +244,9 @@ def get_accelerate_model(args, extra_special_tokens: set[str], peft_config=None)
     if tokenizer._pad_token is None:
         DEFAULT_PAD_TOKEN = "[PAD]"
         special_tokens_dict = dict(pad_token=DEFAULT_PAD_TOKEN)
+
+    # We add some special tokens.
+    special_tokens_dict['additional_special_tokens'] = SpecialTokens.list()
 
     special_tokens_dict.update(additional_special_tokens=list(extra_special_tokens))
 
@@ -432,7 +415,55 @@ def get_last_checkpoint(checkpoint_dir):
     return None, False  # first training
 
 
-def train(peft_config=None):
+def train_loop(model, tokenizer, train_dataloader, args):
+    device = "cuda:0"
+    model = model.to(device)
+    num_epochs = args.num_training_epochs
+
+    # optimizer and lr scheduler
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
+    lr_scheduler = get_linear_schedule_with_warmup(
+        optimizer=optimizer,
+        num_warmup_steps=0,
+        num_training_steps=(len(train_dataloader) * num_epochs),
+    )
+
+    for epoch in range(num_epochs):
+        model.train()
+        total_loss = 0
+        for step, batch in enumerate(tqdm(train_dataloader)):
+            batch = {k: v.to(device) for k, v in batch.items()}
+            outputs = model(**batch)
+            loss = outputs.loss
+            total_loss += loss.detach().float()
+            loss.backward()
+            optimizer.step()
+            lr_scheduler.step()
+            optimizer.zero_grad()
+
+        """
+        model.eval()
+        eval_loss = 0
+        eval_preds = []
+        for step, batch in enumerate(tqdm(eval_dataloader)):
+            batch = {k: v.to(device) for k, v in batch.items()}
+            with torch.no_grad():
+                outputs = model(**batch)
+            loss = outputs.loss
+            eval_loss += loss.detach().float()
+            eval_preds.extend(
+                tokenizer.batch_decode(torch.argmax(outputs.logits, -1).detach().cpu().numpy(), skip_special_tokens=True)
+            )
+        
+        eval_epoch_loss = eval_loss / len(eval_dataloader)
+        eval_ppl = torch.exp(eval_epoch_loss)
+        train_epoch_loss = total_loss / len(train_dataloader)
+        train_ppl = torch.exp(train_epoch_loss)
+        print(f"{epoch=}: {train_ppl=} {train_epoch_loss=} {eval_ppl=} {eval_epoch_loss=}")
+        """
+
+
+def train():
     hfparser = transformers.HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments, GenerationArguments)
     )
@@ -452,33 +483,41 @@ def train(peft_config=None):
         **vars(model_args), **vars(data_args), **vars(training_args)
     )
 
+    peft_config = None
+    if args.peft_mode == "lora":
+        peft_config = get_lora_config()
+    if args.peft_mode == "prefix":
+        peft_config = PrefixTuningConfig(
+            task_type=TaskType.CAUSAL_LM,
+            num_virtual_tokens=8
+        )
+
     # For now, just use the fix path.
     output = "../output"
 
     # Save the things to disk first, for training we keep each module separate.
     # Down the road, we might
     converted_factories = []
-    if args.training_mode == "skill":
-        converted_factories = build_skill_factory(output)
-    if args.training_mode == "extractive_slot":
-        converted_factories = build_extractive_slot_factory()
-    if args.training_mode == "nli":
-        converted_factories = build_nli_factory()
+    if "desc" in args.training_mode == "desc":
+        build_skill_factory(["desc"], converted_factories)
+    if "exemplar" in args.training_mode:
+        build_skill_factory(["exemplar"], converted_factories)
+    if "extractive_slot" in args.training_mode:
+        build_extractive_slot_factory(converted_factories)
+    if "nli" in args.training_mode:
+        build_nli_factory(converted_factories)
 
     assert len(converted_factories) != 0
 
     # If we debug dataset, we do not train.
     if args.debug_dataset:
+        count = 0
         for factory in converted_factories:
             ds = factory.__getitem__("train")
-            count = [0, 0]
             for item in ds:
-                if item["output"] == "null</s>":
-                    count[0] += 1
-                else:
-                    count[1] += 1
                 print(json.dumps(item, indent=2))
-            print(count)
+                count += 1
+        print(count)
         exit(0)
 
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
@@ -505,7 +544,6 @@ def train(peft_config=None):
     data_module = make_data_module(
         data_collator=data_collator, args=args, converters=converted_factories
     )
-    print("prepared data.")
 
     trainer = Seq2SeqTrainer(
         model=model,
@@ -531,16 +569,20 @@ def train(peft_config=None):
     all_metrics = {"run_name": args.run_name}
 
     # Training
+    self_roll = False
     if args.do_train:
         logger.info("*** Train ***")
         # Note: `resume_from_checkpoint` not supported for adapter checkpoints by HF.
         # Currently, adapter checkpoint is reloaded as expected but optimizer/scheduler states are not.
-        train_result = trainer.train()
-        metrics = train_result.metrics
-        trainer.log_metrics("train", metrics)
-        trainer.save_metrics("train", metrics)
-        trainer.save_state()
-        all_metrics.update(metrics)
+        if not self_roll:
+            train_result = trainer.train()
+            metrics = train_result.metrics
+            trainer.log_metrics("train", metrics)
+            trainer.save_metrics("train", metrics)
+            trainer.save_state()
+            all_metrics.update(metrics)
+        else:
+            train_loop(model, data_collator, args)
 
         # append save the config
         shutil.copy("./opencui/finetune/generation.sh", f"{args.output_dir}/")
@@ -584,19 +626,18 @@ def train(peft_config=None):
 
 
 # Here we create the dataset factory for skills
-def build_skill_factory(output):
+def build_skill_factory(skill_modes, factories):
     # make sure run build_skill_dataset first.
-    factories = [
-        JsonDatasetFactory("./datasets/sgd/", "sgd", f"{LugConfig.skill_mode}-{LugConfig.skill_prompt}."),
-    ]
-    return factories
+    for skill_mode in skill_modes:
+        factories.append(
+            JsonDatasetFactory("./datasets/sgd/", "sgd", f"{skill_mode}-{LugConfig.skill_prompt}.")
+        )
 
 
-def build_extractive_slot_factory():
+def build_extractive_slot_factory(converted_factories):
     factories = [
         JsonDatasetFactory("./datasets/sgd/", "sgd"),
     ]
-    converted_factories = []
     for index, factory in enumerate(factories):
         entity_values = collect_slot_values(factory.__getitem__("train"))
         slot_converter = OneSlotExtractConverter(
@@ -604,18 +645,14 @@ def build_extractive_slot_factory():
         )
         converted_factories.append(PromptedFactory(factory, [slot_converter]))
 
-    return converted_factories
 
-
-def build_nli_factory():
+def build_nli_factory(converted_factories):
     # Here we assume the raw input is sentence, focus and label (positive, negative and neutral)
     semeval2016 = load_dataset("glue", "mnli")
     factories = [MappedDatasetDict(semeval2016, "validation_matched", "validation_mismatched")]
-    converted_factories = []
     for index, factory in enumerate(factories):
         converter = NliConverter(NliPrompts[LugConfig.nli_prompt])
         converted_factories.append(PromptedFactory(factory, [converter], []))
-    return converted_factories
 
 
 def print_factories(factories):
@@ -628,6 +665,29 @@ def print_factories(factories):
         print(f"There are {count} instances")
 
 
+def get_lora_config():
+    lora_alpha = 16  # 16
+    lora_dropout = 0.1  # 0.1
+    lora_rank = 8  # 64
+    # There difference choices, and not much explanation.
+    # https://www.anyscale.com/blog/fine-tuning-llms-lora-or-full-parameter-an-in-depth-analysis-with-llama-2
+    anyscale_blog = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "down_proj", "up_proj", "lm_head"]
+    # https://github.com/huggingface/peft/pull/337/files
+    hf_flavor = ["q_proj", "k_proj", "v_proj", "out_proj", "fc_in", "fc_out", "wte"]
+    #
+    anyscale_code = ["gate_proj", "up_proj", "down_proj"],
+    # According to https://github.com/huggingface/peft/issues/334, this should work, but it does not.
+    modules_to_save = ["lm_head", "embed_tokens"]  # for llama
+    return LoraConfig(
+        lora_alpha=lora_alpha,
+        lora_dropout=lora_dropout,
+        r=lora_rank,
+        bias="none",
+        task_type="CAUSAL_LM",
+        target_modules=anyscale_blog,
+    )
+
+
 if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
@@ -638,4 +698,4 @@ if __name__ == "__main__":
     LugConfig.embedding_device = "cuda:0"
 
     # Now we need to create the converters.
-    train(get_lora_config())
+    train()

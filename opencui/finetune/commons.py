@@ -15,7 +15,7 @@ from datasets import Dataset, load_dataset
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode
 
-from opencui import Prompt, MulticlassSkillPrompts, BinarySkillPrompts, ExemplarPrompts, DescriptionPrompts
+from opencui import Prompt, MulticlassSkillPrompts, BinarySkillPrompts, ExemplarPrompts, DescriptionPrompts, BoolPrompts
 from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode
 from opencui.core.config import LugConfig
 from opencui.core.retriever import HybridRetriever, create_index, ContextRetriever
@@ -448,6 +448,11 @@ class InstanceTrainConverter(TrainConverter):
         self.match_mode = OwnerMode.normal
         self.mode = mode
 
+    @staticmethod
+    def label(value):
+        label_dict = {"label": "true" if value else "false"}
+        return BoolPrompts[LugConfig.bool_prompt](label_dict)
+
     def extra_tokens(self):
         return self.desc_prompt.extra_tokens + self.example_prompt.extra_tokens
 
@@ -478,7 +483,7 @@ class InstanceTrainConverter(TrainConverter):
                 # Try not to have more than two examples.
                 input_dict = {"utterance": utterance, "template": exemplar.template}
                 ins.append(self.example_prompt(input_dict))
-                outs.append(f"{json.dumps(owner == target and exact_match and self.is_match(exemplar.owner_mode))}</s>")
+                outs.append(f"{self.label(owner == target and exact_match and self.is_match(exemplar.owner_mode))}")
 
             # Then descriptions.
             for skill in skills:
@@ -486,7 +491,7 @@ class InstanceTrainConverter(TrainConverter):
                     continue
                 input_dict = {"utterance": utterance, "skill": skill}
                 ins.append(self.desc_prompt(input_dict))
-                outs.append(f"{json.dumps(owner == skill['name'] and exact_match)}</s>")
+                outs.append(f"{self.label(owner == skill['name'] and exact_match)}")
                 skill_map[skill["name"]] = skill
 
 

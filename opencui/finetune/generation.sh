@@ -4,7 +4,7 @@
 #
 python3 opencui/finetune/generation.py \
     --model_name_or_path TinyLlama/TinyLlama-1.1B-intermediate-step-1195k-token-2.5T\
-    --output_dir ./output/tinyllama2.5t-skill \
+    --output_dir ./output/tinyllama2.5t-st \
     --logging_steps 50 \
     --save_strategy epoch \
     --data_seed 42 \
@@ -19,20 +19,20 @@ python3 opencui/finetune/generation.py \
     --logging_strategy steps \
     --remove_unused_columns False \
     --do_train \
-    --do_eval \
     --warmup_ratio 0.05 \
     --lr_scheduler_type constant \
-    --source_max_len 512 \
-    --target_max_len 128 \
+    --source_max_len 256 \
+    --target_max_len 32 \
     --per_device_train_batch_size 16 \
     --max_steps 0 \
     --num_train_epochs 4 \
-    --learning_rate 2e-5 \
+    --learning_rate 3e-5 \
     --adam_beta2 0.999 \
     --max_grad_norm 1.0 \
     --weight_decay 0.0 \
     --seed 0 \
     --debug_dataset False \
-    --training_mode skill \
+    --training_mode desc-exemplar-extractive-slot \
+    --peft_mode null \
     --trust_remote_code \
     --report_to wandb

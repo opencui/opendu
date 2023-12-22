@@ -37,9 +37,8 @@ class Generator(ABC):
 
 
 # This should be desc/exemplar based.
-class LocalGenerator(Generator, ABC):
+class LoraGenerator(Generator, ABC):
     def __init__(self):
-
         parts = LugConfig.skill_model.split("/")
 
         desc_model = f"{parts[0]}/desc-{parts[1]}"
@@ -81,9 +80,8 @@ class LocalGenerator(Generator, ABC):
         self.lora_model.to(LugConfig.llm_device)
 
     def generate(self, mode: GenerateMode, input_texts: list[str]):
-        peft_tokenizer = self.tokenizer
         self.lora_model.set_adapter(mode.name)
-        peft_encoding = peft_tokenizer(
+        peft_encoding = self.tokenizer(
             input_texts, padding=True, return_tensors="pt"
         ).to(LugConfig.llm_device)
 
@@ -92,8 +90,8 @@ class LocalGenerator(Generator, ABC):
                 input_ids=peft_encoding.input_ids,
                 generation_config=GenerationConfig(
                     max_new_tokens=32,
-                    pad_token_id=peft_tokenizer.eos_token_id,
-                    eos_token_id=peft_tokenizer.eos_token_id,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                    eos_token_id=self.tokenizer.eos_token_id,
                     attention_mask=peft_encoding.attention_mask,
                     do_sample=False,
                     repetition_penalty=1.2,
@@ -101,15 +99,66 @@ class LocalGenerator(Generator, ABC):
                 ),
             )
 
-        outputs = peft_tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
+        outputs = self.tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
         return [
             output[len(input_texts[index]):] for index, output in enumerate(outputs)
         ]
 
 
+# Full finetuned generator
+class FftGenerator(Generator, ABC):
+    def __init__(self):
+        # Is this the right place to clean cache.
+        torch.cuda.empty_cache()
+        self.model = AutoModelForCausalLM.from_pretrained(
+            LugConfig.model,
+            return_dict=True,
+            device_map=LugConfig.llm_device,
+            trust_remote_code=True,
+            torch_dtype=torch.bfloat16
+        )
+
+        self.tokenizer = AutoTokenizer.from_pretrained(LugConfig.model)
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.tokenizer.padding_side = "left"
+
+        # Move to device
+        self.model.to(LugConfig.llm_device)
+
+    def generate(self, mode: GenerateMode, input_texts: list[str]):
+        encoding = self.tokenizer(
+            input_texts, padding=True, return_tensors="pt"
+        ).to(LugConfig.llm_device)
+
+        with torch.no_grad():
+            peft_outputs = self.model.generate(
+                input_ids=encoding.input_ids,
+                generation_config=GenerationConfig(
+                    max_new_tokens=32,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                    eos_token_id=self.tokenizer.eos_token_id,
+                    attention_mask=encoding.attention_mask,
+                    do_sample=False,
+                    repetition_penalty=1.2,
+                    num_return_sequences=1,
+                ),
+            )
+        outputs = self.tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
+        return [
+            output[len(input_texts[index]):] for index, output in enumerate(outputs)
+        ]
+
+
+GeneratorType = Enum("Generator", ["FftGenerator", "LoraGenerator"])
+
+
 class SkillConverter(ABC):
     @abstractmethod
     def get_skill(self, text) -> list[str]:
+        pass
+
+    @abstractmethod
+    def grade(self, text, owner):
         pass
 
 
@@ -120,8 +169,8 @@ def parse_json_from_string(text, default=None):
         return default
 
 
-class ISkillConverter(SkillConverter):
-    def __init__(self, retriever: ContextRetriever, generator=LocalGenerator()):
+class ISkillConverter(SkillConverter, ABC):
+    def __init__(self, retriever: ContextRetriever, generator):
         self.retrieve = retriever
         self.generator = generator
         self.desc_prompt = DescriptionPrompts[LugConfig.skill_prompt]
@@ -173,7 +222,7 @@ class ISkillConverter(SkillConverter):
             print(json.dumps(skill_outputs, indent=2))
 
         flags = [
-            parse_json_from_string(raw_flag, False)
+            parse_json_from_string(raw_flag, None)
             for index, raw_flag in enumerate(skill_outputs)
         ]
         return [owners[index] for index, flag in enumerate(flags) if flag]
@@ -190,12 +239,54 @@ class ISkillConverter(SkillConverter):
             if len(functions) != 0:
                 return functions
 
-        if self.use_exemplar:
+        if self.use_desc:
             skill_prompts, owners = self.build_prompts_by_desc(text, skills, to_snake)
             skill_outputs = self.generator.generate(GenerateMode.desc, skill_prompts)
             return self.parse_results(skill_prompts, owners, skill_outputs)
 
         return []
+
+    @staticmethod
+    def update(preds, truth, counts, skill_prompts, skill_outputs):
+        pairs = zip(preds, truth)
+        for index, pair in enumerate(pairs):
+            if pair[0] != pair[1]:
+                print(f"{skill_prompts[index]} {skill_outputs[index]}, not correct.")
+
+        for pair in pairs:
+            index = 2 if pair[0] else 0
+            index += 1 if pair[1] else 0
+            counts[index] += 1
+
+    def grade(self, text, owner, owner_mode, counts):
+        to_snake = CamelToSnake()
+        # nodes owner are always included in the
+        skills, nodes = self.retrieve(text)
+
+        # for examplar
+        skill_prompts, owners = self.build_prompts_by_examples(text, nodes, to_snake)
+        skill_outputs = self.generator.generate(GenerateMode.exemplar, skill_prompts)
+        preds = [
+            parse_json_from_string(raw_flag, None)
+            for index, raw_flag in enumerate(skill_outputs)
+        ]
+        truth = [owner == lowner and OwnerMode[owner_mode] == OwnerMode.normal for lowner in owners]
+        assert len(preds) == len(truth)
+
+        if "exemplar" in counts:
+            self.update(preds, truth, counts["exemplar"], skill_prompts, skill_outputs)
+
+        # for desc
+        skill_prompts, owners = self.build_prompts_by_desc(text, skills, to_snake)
+        skill_outputs = self.generator.generate(GenerateMode.desc, skill_prompts)
+        preds = [
+            parse_json_from_string(raw_flag, None)
+            for index, raw_flag in enumerate(skill_outputs)
+        ]
+        truth = [owner == lowner and OwnerMode[owner_mode] == OwnerMode.normal for lowner in owners]
+        assert len(preds) == len(truth)
+        if "desc" in counts:
+            self.update(preds, truth, counts["desc"], skill_prompts, skill_outputs)
 
 
 class Converter:
@@ -203,7 +294,6 @@ class Converter:
             self,
             retriever: ContextRetriever,
             entity_metas: EntityMetas = None,
-            generator=LocalGenerator(),
             with_arguments=True,
     ):
         self.retrieve = retriever
@@ -211,15 +301,22 @@ class Converter:
         if entity_metas is not None:
             self.recognizer = ListRecognizer(entity_metas)
 
-        self.generator = generator
+        self.generator = Converter.generator()
         self.slot_prompt = ExtractiveSlotPrompts[LugConfig.slot_prompt]
         self.nli_prompt = NliPrompts[LugConfig.nli_prompt]
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r"\[([^]]*)\]")
         self.skill_converter = None
 
-        self.skill_converter = ISkillConverter(retriever, generator)
+        self.skill_converter = ISkillConverter(retriever, self.generator)
         self.nli_labels = {"entailment": True, "neutral": None, "contradiction": False}
+
+    @staticmethod
+    def generator():
+        if GeneratorType[LugConfig.generator] == GeneratorType.FftGenerator:
+            return FftGenerator()
+        if GeneratorType[LugConfig.generator] == GeneratorType.LoraGenerator:
+            return LoraGenerator()
 
     def understand(
             self, text: str, expectation: DialogExpectation = None
