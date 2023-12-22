@@ -20,12 +20,15 @@ class LugConfig:
     skill_arity = 1
     llm_device = "cuda:0"
 
-    skill_prompt = "structural"
+    skill_prompt = "struct-token"
     slot_prompt = "default"
     nli_prompt = "default"
+    bool_prompt = "default"
 
     # We will append instance.desc/instance.exemplar to this.
     generator = "FftGenerator"
+    model="./output/tinyllama2.5t-st/checkpoint-5580/"
+
     skill_model = "OpenCUI/skill-tinyllama-0.1"
     extractive_slot_model = "OpenCUI/extractive-tinyllama2.5t-1.0"
     nli_model = ""

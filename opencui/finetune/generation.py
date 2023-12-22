@@ -13,12 +13,13 @@ import numpy as np
 import torch
 import transformers
 from datasets import Dataset, concatenate_datasets, load_dataset
-from peft import LoraConfig, get_peft_model, PromptTuningConfig, TaskType, PrefixTuningConfig
+from peft import LoraConfig, get_peft_model, TaskType, PrefixTuningConfig
 from torch.nn.utils.rnn import pad_sequence
 from tqdm import tqdm
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed,
                           get_linear_schedule_with_warmup)
 from opencui.core.prompt import (ExtractiveSlotPrompts, NliPrompts)
+from opencui.core.special_tokens import SpecialTokens
 from opencui.finetune.commons import (MappedDatasetDict, collect_slot_values, JsonDatasetFactory,
                                       OneSlotExtractConverter, PromptedFactory, NliConverter)
 
@@ -244,6 +245,9 @@ def get_accelerate_model(args, extra_special_tokens: set[str], peft_config=None)
         DEFAULT_PAD_TOKEN = "[PAD]"
         special_tokens_dict = dict(pad_token=DEFAULT_PAD_TOKEN)
 
+    # We add some special tokens.
+    special_tokens_dict['additional_special_tokens'] = SpecialTokens.list()
+
     special_tokens_dict.update(additional_special_tokens=list(extra_special_tokens))
 
     smart_tokenizer_and_embedding_resize(
@@ -458,6 +462,7 @@ def train_loop(model, tokenizer, train_dataloader, args):
         print(f"{epoch=}: {train_ppl=} {train_epoch_loss=} {eval_ppl=} {eval_epoch_loss=}")
         """
 
+
 def train():
     hfparser = transformers.HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments, GenerationArguments)
@@ -539,7 +544,6 @@ def train():
     data_module = make_data_module(
         data_collator=data_collator, args=args, converters=converted_factories
     )
-    print("prepared data.")
 
     trainer = Seq2SeqTrainer(
         model=model,
@@ -579,6 +583,7 @@ def train():
             all_metrics.update(metrics)
         else:
             train_loop(model, data_collator, args)
+
         # append save the config
         shutil.copy("./opencui/finetune/generation.sh", f"{args.output_dir}/")
         shutil.copy("./opencui/core/config.py", f"{args.output_dir}/")

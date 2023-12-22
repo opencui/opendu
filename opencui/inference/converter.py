@@ -157,6 +157,10 @@ class SkillConverter(ABC):
     def get_skill(self, text) -> list[str]:
         pass
 
+    @abstractmethod
+    def grade(self, text, owner):
+        pass
+
 
 def parse_json_from_string(text, default=None):
     try:
@@ -165,7 +169,7 @@ def parse_json_from_string(text, default=None):
         return default
 
 
-class ISkillConverter(SkillConverter):
+class ISkillConverter(SkillConverter, ABC):
     def __init__(self, retriever: ContextRetriever, generator):
         self.retrieve = retriever
         self.generator = generator
@@ -218,7 +222,7 @@ class ISkillConverter(SkillConverter):
             print(json.dumps(skill_outputs, indent=2))
 
         flags = [
-            parse_json_from_string(raw_flag, False)
+            parse_json_from_string(raw_flag, None)
             for index, raw_flag in enumerate(skill_outputs)
         ]
         return [owners[index] for index, flag in enumerate(flags) if flag]
@@ -241,6 +245,48 @@ class ISkillConverter(SkillConverter):
             return self.parse_results(skill_prompts, owners, skill_outputs)
 
         return []
+
+    @staticmethod
+    def update(preds, truth, counts, skill_prompts, skill_outputs):
+        pairs = zip(preds, truth)
+        for index, pair in enumerate(pairs):
+            if pair[0] != pair[1]:
+                print(f"{skill_prompts[index]} {skill_outputs[index]}, not correct.")
+
+        for pair in pairs:
+            index = 2 if pair[0] else 0
+            index += 1 if pair[1] else 0
+            counts[index] += 1
+
+    def grade(self, text, owner, owner_mode, counts):
+        to_snake = CamelToSnake()
+        # nodes owner are always included in the
+        skills, nodes = self.retrieve(text)
+
+        # for examplar
+        skill_prompts, owners = self.build_prompts_by_examples(text, nodes, to_snake)
+        skill_outputs = self.generator.generate(GenerateMode.exemplar, skill_prompts)
+        preds = [
+            parse_json_from_string(raw_flag, None)
+            for index, raw_flag in enumerate(skill_outputs)
+        ]
+        truth = [owner == lowner and OwnerMode[owner_mode] == OwnerMode.normal for lowner in owners]
+        assert len(preds) == len(truth)
+
+        if "exemplar" in counts:
+            self.update(preds, truth, counts["exemplar"], skill_prompts, skill_outputs)
+
+        # for desc
+        skill_prompts, owners = self.build_prompts_by_desc(text, skills, to_snake)
+        skill_outputs = self.generator.generate(GenerateMode.desc, skill_prompts)
+        preds = [
+            parse_json_from_string(raw_flag, None)
+            for index, raw_flag in enumerate(skill_outputs)
+        ]
+        truth = [owner == lowner and OwnerMode[owner_mode] == OwnerMode.normal for lowner in owners]
+        assert len(preds) == len(truth)
+        if "desc" in counts:
+            self.update(preds, truth, counts["desc"], skill_prompts, skill_outputs)
 
 
 class Converter:
