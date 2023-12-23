@@ -40,7 +40,6 @@ if __name__ == "__main__":
     # this should build both desc and exemplar dataset
     for skill_mode in ["desc", "exemplar"]:
         prompted_factory = build_skill_factory(path, factory, mode=skill_mode, index=True)
-        json.dump(prompted_factory.extra_tokens(), open(f"{path}/extra.tokens", "w"))
         tags = ["train", "test", "validation"]
         for tag in tags:
             examples = prompted_factory[tag]
