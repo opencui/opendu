@@ -274,9 +274,6 @@ class JsonDatasetFactory(DatasetFactory, ABC):
 # by generation fine-tuning. The assumed the columns are input and output, and we added id for debugging
 # purpose.
 class TrainConverter(ABC):
-    def extra_tokens(self):
-        return self.prompt.extra_tokens
-
     @abc.abstractmethod
     def __call__(self, item: AnnotatedExemplar, ins: list[str], outs: list[str]):
         return
@@ -454,9 +451,6 @@ class InstanceTrainConverter(TrainConverter):
         label_dict = {"label": "true" if value else "false"}
         return BoolPrompts[LugConfig.bool_prompt](label_dict)
 
-    def extra_tokens(self):
-        return self.desc_prompt.extra_tokens + self.example_prompt.extra_tokens
-
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # Working on the batched dataset, with first dimension is column then index.
         for idx, utterance in enumerate(batch["utterance"]):
@@ -615,17 +609,6 @@ class PromptedFactory(DatasetFactory):
         self.creator = dsf
         self.converters: list[TrainConverter] = convert
         self.columns = unused_columns
-
-    def extra_tokens(self):
-        return list(
-            set(
-                [
-                    token
-                    for converter in self.converters
-                    for token in converter.extra_tokens()
-                ]
-            )
-        )
 
     def convert_one(self, item):
         ins = []
