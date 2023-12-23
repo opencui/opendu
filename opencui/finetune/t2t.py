@@ -233,7 +233,12 @@ def get_model(args, extra_special_tokens: set[str], peft_config=None):
         )
 
     if ModelType[args.model_type] == ModelType.t5:
-        model = AutoModelForSeq2SeqLM.from_pretrained(args.model_name_or_path)
+        model = AutoModelForSeq2SeqLM.from_pretrained(
+            args.model_name_or_path,
+            device_map=device_map,
+            trust_remote_code=args.trust_remote_code,
+            torch_dtype=torch.bfloat16,
+        )
 
     if peft_config is not None:
         print("Using peft instead.")
