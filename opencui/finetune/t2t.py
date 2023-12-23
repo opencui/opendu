@@ -214,7 +214,7 @@ class GenerationArguments:
     no_repeat_ngram_size: Optional[int] = field(default=0)
 
 
-def get_model(args, extra_special_tokens: set[str], peft_config=None):
+def get_model(args, peft_config=None):
     device_map = "auto"
 
     # if we are in a distributed setting, we need to set the device map and max memory per device
@@ -263,8 +263,6 @@ def get_model(args, extra_special_tokens: set[str], peft_config=None):
 
     # We add some special tokens.
     special_tokens_dict['additional_special_tokens'] = SpecialTokens.list()
-
-    special_tokens_dict.update(additional_special_tokens=list(extra_special_tokens))
 
     smart_tokenizer_and_embedding_resize(
         special_tokens_dict=special_tokens_dict, tokenizer=tokenizer, model=model
@@ -540,14 +538,13 @@ def train():
     if completed_training:
         print("Detected that training was already completed!")
 
+
     print("loaded model")
     set_seed(args.seed)
     data_collator = None
     if ModelType[args.model_type] == ModelType.gpt:
-        extra_tokens = set(
-            [token for factory in converted_factories for token in factory.extra_tokens()]
-        )
-        model, tokenizer = get_model(args, extra_tokens, peft_config)
+
+        model, tokenizer = get_model(args, peft_config)
         data_collator = DataCollatorForCausalLM(
             tokenizer=tokenizer,
             source_max_len=args.source_max_len,
@@ -557,7 +554,7 @@ def train():
         )
 
     if ModelType[args.model_type] == ModelType.t5:
-        model, tokenizer = get_model(args, extra_tokens, peft_config)
+        model, tokenizer = get_model(args, peft_config)
         data_collator = DataCollatorForSeq2Seq(
             tokenizer,
             model=model,

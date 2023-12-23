@@ -2,6 +2,8 @@
 # We include a simple lora finetuning & inference script here. The goal is so that you can finetune both
 # both skill and slot model on 7B model on consumer grade hardware like x090.
 #
+export PYTHONPATH="$PYTHONPATH:."
+
 python3 opencui/finetune/t2t.py \
     --model_name_or_path google/flan-t5-base \
     --output_dir ./output/flant5base-st \
