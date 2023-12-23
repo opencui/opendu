@@ -33,7 +33,7 @@ python3 opencui/finetune/t2t.py \
     --seed 0 \
     --debug_dataset False \
     --training_mode desc-exemplar-extractive-slot \
-    --peft_mode null \
+    --peft_mode lora \
     --trust_remote_code \
     --model_type t5 \
     --report_to wandb
