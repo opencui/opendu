@@ -6,18 +6,20 @@ import os
 
 import shutil
 from dataclasses import dataclass, field
+from enum import Enum
 from os.path import exists, isdir, join
-from typing import Dict, Optional, Sequence
+from typing import Dict, Optional, Sequence, List, Tuple
 
+import evaluate
 import numpy as np
 import torch
 import transformers
 from datasets import Dataset, concatenate_datasets, load_dataset
+from nltk import sent_tokenize
 from peft import LoraConfig, get_peft_model, TaskType, PrefixTuningConfig
 from torch.nn.utils.rnn import pad_sequence
-from tqdm import tqdm
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed,
-                          get_linear_schedule_with_warmup)
+                          DataCollatorForSeq2Seq, AutoModelForSeq2SeqLM)
 from opencui.core.prompt import (ExtractiveSlotPrompts, NliPrompts)
 from opencui.core.special_tokens import SpecialTokens
 from opencui.finetune.commons import (MappedDatasetDict, collect_slot_values, JsonDatasetFactory,
@@ -27,6 +29,8 @@ logger = logging.getLogger(__name__)
 
 IGNORE_INDEX = -100
 
+
+ModelType = Enum("ModelType", ["gpt", "t5"])
 
 @dataclass
 class ModelArguments:
@@ -172,7 +176,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
     )
     training_mode: str = field(default="skill", metadata={"help": "skill or slot"})
     peft_mode: str = field(default="null", metadata={"help": "lora or prompt-tuning"})
-
+    model_type: str = field(default="gpt", metadata={"help": "gpt or t5, just need to be t2t"})
 
 @dataclass
 class GenerationArguments:
@@ -208,7 +212,7 @@ class GenerationArguments:
     no_repeat_ngram_size: Optional[int] = field(default=0)
 
 
-def get_accelerate_model(args, extra_special_tokens: set[str], peft_config=None):
+def get_gpt_model(args, extra_special_tokens: set[str], peft_config=None):
     device_map = "auto"
 
     # if we are in a distributed setting, we need to set the device map and max memory per device
@@ -365,6 +369,37 @@ class DataCollatorForCausalLM(object):
         return data_dict
 
 
+class DatasetAdaptor:
+    def __init__(self, tokenizer, max_source_length, max_target_length):
+        self.padding = "max_length"
+        self.tokenizer = tokenizer
+        self.max_source_length = max_source_length
+        self.max_target_length = max_target_length
+
+    def __call__(self, sample: Dataset) -> dict:
+        """ Preprocess the dataset. """
+
+        # add prefix to the input for t5
+        inputs = [item for item in sample["input"]]
+
+        # tokenize inputs
+        model_inputs = self.tokenizer(inputs, max_length=self.max_source_length, padding=self.padding, truncation=True)
+
+        # Tokenize targets with the `text_target` keyword argument
+        labels = self.tokenizer(
+            text_target=sample["output"], max_length=self.max_target_length, padding=self.padding, truncation=True)
+
+        # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
+        # padding in the loss.
+        if self.padding == "max_length":
+            labels["input_ids"] = [
+                [(l if l != self.tokenizer.pad_token_id else -100) for l in label] for label in labels["input_ids"]
+            ]
+
+        model_inputs["labels"] = labels["input_ids"]
+        return model_inputs
+
+
 def merge_created_datasets(creators, split: str) -> Dataset:
     datasets = []
     for creator in creators:
@@ -372,28 +407,6 @@ def merge_created_datasets(creators, split: str) -> Dataset:
         if dataset is not None:
             datasets.append(dataset)
     return concatenate_datasets(datasets).shuffle(seed=42)
-
-
-def make_data_module(data_collator, args, converters) -> Dict:
-    """
-    Make dataset and collator for supervised fine-tuning.
-    Datasets are expected to have the following columns: { `utterance`, `output` }
-
-    Available datasets to be selected with `dataset` argument:
-        - viggo
-    """
-    # Split train/eval, reduce size
-    if args.do_eval or args.do_predict:
-        eval_dataset = merge_created_datasets(converters, "validation")
-    if args.do_train:
-        train_dataset = merge_created_datasets(converters, "train")
-
-    return dict(
-        train_dataset=train_dataset if args.do_train else None,
-        eval_dataset=eval_dataset if args.do_eval else None,
-        predict_dataset=eval_dataset if args.do_predict else None,
-        data_collator=data_collator,
-    )
 
 
 def get_last_checkpoint(checkpoint_dir):
@@ -415,52 +428,40 @@ def get_last_checkpoint(checkpoint_dir):
     return None, False  # first training
 
 
-def train_loop(model, tokenizer, train_dataloader, args):
-    device = "cuda:0"
-    model = model.to(device)
-    num_epochs = args.num_training_epochs
+class MetricComputer:
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
 
-    # optimizer and lr scheduler
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
-    lr_scheduler = get_linear_schedule_with_warmup(
-        optimizer=optimizer,
-        num_warmup_steps=0,
-        num_training_steps=(len(train_dataloader) * num_epochs),
-    )
+    @staticmethod
+    def postprocess_text(preds: List[str], labels: List[str]) -> Tuple[List[str], List[str]]:
+        """ helper function to postprocess text"""
+        preds = [pred.strip() for pred in preds]
+        labels = [label.strip() for label in labels]
 
-    for epoch in range(num_epochs):
-        model.train()
-        total_loss = 0
-        for step, batch in enumerate(tqdm(train_dataloader)):
-            batch = {k: v.to(device) for k, v in batch.items()}
-            outputs = model(**batch)
-            loss = outputs.loss
-            total_loss += loss.detach().float()
-            loss.backward()
-            optimizer.step()
-            lr_scheduler.step()
-            optimizer.zero_grad()
+        # rougeLSum expects newline after each sentence
+        preds = ["\n".join(sent_tokenize(pred)) for pred in preds]
+        labels = ["\n".join(sent_tokenize(label)) for label in labels]
 
-        """
-        model.eval()
-        eval_loss = 0
-        eval_preds = []
-        for step, batch in enumerate(tqdm(eval_dataloader)):
-            batch = {k: v.to(device) for k, v in batch.items()}
-            with torch.no_grad():
-                outputs = model(**batch)
-            loss = outputs.loss
-            eval_loss += loss.detach().float()
-            eval_preds.extend(
-                tokenizer.batch_decode(torch.argmax(outputs.logits, -1).detach().cpu().numpy(), skip_special_tokens=True)
-            )
-        
-        eval_epoch_loss = eval_loss / len(eval_dataloader)
-        eval_ppl = torch.exp(eval_epoch_loss)
-        train_epoch_loss = total_loss / len(train_dataloader)
-        train_ppl = torch.exp(train_epoch_loss)
-        print(f"{epoch=}: {train_ppl=} {train_epoch_loss=} {eval_ppl=} {eval_epoch_loss=}")
-        """
+        return preds, labels
+
+    def __call__(self, eval_preds):
+        metric = evaluate.load("f1")
+        preds, labels = eval_preds
+        if isinstance(preds, tuple):
+            preds = preds[0]
+        decoded_preds = self.tokenizer.batch_decode(preds, skip_special_tokens=True)
+        # Replace -100 in the labels as we can't decode them.
+        labels = np.where(labels != -100, labels, self.tokenizer.pad_token_id)
+        decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
+
+        # Some simple post-processing
+        decoded_preds, decoded_labels = MetricComputer.postprocess_text(decoded_preds, decoded_labels)
+
+        result = metric.compute(predictions=decoded_preds, references=decoded_labels, average='macro')
+        result = {k: round(v * 100, 4) for k, v in result.items()}
+        prediction_lens = [np.count_nonzero(pred != self.tokenizer.pad_token_id) for pred in preds]
+        result["gen_len"] = np.mean(prediction_lens)
+        return result
 
 
 def train():
@@ -524,32 +525,51 @@ def train():
     if completed_training:
         print("Detected that training was already completed!")
 
-    extra_tokens = set(
-        [token for factory in converted_factories for token in factory.extra_tokens()]
-    )
-
-    model, tokenizer = get_accelerate_model(args, extra_tokens, peft_config)
-
     print("loaded model")
     set_seed(args.seed)
+    data_collator = None
+    if ModelType[args.model_type] == ModelType.gpt:
+        extra_tokens = set(
+            [token for factory in converted_factories for token in factory.extra_tokens()]
+        )
+        model, tokenizer = get_gpt_model(args, extra_tokens, peft_config)
+        data_collator = DataCollatorForCausalLM(
+            tokenizer=tokenizer,
+            source_max_len=args.source_max_len,
+            target_max_len=args.target_max_len,
+            train_on_source=args.train_on_source,
+            predict_with_generate=args.predict_with_generate,
+        )
 
-    data_collator = DataCollatorForCausalLM(
-        tokenizer=tokenizer,
-        source_max_len=args.source_max_len,
-        target_max_len=args.target_max_len,
-        train_on_source=args.train_on_source,
-        predict_with_generate=args.predict_with_generate,
-    )
+    if ModelType[args.model_type] == ModelType.t5:
+        model = AutoModelForSeq2SeqLM.from_pretrained(args.model_name_or_path)
+        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
+        data_collator = DataCollatorForSeq2Seq(
+            tokenizer,
+            model=model,
+            label_pad_token_id=IGNORE_INDEX,
+            pad_to_multiple_of=8
+        )
 
-    data_module = make_data_module(
-        data_collator=data_collator, args=args, converters=converted_factories
-    )
+    # this creates a dict.
+    # Split train/eval, reduce size
+
+    eval_dataset = merge_created_datasets(converted_factories, "validation")
+    train_dataset = merge_created_datasets(converted_factories, "train")
+
+    if ModelType[args.model_type] == ModelType.t5:
+        preprocess = DatasetAdaptor(tokenizer, args.source_max_len, args.target_max_len)
+        eval_dataset = eval_dataset.map(preprocess, batched=True, remove_columns=['input', 'output'])
+        train_dataset = train_dataset.map(preprocess, batched=True, remove_columns=['input', 'output'])
 
     trainer = Seq2SeqTrainer(
         model=model,
         tokenizer=tokenizer,
         args=training_args,
-        **{k: v for k, v in data_module.items() if k != "predict_dataset"},
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        data_collator=data_collator,
+        compute_metrics=MetricComputer(tokenizer)
     )
 
     # Verifying the datatypes and parameter counts before training.
@@ -569,58 +589,21 @@ def train():
     all_metrics = {"run_name": args.run_name}
 
     # Training
-    self_roll = False
     if args.do_train:
         logger.info("*** Train ***")
         # Note: `resume_from_checkpoint` not supported for adapter checkpoints by HF.
         # Currently, adapter checkpoint is reloaded as expected but optimizer/scheduler states are not.
-        if not self_roll:
-            train_result = trainer.train()
-            metrics = train_result.metrics
-            trainer.log_metrics("train", metrics)
-            trainer.save_metrics("train", metrics)
-            trainer.save_state()
-            all_metrics.update(metrics)
-        else:
-            train_loop(model, data_collator, args)
+        train_result = trainer.train()
+        metrics = train_result.metrics
+        trainer.log_metrics("train", metrics)
+        trainer.save_metrics("train", metrics)
+        trainer.save_state()
+        all_metrics.update(metrics)
 
         # append save the config
         shutil.copy("./opencui/finetune/generation.sh", f"{args.output_dir}/")
         shutil.copy("./opencui/core/config.py", f"{args.output_dir}/")
 
-    # Evaluation
-    if args.do_eval:
-        logger.info("*** Evaluate ***")
-        metrics = trainer.evaluate(metric_key_prefix="eval")
-        trainer.log_metrics("eval", metrics)
-        trainer.save_metrics("eval", metrics)
-        all_metrics.update(metrics)
-
-    # Prediction
-    if args.do_predict:
-        logger.info("*** Predict ***")
-        prediction_output = trainer.predict(
-            test_dataset=data_module["predict_dataset"], metric_key_prefix="predict"
-        )
-        prediction_metrics = prediction_output.metrics
-        predictions = prediction_output.predictions
-        predictions = np.where(predictions != -100, predictions, tokenizer.pad_token_id)
-        predictions = tokenizer.batch_decode(
-            predictions, skip_special_tokens=True, clean_up_tokenization_spaces=True
-        )
-        with open(os.path.join(args.output_dir, "predictions.jsonl"), "w") as fout:
-            for i, example in enumerate(data_module["predict_dataset"]):
-                example["prediction_with_input"] = predictions[i].strip()
-                example["prediction"] = (
-                    predictions[i].replace(example["input"], "").strip()
-                )
-                fout.write(json.dumps(example) + "\n")
-        print(prediction_metrics)
-        trainer.log_metrics("predict", prediction_metrics)
-        trainer.save_metrics("predict", prediction_metrics)
-        all_metrics.update(prediction_metrics)
-
-    if args.do_train or args.do_eval or args.do_predict:
         with open(os.path.join(args.output_dir, "metrics.json"), "w") as fout:
             fout.write(json.dumps(all_metrics))
 
@@ -692,7 +675,6 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
-    from opencui.finetune.sgd import SGD
     from opencui.core.config import LugConfig
 
     LugConfig.embedding_device = "cuda:0"

@@ -20,7 +20,7 @@ class LugConfig:
     skill_arity = 1
     llm_device = "cuda:0"
 
-    skill_prompt = "struct-token1"
+    skill_prompt = "struct-token"
     slot_prompt = "default"
     nli_prompt = "default"
     bool_prompt = "default"
