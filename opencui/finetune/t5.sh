@@ -2,9 +2,9 @@
 # We include a simple lora finetuning & inference script here. The goal is so that you can finetune both
 # both skill and slot model on 7B model on consumer grade hardware like x090.
 #
-python3 opencui/finetune/generation.py \
-    --model_name_or_path TinyLlama/TinyLlama-1.1B-intermediate-step-1195k-token-2.5T\
-    --output_dir ./output/tinyllama2.5t-st \
+python3 opencui/finetune/gpt.py \
+    --model_name_or_path google/flan-t5-base \
+    --output_dir ./output/flant5base-st \
     --logging_steps 50 \
     --save_strategy epoch \
     --data_seed 42 \
@@ -35,4 +35,5 @@ python3 opencui/finetune/generation.py \
     --training_mode desc-exemplar-extractive-slot \
     --peft_mode null \
     --trust_remote_code \
+    --model_type t5 \
     --report_to wandb
