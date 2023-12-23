@@ -179,7 +179,6 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
     peft_mode: str = field(default="null", metadata={"help": "lora or prompt-tuning"})
     model_type: str = field(default="gpt", metadata={"help": "gpt or t5, just need to be t2t"})
 
-
 @dataclass
 class GenerationArguments:
     # For more hyperparameters check:
@@ -257,12 +256,13 @@ def get_model(args, peft_config=None):
         trust_remote_code=args.trust_remote_code,
     )
 
+    special_tokens_dict = dict()
     if tokenizer._pad_token is None:
-        DEFAULT_PAD_TOKEN = "[PAD]"
-        special_tokens_dict = dict(pad_token=DEFAULT_PAD_TOKEN)
+        special_tokens_dict["pad_token"] = "[PAD]"
 
     # We add some special tokens.
-    special_tokens_dict['additional_special_tokens'] = SpecialTokens.list()
+    if ModelType[args.model_type] == ModelType.gpt:
+        special_tokens_dict['additional_special_tokens'] = SpecialTokens.list()
 
     smart_tokenizer_and_embedding_resize(
         special_tokens_dict=special_tokens_dict, tokenizer=tokenizer, model=model

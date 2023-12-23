@@ -263,9 +263,6 @@ class JsonDatasetFactory(DatasetFactory, ABC):
         self.datasets = load_dataset('json', data_files=files)
         self.tag = tag
 
-    def extra_tokens(self):
-        return json.load(open(f"{self.path}/extra.tokens"))
-
     def __getitem__(self, item):
         return self.datasets[item]
 
