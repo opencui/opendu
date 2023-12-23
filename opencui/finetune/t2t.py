@@ -19,7 +19,7 @@ from nltk import sent_tokenize
 from peft import LoraConfig, get_peft_model, TaskType, PrefixTuningConfig
 from torch.nn.utils.rnn import pad_sequence
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed,
-                          DataCollatorForSeq2Seq, AutoModelForQuestionAnswering, AutoModelForSeq2SeqLM)
+                          DataCollatorForSeq2Seq, AutoModelForSeq2SeqLM)
 from opencui.core.prompt import (ExtractiveSlotPrompts, NliPrompts)
 from opencui.core.special_tokens import SpecialTokens
 from opencui.finetune.commons import (MappedDatasetDict, collect_slot_values, JsonDatasetFactory,
