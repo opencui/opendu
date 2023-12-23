@@ -32,6 +32,7 @@ IGNORE_INDEX = -100
 
 ModelType = Enum("ModelType", ["gpt", "t5"])
 
+
 @dataclass
 class ModelArguments:
     model_name_or_path: Optional[str] = field(default="EleutherAI/pythia-12b")
@@ -178,6 +179,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
     peft_mode: str = field(default="null", metadata={"help": "lora or prompt-tuning"})
     model_type: str = field(default="gpt", metadata={"help": "gpt or t5, just need to be t2t"})
 
+
 @dataclass
 class GenerationArguments:
     # For more hyperparameters check:
@@ -212,7 +214,7 @@ class GenerationArguments:
     no_repeat_ngram_size: Optional[int] = field(default=0)
 
 
-def get_gpt_model(args, extra_special_tokens: set[str], peft_config=None):
+def get_model(args, extra_special_tokens: set[str], peft_config=None):
     device_map = "auto"
 
     # if we are in a distributed setting, we need to set the device map and max memory per device
@@ -221,12 +223,22 @@ def get_gpt_model(args, extra_special_tokens: set[str], peft_config=None):
         device_map = {"": local_rank}
 
     print(f"loading base model {args.model_name_or_path}...")
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model_name_or_path,
-        device_map=device_map,
-        trust_remote_code=args.trust_remote_code,
-        torch_dtype=torch.bfloat16,
-    )
+    model = None
+    if ModelType[args.model_type] == ModelType.gpt:
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model_name_or_path,
+            device_map=device_map,
+            trust_remote_code=args.trust_remote_code,
+            torch_dtype=torch.bfloat16,
+        )
+
+    if ModelType[args.model_type] == ModelType.t5:
+        model = AutoModelForSeq2SeqLM.from_pretrained(
+            args.model_name_or_path,
+            device_map=device_map,
+            trust_remote_code=args.trust_remote_code,
+            torch_dtype=torch.bfloat16,
+        )
 
     if peft_config is not None:
         print("Using peft instead.")
@@ -461,6 +473,9 @@ class MetricComputer:
         result = {k: round(v * 100, 4) for k, v in result.items()}
         prediction_lens = [np.count_nonzero(pred != self.tokenizer.pad_token_id) for pred in preds]
         result["gen_len"] = np.mean(prediction_lens)
+
+        # Do not know whether this helps.
+        torch.cuda.empty_cache()
         return result
 
 
@@ -514,7 +529,7 @@ def train():
     if args.debug_dataset:
         count = 0
         for factory in converted_factories:
-            ds = factory.__getitem__("train")
+            ds = factory["train"]
             for item in ds:
                 print(json.dumps(item, indent=2))
                 count += 1
@@ -532,7 +547,7 @@ def train():
         extra_tokens = set(
             [token for factory in converted_factories for token in factory.extra_tokens()]
         )
-        model, tokenizer = get_gpt_model(args, extra_tokens, peft_config)
+        model, tokenizer = get_model(args, extra_tokens, peft_config)
         data_collator = DataCollatorForCausalLM(
             tokenizer=tokenizer,
             source_max_len=args.source_max_len,
@@ -542,8 +557,7 @@ def train():
         )
 
     if ModelType[args.model_type] == ModelType.t5:
-        model = AutoModelForSeq2SeqLM.from_pretrained(args.model_name_or_path)
-        tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
+        model, tokenizer = get_model(args, extra_tokens, peft_config)
         data_collator = DataCollatorForSeq2Seq(
             tokenizer,
             model=model,
@@ -553,7 +567,6 @@ def train():
 
     # this creates a dict.
     # Split train/eval, reduce size
-
     eval_dataset = merge_created_datasets(converted_factories, "validation")
     train_dataset = merge_created_datasets(converted_factories, "train")
 
