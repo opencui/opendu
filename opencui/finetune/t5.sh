@@ -14,7 +14,7 @@ python3 opencui/finetune/t2t.py \
     --evaluation_strategy epoch \
     --eval_dataset_size 64 \
     --max_eval_samples 16 \
-    --eval_accumulation_steps 16 \
+    --eval_accumulation_steps 32 \
     --per_device_eval_batch_size 32 \
     --max_new_tokens 32 \
     --dataloader_num_workers 3 \
@@ -36,7 +36,7 @@ python3 opencui/finetune/t2t.py \
     --seed 0 \
     --debug_dataset False \
     --training_mode desc-exemplar-extractive-slot \
-    --peft_mode lora \
+    --peft_mode null \
     --trust_remote_code \
     --model_type t5 \
     --report_to wandb
