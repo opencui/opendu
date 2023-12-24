@@ -15,7 +15,6 @@ import numpy as np
 import torch
 import transformers
 from datasets import Dataset, concatenate_datasets, load_dataset
-from nltk import sent_tokenize
 from peft import LoraConfig, get_peft_model, TaskType, PrefixTuningConfig
 from torch.nn.utils.rnn import pad_sequence
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed,
@@ -24,6 +23,7 @@ from opencui.core.prompt import (ExtractiveSlotPrompts, NliPrompts)
 from opencui.core.special_tokens import SpecialTokens
 from opencui.finetune.commons import (MappedDatasetDict, collect_slot_values, JsonDatasetFactory,
                                       OneSlotExtractConverter, PromptedFactory, NliConverter)
+from opencui.finetune.load_trainingset import load_training_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -448,6 +448,7 @@ class F1MetricComputer:
         """ helper function to postprocess text"""
         preds = [BoolType[pred.strip()] for pred in preds]
         labels = [BoolType[label.strip()] for label in labels]
+        print(type(preds))
         return preds, labels
 
     def __call__(self, eval_preds:transformers.trainer_utils.EvalPrediction):
@@ -517,28 +518,7 @@ def train():
 
     # Save the things to disk first, for training we keep each module separate.
     # Down the road, we might
-    converted_factories = []
-    if "desc" in args.training_mode == "desc":
-        build_skill_factory(["desc"], converted_factories)
-    if "exemplar" in args.training_mode:
-        build_skill_factory(["exemplar"], converted_factories)
-    if "extractive_slot" in args.training_mode:
-        build_extractive_slot_factory(converted_factories)
-    if "nli" in args.training_mode:
-        build_nli_factory(converted_factories)
-
-    assert len(converted_factories) != 0
-
-    # If we debug dataset, we do not train.
-    if args.debug_dataset:
-        count = 0
-        for factory in converted_factories:
-            ds = factory["train"]
-            for item in ds:
-                print(json.dumps(item, indent=2))
-                count += 1
-        print(count)
-        exit(0)
+    converted_factories = load_training_dataset(args)
 
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
@@ -623,46 +603,6 @@ def train():
 
         with open(os.path.join(args.output_dir, "metrics.json"), "w") as fout:
             fout.write(json.dumps(all_metrics))
-
-
-# Here we create the dataset factory for skills
-def build_skill_factory(skill_modes, factories):
-    # make sure run build_skill_dataset first.
-    for skill_mode in skill_modes:
-        factories.append(
-            JsonDatasetFactory("./datasets/sgd/", "sgd", f"{skill_mode}-{LugConfig.skill_prompt}.")
-        )
-
-
-def build_extractive_slot_factory(converted_factories):
-    factories = [
-        JsonDatasetFactory("./datasets/sgd/", "sgd"),
-    ]
-    for index, factory in enumerate(factories):
-        entity_values = collect_slot_values(factory.__getitem__("train"))
-        slot_converter = OneSlotExtractConverter(
-            factory.schema, ExtractiveSlotPrompts[LugConfig.slot_prompt], entity_values
-        )
-        converted_factories.append(PromptedFactory(factory, [slot_converter]))
-
-
-def build_nli_factory(converted_factories):
-    # Here we assume the raw input is sentence, focus and label (positive, negative and neutral)
-    semeval2016 = load_dataset("glue", "mnli")
-    factories = [MappedDatasetDict(semeval2016, "validation_matched", "validation_mismatched")]
-    for index, factory in enumerate(factories):
-        converter = NliConverter(NliPrompts[LugConfig.nli_prompt])
-        converted_factories.append(PromptedFactory(factory, [converter], []))
-
-
-def print_factories(factories):
-    for factory in factories:
-        ds = factory.__getitem__("train")
-        count = 0
-        for item in ds:
-            print(item)
-            count += 1
-        print(f"There are {count} instances")
 
 
 def get_lora_config():
