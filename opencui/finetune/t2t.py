@@ -31,7 +31,7 @@ IGNORE_INDEX = -100
 
 
 ModelType = Enum("ModelType", ["gpt", "t5"])
-
+BoolType = Enum("BoolType", ["true", "false"])
 
 @dataclass
 class ModelArguments:
@@ -439,23 +439,18 @@ def get_last_checkpoint(checkpoint_dir):
     return None, False  # first training
 
 
-class MetricComputer:
+class F1MetricComputer:
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
 
     @staticmethod
     def postprocess_text(preds: List[str], labels: List[str]) -> Tuple[List[str], List[str]]:
         """ helper function to postprocess text"""
-        preds = [pred.strip() for pred in preds]
-        labels = [label.strip() for label in labels]
-
-        # rougeLSum expects newline after each sentence
-        preds = ["\n".join(sent_tokenize(pred)) for pred in preds]
-        labels = ["\n".join(sent_tokenize(label)) for label in labels]
-
+        preds = [BoolType[pred.strip()] for pred in preds]
+        labels = [BoolType[label.strip()] for label in labels]
         return preds, labels
 
-    def __call__(self, eval_preds):
+    def __call__(self, eval_preds:transformers.trainer_utils.EvalPrediction):
         torch.cuda.empty_cache()
         metric = evaluate.load("f1")
         preds, labels = eval_preds
@@ -467,7 +462,7 @@ class MetricComputer:
         decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
 
         # Some simple post-processing
-        decoded_preds, decoded_labels = MetricComputer.postprocess_text(decoded_preds, decoded_labels)
+        decoded_preds, decoded_labels = F1MetricComputer.postprocess_text(decoded_preds, decoded_labels)
 
         result = metric.compute(predictions=decoded_preds, references=decoded_labels, average='macro')
         result = {k: round(v * 100, 4) for k, v in result.items()}
@@ -590,7 +585,7 @@ def train():
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         data_collator=data_collator,
-        compute_metrics=MetricComputer(tokenizer),
+        compute_metrics=F1MetricComputer(tokenizer),
         preprocess_logits_for_metrics=preprocess_logits_for_metrics
     )
 
