@@ -179,6 +179,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
     peft_mode: str = field(default="null", metadata={"help": "lora or prompt-tuning"})
     model_type: str = field(default="gpt", metadata={"help": "gpt or t5, just need to be t2t"})
 
+
 @dataclass
 class GenerationArguments:
     # For more hyperparameters check:
@@ -455,6 +456,7 @@ class MetricComputer:
         return preds, labels
 
     def __call__(self, eval_preds):
+        torch.cuda.empty_cache()
         metric = evaluate.load("f1")
         preds, labels = eval_preds
         if isinstance(preds, tuple):
@@ -475,6 +477,15 @@ class MetricComputer:
         # Do not know whether this helps.
         torch.cuda.empty_cache()
         return result
+
+
+def preprocess_logits_for_metrics(logits, labels):
+    """
+    Original Trainer may have a memory leak.
+    This is a workaround to avoid storing too many tensors that are not needed.
+    """
+    pred_ids = torch.argmax(logits[0], dim=-1)
+    return pred_ids, labels
 
 
 def train():
@@ -579,7 +590,8 @@ def train():
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         data_collator=data_collator,
-        compute_metrics=MetricComputer(tokenizer)
+        compute_metrics=MetricComputer(tokenizer),
+        preprocess_logits_for_metrics=preprocess_logits_for_metrics
     )
 
     # Verifying the datatypes and parameter counts before training.
