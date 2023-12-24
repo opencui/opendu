@@ -12,9 +12,10 @@ python3 opencui/finetune/t2t.py \
     --data_seed 42 \
     --save_total_limit 6 \
     --evaluation_strategy epoch \
-    --eval_dataset_size 512 \
-    --max_eval_samples 1000 \
-    --per_device_eval_batch_size 1 \
+    --eval_dataset_size 64 \
+    --max_eval_samples 16 \
+    --eval_accumulation_steps 16 \
+    --per_device_eval_batch_size 32 \
     --max_new_tokens 32 \
     --dataloader_num_workers 3 \
     --group_by_length False \
