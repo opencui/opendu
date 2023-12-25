@@ -150,10 +150,9 @@ DescriptionPrompts = {
         '### Answer(only in "true" or "false"):'
     ),
     "struct-short": Prompt(
-        'Given:\n'
-        'the utterance: {{utterance}} \n'
-        'the function description: {{skill.description}}\n'
-        'Is it true that the utterance fits the function description?<s>'
+        'Given the function description:\n "{{skill.description}}" \n'
+        'and the sentence: {{utterance}} \n'
+        'Is it true that the sentence fits the function description?'
     ),
     "token": Prompt(
         '<utterance> {{utterance}} </utterance> <func> {{skill.name}} : {{skill.description}} </func> <description>'
@@ -193,10 +192,9 @@ ExemplarPrompts = {
         '### Answer(only in "true" or "false"):'
     ),
     "struct-short": Prompt(
-        'Given:\n'
-        'the template: {{template}}. \n'
-        'the input: {{utterance}} \n'
-        'Is it true that the utterance means the same as the template?<s>'
+        'Given the template: \n "{{template}}" \n'
+        'and the sentence: \n "{{utterance}}" \n'
+        'Is it true that the sentence means the same as the template?'
     ),
 
     "token": Prompt(
