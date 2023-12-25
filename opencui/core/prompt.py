@@ -153,7 +153,7 @@ DescriptionPrompts = {
         'Given:\n'
         'the utterance: {{utterance}} \n'
         'the function description: {{skill.description}}\n'
-        'Is it true that the utterance fits the function description?'
+        'Is it true that the utterance fits the function description?<s>'
     ),
     "token": Prompt(
         '<utterance> {{utterance}} </utterance> <func> {{skill.name}} : {{skill.description}} </func> <description>'
@@ -196,7 +196,7 @@ ExemplarPrompts = {
         'Given:\n'
         'the template: {{template}}. \n'
         'the input: {{utterance}} \n'
-        'Is it true that the utterance means the same as the template?'
+        'Is it true that the utterance means the same as the template?<s>'
     ),
 
     "token": Prompt(

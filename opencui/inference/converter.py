@@ -136,6 +136,7 @@ class FftGenerator(Generator, ABC):
                 generation_config=GenerationConfig(
                     max_new_tokens=32,
                     pad_token_id=self.tokenizer.eos_token_id,
+                    bos_token_id=self.tokenizer.bos_token_id,
                     eos_token_id=self.tokenizer.eos_token_id,
                     attention_mask=encoding.attention_mask,
                     do_sample=False,
