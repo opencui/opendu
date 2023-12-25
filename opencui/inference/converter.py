@@ -8,6 +8,7 @@ import torch
 from peft import PeftConfig, PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, AutoModelForSeq2SeqLM
 
+from opencui import ModelType
 from opencui.core.annotation import (CamelToSnake, DialogExpectation, EntityMetas, Exemplar, FrameValue, ListRecognizer,
                                      OwnerMode)
 from opencui.core.config import LugConfig
@@ -38,6 +39,22 @@ class Generator(ABC):
         if GeneratorType[LugConfig.generator] == GeneratorType.LoraGenerator:
             return LoraGenerator()
 
+    @staticmethod
+    def process_return(outputs: list[str], input_texts: list[str]):
+        if ModelType[LugConfig.model_type] == GeneratorType.t5:
+            return outputs
+        if ModelType[LugConfig.model_type] == GeneratorType.gpt:
+            return [
+            output[len(input_texts[index]):] for index, output in enumerate(outputs)
+        ]
+
+    @staticmethod
+    def from_pretrained(*args, **kwargs):
+        if ModelType[LugConfig.model_type] == GeneratorType.t5:
+            return AutoModelForSeq2SeqLM.from_pretrained(*args, **kwargs)
+        if ModelType[LugConfig.model_type] == GeneratorType.gpt:
+            return AutoModelForCausalLM.from_pretrained(*args, **kwargs)
+
     @abstractmethod
     def generate(self, input_texts: list[str], mode: GenerateMode = None):
         pass
@@ -58,7 +75,7 @@ class LoraGenerator(Generator, ABC):
         # Is this the right place to clean cache.
         torch.cuda.empty_cache()
 
-        base_model = AutoModelForCausalLM.from_pretrained(
+        base_model = Generator.from_pretrained(
             skill_config.base_model_name_or_path,
             return_dict=True,
             device_map=LugConfig.llm_device,
@@ -107,10 +124,8 @@ class LoraGenerator(Generator, ABC):
                 ),
             )
 
-        outputs = self.tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
-        return [
-            output[len(input_texts[index]):] for index, output in enumerate(outputs)
-        ]
+        results = self.tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
+        return Generator.process_return(results, input_texts)
 
 
 # Full finetuned generator
@@ -118,7 +133,7 @@ class FftGenerator(Generator, ABC):
     def __init__(self):
         # Is this the right place to clean cache.
         torch.cuda.empty_cache()
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(
+        self.model = Generator.from_pretrained(
             LugConfig.model,
             return_dict=True,
             device_map=LugConfig.llm_device,
@@ -141,7 +156,7 @@ class FftGenerator(Generator, ABC):
         ).to(LugConfig.llm_device)
 
         with torch.no_grad():
-            peft_outputs = self.model.generate(
+            outputs = self.model.generate(
                 input_ids=encoding.input_ids,
                 generation_config=GenerationConfig(
                     max_new_tokens=32,
@@ -154,10 +169,8 @@ class FftGenerator(Generator, ABC):
                     num_return_sequences=1,
                 ),
             )
-        outputs = self.tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
-        return [
-            output[len(input_texts[index]):] for index, output in enumerate(outputs)
-        ]
+        results = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
+        return Generator.process_return(results, input_texts)
 
 
 class SkillConverter(ABC):
