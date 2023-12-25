@@ -314,9 +314,6 @@ def smart_tokenizer_and_embedding_resize(
 
 
 @dataclass
-
-
-
 class DatasetAdaptor:
     def __init__(self, tokenizer, max_source_length, max_target_length):
         self.padding = "max_length"
@@ -381,10 +378,19 @@ class F1MetricComputer:
         self.tokenizer = tokenizer
 
     @staticmethod
+    def parse_true_false(item):
+        if item == "true":
+            return 0
+        elif item == "false":
+            return 1
+        else:
+            return 2
+
+    @staticmethod
     def postprocess_text(preds: List[str], labels: List[str]) -> Tuple[List[str], List[str]]:
         """ helper function to postprocess text"""
-        preds = [BoolType[pred.strip()] for pred in preds]
-        labels = [BoolType[label.strip()] for label in labels]
+        preds = [F1MetricComputer.parse_true_false(pred.strip()) for pred in preds]
+        labels = [F1MetricComputer.parse_true_false(label.strip()) for label in labels]
         print(type(preds))
         return preds, labels
 
@@ -461,14 +467,12 @@ def train():
     if completed_training:
         print("Detected that training was already completed!")
 
-    print(f"predict_with_generate is: {args.predict_with_generate}")
-
     print("loaded model")
     set_seed(args.seed)
     data_collator = None
-    if ModelType[args.model_type] == ModelType.gpt:
+    model, tokenizer = get_model(args, peft_config)
 
-        model, tokenizer = get_model(args, peft_config)
+    if ModelType[args.model_type] == ModelType.gpt:
         data_collator = DataCollatorForCausalLM(
             tokenizer=tokenizer,
             source_max_len=args.source_max_len,
@@ -478,7 +482,6 @@ def train():
         )
 
     if ModelType[args.model_type] == ModelType.t5:
-        model, tokenizer = get_model(args, peft_config)
         data_collator = DataCollatorForSeq2Seq(
             tokenizer,
             model=model,
