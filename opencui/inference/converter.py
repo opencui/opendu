@@ -15,9 +15,9 @@ from opencui.core.prompt import (ExtractiveSlotPrompts, NliPrompts, DescriptionP
 from opencui.core.retriever import (ContextRetriever, load_context_retrievers)
 from opencui.inference.schema_parser import load_all_from_directory
 
-
 # The modes that we will support.
 GenerateMode = Enum("GenerateMode", ["desc", "exemplar", "extractive", "nli"])
+GeneratorType = Enum("Generator", ["FftGenerator", "LoraGenerator"])
 
 
 # In case you are curious about decoding: https://huggingface.co/blog/how-to-generate
@@ -31,8 +31,15 @@ GenerateMode = Enum("GenerateMode", ["desc", "exemplar", "extractive", "nli"])
 # Generator is responsible for low level things, we will have two different implementation
 # local/s-lora. Converter is built on top of generator.
 class Generator(ABC):
+    @staticmethod
+    def build():
+        if GeneratorType[LugConfig.generator] == GeneratorType.FftGenerator:
+            return FftGenerator()
+        if GeneratorType[LugConfig.generator] == GeneratorType.LoraGenerator:
+            return LoraGenerator()
+
     @abstractmethod
-    def generate(self, mode: GenerateMode, input_texts: list[str]):
+    def generate(self, input_texts: list[str], mode: GenerateMode = None):
         pass
 
 
@@ -78,21 +85,22 @@ class LoraGenerator(Generator, ABC):
 
         # Move to device
         self.lora_model.to(LugConfig.llm_device)
+        self.lora_model.eval()
 
-    def generate(self, mode: GenerateMode, input_texts: list[str]):
+    def generate(self, input_texts: list[str], mode: GenerateMode):
         self.lora_model.set_adapter(mode.name)
-        peft_encoding = self.tokenizer(
+        encoding = self.tokenizer(
             input_texts, padding=True, return_tensors="pt"
         ).to(LugConfig.llm_device)
 
         with torch.no_grad():
             peft_outputs = self.lora_model.generate(
-                input_ids=peft_encoding.input_ids,
+                input_ids=encoding.input_ids,
                 generation_config=GenerationConfig(
                     max_new_tokens=32,
                     pad_token_id=self.tokenizer.eos_token_id,
                     eos_token_id=self.tokenizer.eos_token_id,
-                    attention_mask=peft_encoding.attention_mask,
+                    attention_mask=encoding.attention_mask,
                     do_sample=False,
                     repetition_penalty=1.2,
                     num_return_sequences=1,
@@ -125,15 +133,16 @@ class FftGenerator(Generator, ABC):
 
         # Move to device
         self.model.to(LugConfig.llm_device)
+        self.model.eval()
 
-    def generate(self, mode: GenerateMode, input_texts: list[str]):
+    def generate(self, input_texts: list[str], mode: GenerateMode):
         encoding = self.tokenizer(
-            input_texts, padding=True, truncation=True,  return_tensors="pt"
+            input_texts, padding=True, truncation=True, return_tensors="pt"
         ).to(LugConfig.llm_device)
 
         with torch.no_grad():
             peft_outputs = self.model.generate(
-                input_ids=encoding["input_ids"],
+                input_ids=encoding.input_ids,
                 generation_config=GenerationConfig(
                     max_new_tokens=32,
                     pad_token_id=self.tokenizer.eos_token_id,
@@ -149,9 +158,6 @@ class FftGenerator(Generator, ABC):
         return [
             output[len(input_texts[index]):] for index, output in enumerate(outputs)
         ]
-
-
-GeneratorType = Enum("Generator", ["FftGenerator", "LoraGenerator"])
 
 
 class SkillConverter(ABC):
@@ -179,7 +185,7 @@ class OwnerPicker:
         # This we make sure that
         self.modes = [OwnerMode.normal]
 
-    def accumulate(self, flags: list[bool], owners:list[str], weight=2) -> str:
+    def accumulate(self, flags: list[bool], owners: list[str], weight=2) -> str:
         assert len(flags) == len(owners)
         for index, flag in enumerate(flags):
             if flag:
@@ -260,14 +266,14 @@ class ISkillConverter(SkillConverter, ABC):
 
         if self.use_exemplar:
             skill_prompts, owners = self.build_prompts_by_examples(text, nodes, to_snake)
-            skill_outputs = self.generator.generate(GenerateMode.exemplar, skill_prompts)
+            skill_outputs = self.generator.generate(skill_prompts, GenerateMode.exemplar)
             functions = self.parse_results(skill_prompts, owners, skill_outputs)
             if len(functions) != 0:
                 return functions
 
         if self.use_desc:
             skill_prompts, owners = self.build_prompts_by_desc(text, skills, to_snake)
-            skill_outputs = self.generator.generate(GenerateMode.desc, skill_prompts)
+            skill_outputs = self.generator.generate(skill_prompts, GenerateMode.desc)
             return self.parse_results(skill_prompts, owners, skill_outputs)
 
         return []
@@ -293,7 +299,7 @@ class ISkillConverter(SkillConverter, ABC):
 
         # for examplar
         skill_prompts, owners = self.build_prompts_by_examples(text, nodes, to_snake)
-        skill_outputs = self.generator.generate(GenerateMode.exemplar, skill_prompts)
+        skill_outputs = self.generator.generate(skill_prompts, GenerateMode.exemplar)
         preds = [
             parse_json_from_string(raw_flag, raw_flag)
             for index, raw_flag in enumerate(skill_outputs)
@@ -305,7 +311,7 @@ class ISkillConverter(SkillConverter, ABC):
 
         # for desc
         skill_prompts, owners = self.build_prompts_by_desc(text, skills, to_snake)
-        skill_outputs = self.generator.generate(GenerateMode.desc, skill_prompts)
+        skill_outputs = self.generator.generate(skill_prompts, GenerateMode.desc)
         preds = [
             parse_json_from_string(raw_flag, None)
             for index, raw_flag in enumerate(skill_outputs)
@@ -331,7 +337,7 @@ class Converter:
         if entity_metas is not None:
             self.recognizer = ListRecognizer(entity_metas)
 
-        self.generator = Converter.generator()
+        self.generator = Generator.build()
         self.slot_prompt = ExtractiveSlotPrompts[LugConfig.slot_prompt]
         self.nli_prompt = NliPrompts[LugConfig.nli_prompt]
         self.with_arguments = with_arguments
@@ -340,13 +346,6 @@ class Converter:
 
         self.skill_converter = ISkillConverter(retriever, self.generator)
         self.nli_labels = {"entailment": True, "neutral": None, "contradiction": False}
-
-    @staticmethod
-    def generator():
-        if GeneratorType[LugConfig.generator] == GeneratorType.FftGenerator:
-            return FftGenerator()
-        if GeneratorType[LugConfig.generator] == GeneratorType.LoraGenerator:
-            return LoraGenerator()
 
     def understand(
             self, text: str, expectation: DialogExpectation = None
@@ -383,7 +382,7 @@ class Converter:
 
         if LugConfig.converter_debug:
             print(json.dumps(slot_prompts, indent=2))
-        slot_outputs = self.generator.generate(GenerateMode.extractive, slot_prompts)
+        slot_outputs = self.generator.generate(slot_prompts, GenerateMode.extractive)
 
         if LugConfig.converter_debug:
             print(json.dumps(slot_outputs, indent=2))
