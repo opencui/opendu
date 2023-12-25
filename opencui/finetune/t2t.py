@@ -15,15 +15,15 @@ import numpy as np
 import torch
 import transformers
 from datasets import Dataset, concatenate_datasets, load_dataset
-from nltk import sent_tokenize
 from peft import LoraConfig, get_peft_model, TaskType, PrefixTuningConfig
-from torch.nn.utils.rnn import pad_sequence
+
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed,
                           DataCollatorForSeq2Seq, AutoModelForSeq2SeqLM)
 from opencui.core.prompt import (ExtractiveSlotPrompts, NliPrompts)
 from opencui.core.special_tokens import SpecialTokens
 from opencui.finetune.commons import (MappedDatasetDict, collect_slot_values, JsonDatasetFactory,
-                                      OneSlotExtractConverter, PromptedFactory, NliConverter)
+                                      OneSlotExtractConverter, PromptedFactory, NliConverter, load_training_dataset)
+from opencui.finetune.datacollator import DataCollatorForCausalLM
 
 logger = logging.getLogger(__name__)
 
@@ -314,72 +314,6 @@ def smart_tokenizer_and_embedding_resize(
 
 
 @dataclass
-class DataCollatorForCausalLM(object):
-    tokenizer: transformers.PreTrainedTokenizer
-    source_max_len: int
-    target_max_len: int
-    train_on_source: bool
-    predict_with_generate: bool
-
-    def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
-        # Extract elements
-        sources = [f"{example['input']}" for example in instances]
-        targets = [
-            f"{example['output']} {self.tokenizer.eos_token}" for example in instances
-        ]
-
-        # Tokenize
-        tokenized_sources_with_prompt = self.tokenizer(
-            sources,
-            max_length=self.source_max_len,
-            truncation=True,
-            add_special_tokens=False,
-        )
-        tokenized_targets = self.tokenizer(
-            targets,
-            max_length=self.target_max_len,
-            truncation=True,
-            add_special_tokens=False,
-        )
-        # Build the input and labels for causal LM
-        input_ids = []
-        labels = []
-        for tokenized_source, tokenized_target in zip(
-            tokenized_sources_with_prompt["input_ids"], tokenized_targets["input_ids"]
-        ):
-            if not self.predict_with_generate:
-                input_ids.append(torch.tensor(tokenized_source + tokenized_target))
-                if not self.train_on_source:
-                    labels.append(
-                        torch.tensor(
-                            [IGNORE_INDEX for _ in range(len(tokenized_source))]
-                            + copy.deepcopy(tokenized_target)
-                        )
-                    )
-                else:
-                    labels.append(
-                        torch.tensor(copy.deepcopy(tokenized_source + tokenized_target))
-                    )
-            else:
-                input_ids.append(torch.tensor(tokenized_source))
-        # Apply padding
-        input_ids = pad_sequence(
-            input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id
-        )
-        labels = (
-            pad_sequence(labels, batch_first=True, padding_value=IGNORE_INDEX)
-            if not self.predict_with_generate
-            else None
-        )
-        data_dict = {
-            "input_ids": input_ids,
-            "attention_mask": input_ids.ne(self.tokenizer.pad_token_id),
-        }
-        if labels is not None:
-            data_dict["labels"] = labels
-        return data_dict
-
-
 class DatasetAdaptor:
     def __init__(self, tokenizer, max_source_length, max_target_length):
         self.padding = "max_length"
@@ -444,10 +378,20 @@ class F1MetricComputer:
         self.tokenizer = tokenizer
 
     @staticmethod
+    def parse_true_false(item):
+        if item == "true":
+            return 0
+        elif item == "false":
+            return 1
+        else:
+            return 2
+
+    @staticmethod
     def postprocess_text(preds: List[str], labels: List[str]) -> Tuple[List[str], List[str]]:
         """ helper function to postprocess text"""
-        preds = [BoolType[pred.strip()] for pred in preds]
-        labels = [BoolType[label.strip()] for label in labels]
+        preds = [F1MetricComputer.parse_true_false(pred.strip()) for pred in preds]
+        labels = [F1MetricComputer.parse_true_false(label.strip()) for label in labels]
+        print(type(preds))
         return preds, labels
 
     def __call__(self, eval_preds:transformers.trainer_utils.EvalPrediction):
@@ -517,40 +461,18 @@ def train():
 
     # Save the things to disk first, for training we keep each module separate.
     # Down the road, we might
-    converted_factories = []
-    if "desc" in args.training_mode == "desc":
-        build_skill_factory(["desc"], converted_factories)
-    if "exemplar" in args.training_mode:
-        build_skill_factory(["exemplar"], converted_factories)
-    if "extractive_slot" in args.training_mode:
-        build_extractive_slot_factory(converted_factories)
-    if "nli" in args.training_mode:
-        build_nli_factory(converted_factories)
-
-    assert len(converted_factories) != 0
-
-    # If we debug dataset, we do not train.
-    if args.debug_dataset:
-        count = 0
-        for factory in converted_factories:
-            ds = factory["train"]
-            for item in ds:
-                print(json.dumps(item, indent=2))
-                count += 1
-        print(count)
-        exit(0)
+    converted_factories = load_training_dataset(args)
 
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
         print("Detected that training was already completed!")
 
-
     print("loaded model")
     set_seed(args.seed)
     data_collator = None
-    if ModelType[args.model_type] == ModelType.gpt:
+    model, tokenizer = get_model(args, peft_config)
 
-        model, tokenizer = get_model(args, peft_config)
+    if ModelType[args.model_type] == ModelType.gpt:
         data_collator = DataCollatorForCausalLM(
             tokenizer=tokenizer,
             source_max_len=args.source_max_len,
@@ -560,7 +482,6 @@ def train():
         )
 
     if ModelType[args.model_type] == ModelType.t5:
-        model, tokenizer = get_model(args, peft_config)
         data_collator = DataCollatorForSeq2Seq(
             tokenizer,
             model=model,
@@ -623,46 +544,6 @@ def train():
 
         with open(os.path.join(args.output_dir, "metrics.json"), "w") as fout:
             fout.write(json.dumps(all_metrics))
-
-
-# Here we create the dataset factory for skills
-def build_skill_factory(skill_modes, factories):
-    # make sure run build_skill_dataset first.
-    for skill_mode in skill_modes:
-        factories.append(
-            JsonDatasetFactory("./datasets/sgd/", "sgd", f"{skill_mode}-{LugConfig.skill_prompt}.")
-        )
-
-
-def build_extractive_slot_factory(converted_factories):
-    factories = [
-        JsonDatasetFactory("./datasets/sgd/", "sgd"),
-    ]
-    for index, factory in enumerate(factories):
-        entity_values = collect_slot_values(factory.__getitem__("train"))
-        slot_converter = OneSlotExtractConverter(
-            factory.schema, ExtractiveSlotPrompts[LugConfig.slot_prompt], entity_values
-        )
-        converted_factories.append(PromptedFactory(factory, [slot_converter]))
-
-
-def build_nli_factory(converted_factories):
-    # Here we assume the raw input is sentence, focus and label (positive, negative and neutral)
-    semeval2016 = load_dataset("glue", "mnli")
-    factories = [MappedDatasetDict(semeval2016, "validation_matched", "validation_mismatched")]
-    for index, factory in enumerate(factories):
-        converter = NliConverter(NliPrompts[LugConfig.nli_prompt])
-        converted_factories.append(PromptedFactory(factory, [converter], []))
-
-
-def print_factories(factories):
-    for factory in factories:
-        ds = factory.__getitem__("train")
-        count = 0
-        for item in ds:
-            print(item)
-            count += 1
-        print(f"There are {count} instances")
 
 
 def get_lora_config():
