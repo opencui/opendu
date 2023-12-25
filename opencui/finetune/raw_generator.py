@@ -10,5 +10,5 @@ if __name__ == '__main__':
     for line in sys.stdin:
         if 'q' == line.rstrip():
             break
-        print(classify(line))
+        print(generator.generate(line))
         print("input:")
