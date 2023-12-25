@@ -6,13 +6,12 @@ from enum import Enum
 
 import torch
 from peft import PeftConfig, PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, AutoModelForSeq2SeqLM
 
 from opencui.core.annotation import (CamelToSnake, DialogExpectation, EntityMetas, Exemplar, FrameValue, ListRecognizer,
                                      OwnerMode)
 from opencui.core.config import LugConfig
-from opencui.core.prompt import (BinarySkillPrompts, ExtractiveSlotPrompts, MulticlassSkillPrompts,
-                                 NliPrompts, DescriptionPrompts, ExemplarPrompts)
+from opencui.core.prompt import (ExtractiveSlotPrompts, NliPrompts, DescriptionPrompts, ExemplarPrompts)
 from opencui.core.retriever import (ContextRetriever, load_context_retrievers)
 from opencui.inference.schema_parser import load_all_from_directory
 
@@ -111,7 +110,7 @@ class FftGenerator(Generator, ABC):
     def __init__(self):
         # Is this the right place to clean cache.
         torch.cuda.empty_cache()
-        self.model = AutoModelForCausalLM.from_pretrained(
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(
             LugConfig.model,
             return_dict=True,
             device_map=LugConfig.llm_device,

@@ -20,6 +20,7 @@ class LugConfig:
     skill_arity = 1
     llm_device = "cuda:0"
 
+    model_type = "t5"
     skill_prompt = "struct-short"
     slot_prompt = "default"
     nli_prompt = "default"
@@ -27,7 +28,7 @@ class LugConfig:
 
     # We will append instance.desc/instance.exemplar to this.
     generator = "FftGenerator"
-    model="./output/tinyllama2.5t-st/checkpoint-5580/"
+    model="./output/flant5base-st-3e4/checkpoint-8168/"
 
     skill_model = "OpenCUI/skill-tinyllama-0.1"
     extractive_slot_model = "OpenCUI/extractive-tinyllama2.5t-1.0"
