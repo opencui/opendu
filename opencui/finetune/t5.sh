@@ -32,8 +32,9 @@ python3 opencui/finetune/t2t.py \
     --learning_rate 3e-4 \
     --adam_beta2 0.999 \
     --max_grad_norm 1.0 \
-    --weight_decay 0.0 \
+    --weight_decay 0.01 \
     --seed 0 \
+    --predict_with_generate \
     --debug_dataset False \
     --training_mode desc-exemplar-extractive-slot \
     --peft_mode null \

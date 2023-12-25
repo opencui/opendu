@@ -316,7 +316,7 @@ def smart_tokenizer_and_embedding_resize(
 @dataclass
 class DatasetAdaptor:
     def __init__(self, tokenizer, max_source_length, max_target_length):
-        self.padding = "max_length"
+        self.padding = True
         self.tokenizer = tokenizer
         self.max_source_length = max_source_length
         self.max_target_length = max_target_length
@@ -325,7 +325,7 @@ class DatasetAdaptor:
         """ Preprocess the dataset. """
 
         # add prefix to the input for t5
-        inputs = [item for item in sample["input"]]
+        inputs = sample["input"]
 
         # tokenize inputs
         model_inputs = self.tokenizer(inputs, max_length=self.max_source_length, padding=self.padding, truncation=True)
@@ -336,7 +336,7 @@ class DatasetAdaptor:
 
         # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
         # padding in the loss.
-        if self.padding == "max_length":
+        if self.padding:
             labels["input_ids"] = [
                 [(l if l != self.tokenizer.pad_token_id else -100) for l in label] for label in labels["input_ids"]
             ]
@@ -394,8 +394,7 @@ class F1MetricComputer:
         print(type(preds))
         return preds, labels
 
-    def __call__(self, eval_preds:transformers.trainer_utils.EvalPrediction):
-        torch.cuda.empty_cache()
+    def __call__(self, eval_preds: transformers.trainer_utils.EvalPrediction):
         metric = evaluate.load("f1")
         preds, labels = eval_preds
         if isinstance(preds, tuple):
@@ -412,9 +411,6 @@ class F1MetricComputer:
         result = {k: round(v * 100, 4) for k, v in result.items()}
         prediction_lens = [np.count_nonzero(pred != self.tokenizer.pad_token_id) for pred in preds]
         result["gen_len"] = np.mean(prediction_lens)
-
-        # Do not know whether this helps.
-        torch.cuda.empty_cache()
         return result
 
 
@@ -536,6 +532,7 @@ def train():
         trainer.log_metrics("train", metrics)
         trainer.save_metrics("train", metrics)
         trainer.save_state()
+        trainer.save_model()
         all_metrics.update(metrics)
 
         # append save the config

@@ -24,7 +24,7 @@ class LugConfig:
     skill_prompt = "struct-short"
     slot_prompt = "default"
     nli_prompt = "default"
-    bool_prompt = "default"
+    bool_prompt = "plain"
 
     # We will append instance.desc/instance.exemplar to this.
     generator = "FftGenerator"
