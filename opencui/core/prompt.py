@@ -245,6 +245,7 @@ NliPrompts = {
 
 BoolPrompts = {
     "default": Prompt('{{label}}</s>'),
+    "plain": Prompt('{{label}}'),
     "truefalse": Prompt('{{label}}</true_false_response></s>'),
     "yesno": Prompt('{{label}}</yes_no_response></s>')
 }

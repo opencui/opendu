@@ -118,6 +118,7 @@ class FftGenerator(Generator, ABC):
             torch_dtype=torch.bfloat16
         )
 
+        self.model.eval()
         self.tokenizer = AutoTokenizer.from_pretrained(LugConfig.model)
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "left"
@@ -127,12 +128,12 @@ class FftGenerator(Generator, ABC):
 
     def generate(self, mode: GenerateMode, input_texts: list[str]):
         encoding = self.tokenizer(
-            input_texts, padding=True, return_tensors="pt"
+            input_texts, padding=True, truncation=True,  return_tensors="pt"
         ).to(LugConfig.llm_device)
 
         with torch.no_grad():
             peft_outputs = self.model.generate(
-                input_ids=encoding.input_ids,
+                input_ids=encoding["input_ids"],
                 generation_config=GenerationConfig(
                     max_new_tokens=32,
                     pad_token_id=self.tokenizer.eos_token_id,
@@ -294,7 +295,7 @@ class ISkillConverter(SkillConverter, ABC):
         skill_prompts, owners = self.build_prompts_by_examples(text, nodes, to_snake)
         skill_outputs = self.generator.generate(GenerateMode.exemplar, skill_prompts)
         preds = [
-            parse_json_from_string(raw_flag, None)
+            parse_json_from_string(raw_flag, raw_flag)
             for index, raw_flag in enumerate(skill_outputs)
         ]
         truth = [owner == lowner and OwnerMode[owner_mode] == OwnerMode.normal for lowner in owners]
