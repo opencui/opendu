@@ -136,6 +136,13 @@ class ContextRetriever:
         self.arity = LugConfig.exemplar_retrieve_arity
         self.extended_mode = False
 
+    def retrieve_by_desc(self, query):
+        # The goal here is to find the combined descriptions and exemplars.
+        return self.desc_retriever.retrieve(query)
+
+    def retrieve_by_exemplar(self, query):
+        return self.exemplar_retriever.retrieve(query)
+
     def __call__(self, query):
         # The goal here is to find the combined descriptions and exemplars.
         desc_nodes = [

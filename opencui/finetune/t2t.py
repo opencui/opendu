@@ -424,6 +424,9 @@ def preprocess_logits_for_metrics(logits, labels):
 
 
 def train():
+    # Turn of the evaluation mode. Main difference is
+    LugConfig.eval_mode = False
+
     hfparser = transformers.HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments, GenerationArguments)
     )
@@ -562,8 +565,15 @@ def get_lora_config():
         lora_dropout=lora_dropout,
         r=lora_rank,
         bias="none",
-        task_type="CAUSAL_LM",
-        target_modules=anyscale_blog,
+        task_type=TaskType.CAUSAL_LM,
+        target_modules=anyscale_blog) \
+        if ModelType[LoraConfig.model_type] == ModelType.gpt else LoraConfig(
+        r=lora_rank,  # Rank
+        lora_alpha=lora_alpha,
+        target_modules=["q", "v"],
+        lora_dropout=lora_dropout,
+        bias="none",
+        task_type=TaskType.SEQ_2_SEQ_LM # FLAN-T5
     )
 
 

@@ -14,7 +14,7 @@ class LugConfig:
     embedding_exemplar_prompt = "baai_exemplar"
 
     desc_retrieve_topk = 6
-    exemplar_retrieve_topk = 32
+    exemplar_retrieve_topk = 6
     exemplar_retrieve_arity = 6
 
     skill_arity = 1
@@ -25,6 +25,8 @@ class LugConfig:
     slot_prompt = "default"
     nli_prompt = "default"
     bool_prompt = "plain"
+
+    eval_mode = True
 
     # We will append instance.desc/instance.exemplar to this.
     generator = "FftGenerator"

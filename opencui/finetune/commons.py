@@ -45,7 +45,7 @@ class AnnotatedExemplar:
             "owner": self.owner,
             "utterance": self.utterance,
             "arguments": str(self.arguments),
-            "owner_mode": str(self.extended),
+            "owner_mode": str(self.owner_mode),
             "template": self.template,
             "expectations": str(self.expectations),
         }
