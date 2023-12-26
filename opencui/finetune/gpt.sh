@@ -29,6 +29,7 @@ python3 opencui/finetune/t2t.py \
     --max_steps 0 \
     --num_train_epochs 4 \
     --learning_rate 3e-5 \
+    --optim adamw_torch \
     --adam_beta2 0.999 \
     --max_grad_norm 1.0 \
     --weight_decay 0.0 \
