@@ -32,14 +32,18 @@ def compute_k_examplar(dataset: Dataset, retrieve: ContextRetriever):
         results = retrieve.retrieve_by_exemplar(item["utterance"])
         if item["owner"] == "NONE":
             continue
+        gindex = 100
+        gscore = 0
         for index, result in enumerate(results):
             if result.node.metadata["owner"] == item["owner"]:
-                first_indexes.append(index)
-                first_scores.append(result.score)
+                gindex = index
+                gscore = result.score
+        first_indexes.append(gindex)
+        first_scores.append(gscore)
     return first_indexes, first_scores
 
 
-def find_percentile(a, percentile=98, up=True):
+def find_percentile(a, percentile=98, reverse=False):
     a.sort()
     print(a)
     npa = np.array(a)
@@ -85,7 +89,7 @@ if __name__ == "__main__":
     for index in range(len(factories)):
         factory = factories[index]
         searcher = retrievers[index]
-        ds = factory.build("train")
+        ds = factory["train"]
         print(compute_k(ds, searcher))
         first_indexes, first_scores = compute_k_examplar(ds, searcher)
         print(find_percentile(first_indexes))
