@@ -481,7 +481,7 @@ class InstanceTrainConverter(TrainConverter):
                     continue
                 input_dict = {"utterance": utterance, "skill": skill}
                 ins.append(self.desc_prompt(input_dict))
-                outs.append(f"{self.label(owner == skill['name'] and self.matcher.match(owner, owner_mode))}")
+                outs.append(f"{self.label(self.matcher.match(owner, skill['name'], owner_mode))}")
 
 
 #
