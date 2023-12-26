@@ -10,7 +10,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, 
 
 from opencui import ModelType
 from opencui.core.annotation import (CamelToSnake, DialogExpectation, EntityMetas, Exemplar, FrameValue, ListRecognizer,
-                                     OwnerMode)
+                                     OwnerMode, ExactMatcher)
 from opencui.core.config import LugConfig
 from opencui.core.prompt import (ExtractiveSlotPrompts, NliPrompts, DescriptionPrompts, ExemplarPrompts)
 from opencui.core.retriever import (ContextRetriever, load_context_retrievers)
@@ -223,10 +223,12 @@ class ISkillConverter(SkillConverter, ABC):
         self.use_exemplar = False
         self.use_desc = True
         assert self.use_desc or self.use_exemplar
+        self.matcher = ExactMatcher
 
     def build_prompts_by_examples(self, text, nodes, to_snake):
         skill_prompts = []
         owners = []
+        owner_modes = []
 
         # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
         exemplars = [
@@ -242,8 +244,9 @@ class ISkillConverter(SkillConverter, ABC):
             input_dict = {"utterance": text, "template": exemplar.template}
             skill_prompts.append(self.example_prompt(input_dict))
             owners.append(exemplar.owner)
+            owner_modes.append(exemplar.owner_mode)
 
-        return skill_prompts, owners
+        return skill_prompts, owners, owner_modes
 
     def build_prompts_by_desc(self, text, skills, to_snake):
         skill_prompts = []
@@ -261,7 +264,7 @@ class ISkillConverter(SkillConverter, ABC):
         return skill_prompts, owners
 
     @staticmethod
-    def parse_results(skill_prompts, owners, skill_outputs):
+    def parse_results(skill_prompts, owners, skill_outputs, owner_modes):
         if LugConfig.converter_debug:
             print(json.dumps(skill_prompts, indent=2))
             print(json.dumps(skill_outputs, indent=2))
@@ -278,7 +281,7 @@ class ISkillConverter(SkillConverter, ABC):
         skills, nodes = self.retrieve(text)
 
         if self.use_exemplar:
-            skill_prompts, owners = self.build_prompts_by_examples(text, nodes, to_snake)
+            skill_prompts, owners, owner_modes = self.build_prompts_by_examples(text, nodes, to_snake)
             skill_outputs = self.generator.generate(skill_prompts, GenerateMode.exemplar)
             functions = self.parse_results(skill_prompts, owners, skill_outputs)
             if len(functions) != 0:
@@ -310,14 +313,17 @@ class ISkillConverter(SkillConverter, ABC):
         # nodes owner are always included in the
         skills, nodes = self.retrieve(text)
 
-        # for examplar
-        skill_prompts, owners = self.build_prompts_by_examples(text, nodes, to_snake)
+        # for exemplar
+        skill_prompts, owners, owner_modes = self.build_prompts_by_examples(text, nodes, to_snake)
         skill_outputs = self.generator.generate(skill_prompts, GenerateMode.exemplar)
         preds = [
             parse_json_from_string(raw_flag, raw_flag)
             for index, raw_flag in enumerate(skill_outputs)
         ]
-        truth = [owner == lowner and OwnerMode[owner_mode] == OwnerMode.normal for lowner in owners]
+        truth = [
+            self.matcher.agree(owner, owner_mode, lowner, owner_modes[index])
+            for index, lowner in enumerate(owners)]
+
         assert len(preds) == len(truth)
         picker.accumulate(preds, owners, 2)
         self.update(preds, truth, count_dict["exemplar"], skill_prompts, skill_outputs)
