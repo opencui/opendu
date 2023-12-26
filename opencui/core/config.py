@@ -13,9 +13,10 @@ class LugConfig:
     embedding_desc_prompt = "baai_desc"
     embedding_exemplar_prompt = "baai_exemplar"
 
-    desc_retrieve_topk = 6
-    exemplar_retrieve_topk = 6
-    exemplar_retrieve_arity = 6
+    # We might not want to touch this, without rerun find_k
+    desc_retrieve_topk = 8
+    exemplar_retrieve_topk = 8
+    exemplar_retrieve_arity = 8
 
     skill_arity = 1
     llm_device = "cuda:0"

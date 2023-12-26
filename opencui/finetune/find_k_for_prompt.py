@@ -28,14 +28,17 @@ def compute_k(dataset: Dataset, retrieve: ContextRetriever):
 def compute_k_examplar(dataset: Dataset, retrieve: ContextRetriever):
     first_indexes = []
     first_scores = []
+    BIG = 100
     for item in dataset:
         results = retrieve.retrieve_by_exemplar(item["utterance"])
         if item["owner"] == "NONE":
             continue
-        gindex = 100
+        gindex = BIG
         gscore = 0
         for index, result in enumerate(results):
-            if result.node.metadata["owner"] == item["owner"]:
+            if index == 0:
+                continue
+            if result.node.metadata["owner"] == item["owner"] and gindex == BIG:
                 gindex = index
                 gscore = result.score
         first_indexes.append(gindex)
