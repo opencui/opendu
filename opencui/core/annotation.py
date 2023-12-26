@@ -124,8 +124,8 @@ class ExactMatcher:
         return True
 
     @staticmethod
-    def match(owner, mode_in_str):
-        OwnerMode[mode_in_str] == OwnerMode.normal
+    def match(owner, target, mode_in_str):
+        return owner == target and OwnerMode[mode_in_str] == OwnerMode.normal
 
 
 @dataclass_json
