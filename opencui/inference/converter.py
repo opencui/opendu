@@ -41,18 +41,18 @@ class Generator(ABC):
 
     @staticmethod
     def process_return(outputs: list[str], input_texts: list[str]):
-        if ModelType[LugConfig.model_type] == GeneratorType.t5:
+        if ModelType[LugConfig.model_type] == ModelType.t5:
             return outputs
-        if ModelType[LugConfig.model_type] == GeneratorType.gpt:
+        if ModelType[LugConfig.model_type] == ModelType.gpt:
             return [
             output[len(input_texts[index]):] for index, output in enumerate(outputs)
         ]
 
     @staticmethod
     def from_pretrained(*args, **kwargs):
-        if ModelType[LugConfig.model_type] == GeneratorType.t5:
+        if ModelType[LugConfig.model_type] == ModelType.t5:
             return AutoModelForSeq2SeqLM.from_pretrained(*args, **kwargs)
-        if ModelType[LugConfig.model_type] == GeneratorType.gpt:
+        if ModelType[LugConfig.model_type] == ModelType.gpt:
             return AutoModelForCausalLM.from_pretrained(*args, **kwargs)
 
     @abstractmethod

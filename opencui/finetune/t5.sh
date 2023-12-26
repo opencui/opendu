@@ -30,11 +30,11 @@ python3 opencui/finetune/t2t.py \
     --max_steps 0 \
     --num_train_epochs 4 \
     --learning_rate 3e-4 \
+    --optim adamw_torch
     --adam_beta2 0.999 \
     --max_grad_norm 1.0 \
     --weight_decay 0.01 \
     --seed 0 \
-    --predict_with_generate \
     --debug_dataset False \
     --training_mode desc-exemplar-extractive_slot \
     --peft_mode null \

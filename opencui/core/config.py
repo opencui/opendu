@@ -28,7 +28,7 @@ class LugConfig:
 
     # We will append instance.desc/instance.exemplar to this.
     generator = "FftGenerator"
-    model="./output/flant5base-st-3e4/checkpoint-8168/"
+    model="./output/flant5base/last/"
 
     skill_model = "OpenCUI/skill-tinyllama-0.1"
     extractive_slot_model = "OpenCUI/extractive-tinyllama2.5t-1.0"
