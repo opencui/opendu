@@ -1,11 +1,11 @@
 import logging
 
 from datasets import Dataset
-
+import numpy as np
 from opencui.core.config import LugConfig
 from opencui.core.embedding import EmbeddingStore
 from opencui.core.retriever import (ContextRetriever, build_desc_index, load_context_retrievers)
-from opencui.finetune.commons import build_dataset_index
+from opencui.finetune.commons import build_dataset_index, JsonDatasetFactory
 
 
 def compute_k(dataset: Dataset, retrieve: ContextRetriever):
@@ -25,6 +25,27 @@ def compute_k(dataset: Dataset, retrieve: ContextRetriever):
     return counts
 
 
+def compute_k_examplar(dataset: Dataset, retrieve: ContextRetriever):
+    first_indexes = []
+    first_scores = []
+    for item in dataset:
+        results = retrieve.retrieve_by_exemplar(item["utterance"])
+        if item["owner"] == "NONE":
+            continue
+        for index, result in enumerate(results):
+            if result.node.metadata["owner"] == item["owner"]:
+                first_indexes.append(index)
+                first_scores.append(result.score)
+    return first_indexes, first_scores
+
+
+def find_percentile(a, percentile=98, up=True):
+    a.sort()
+    print(a)
+    npa = np.array(a)
+    return np.percentile(npa, percentile)
+
+
 #
 # It is really import that we get the hyperparameter right. For fine-tune the generator in the RAG,
 # we need to make sure the prompt template can be instantiated to meet the certain criteria.
@@ -40,22 +61,20 @@ if __name__ == "__main__":
     logger.setLevel(logging.CRITICAL)
 
     LugConfig.embedding_device = "cuda:0"
-    from opencui.finetune.sgd import SGD
 
-    factories = [SGD("/home/sean/src/dstc8-schema-guided-dialogue/")]
+    factories = [JsonDatasetFactory("./datasets/sgd", "sgd")]
 
     # For now, just use the fix path.
     output = "./output"
 
-    build_index = True
-    if build_index:
-        for factory in factories:
-            build_desc_index(factory.tag, factory.schema,
-                             f"{output}/index/{factory.tag}",
-                             EmbeddingStore.for_description())
-            build_dataset_index(factory.tag, factory.build("train"),
-                                f"{output}/index/{factory.tag}",
-                                EmbeddingStore.for_exemplar())
+    print("building index first.")
+    for factory in factories:
+        build_desc_index(factory.tag, factory.schema,
+                         f"{output}/index/{factory.tag}",
+                         EmbeddingStore.for_description())
+        build_dataset_index(factory.tag, factory["train"],
+                            f"{output}/index/{factory.tag}",
+                            EmbeddingStore.for_exemplar())
 
     retrievers = []
     for factory in factories:
@@ -68,3 +87,7 @@ if __name__ == "__main__":
         searcher = retrievers[index]
         ds = factory.build("train")
         print(compute_k(ds, searcher))
+        first_indexes, first_scores = compute_k_examplar(ds, searcher)
+        print(find_percentile(first_indexes))
+        print(find_percentile(first_scores))
+
