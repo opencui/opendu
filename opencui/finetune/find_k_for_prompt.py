@@ -92,6 +92,6 @@ if __name__ == "__main__":
         ds = factory["train"]
         print(compute_k(ds, searcher))
         first_indexes, first_scores = compute_k_examplar(ds, searcher)
-        print(find_percentile(first_indexes))
-        print(find_percentile(first_scores))
+        print(find_percentile(first_indexes, 99))
+        print(find_percentile(first_scores, 1))
 
