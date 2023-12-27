@@ -450,12 +450,14 @@ class InstanceTrainConverter(TrainConverter):
             outs.append(f"{self.label(True)}")
 
             # First handle exemplars.
+            arg_checker = ArgChecker(eval(batch["arguments"][idx]))
             for exemplar in exemplars:
                 if self.mode == InstanceMode.desc:
                     continue
 
-                # We do not
-                if OwnerMode[exemplar.owner_mode] != OwnerMode.normal:
+                # if there are more details in the templates, we ignore this pair, as we do not know.
+                implies = arg_checker.implies(exemplar.template)
+                if not implies:
                     continue
 
                 match_status = self.matcher.agree(owner, owner_mode, exemplar.owner, exemplar.owner_mode)
