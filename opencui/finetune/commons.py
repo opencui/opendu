@@ -443,7 +443,6 @@ class InstanceTrainConverter(TrainConverter):
             owner = batch["owner"][idx]
             owner_mode = batch["owner_mode"][idx]
 
-            arg_checker = ArgChecker(eval(batch["arguments"][idx]))
             # First handle exemplars.
             for exemplar in exemplars:
                 if self.mode == InstanceMode.desc:
