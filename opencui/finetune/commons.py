@@ -432,6 +432,20 @@ class OneSkillTrainConverter(TrainConverter):
 InstanceMode = Enum("InstanceMode", ["desc", "example", "both"])
 
 
+class ArgChecker:
+    def __init__(self, args_for_utterance):
+        print(f"getting {json.dumps(args_for_utterance)}")
+        self.args_for_utterance = args_for_utterance
+
+    def implies(self, template):
+        # if every arg in args_for_template is inside args for utterance, utterance means template.
+        args = [key.strip() for key in re.findall(r"<(.+?)>", template)]
+        for key in args:
+            if key not in self.args_for_utterance:
+                return False
+        return True
+
+
 # For this one, we first use example based prediction, and then description based prediction.
 class InstanceTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever, mode=InstanceMode.both):
@@ -442,6 +456,7 @@ class InstanceTrainConverter(TrainConverter):
         self.neg_k = 1
         self.mode = mode
         self.matcher = ExactMatcher
+        self.arg_check
 
     @staticmethod
     def label(value):
@@ -462,18 +477,25 @@ class InstanceTrainConverter(TrainConverter):
             owner = batch["owner"][idx]
             owner_mode = batch["owner_mode"][idx]
 
+            arg_checker = ArgChecker(eval(batch["arguments"][idx]))
             # First handle exemplars.
             for exemplar in exemplars:
                 if self.mode == InstanceMode.desc:
                     continue
+
+                if OwnerMode[exemplar.owner_mode] != OwnerMode.normal:
+                    continue
+
                 match_status = self.matcher.agree(owner, owner_mode, exemplar.owner, exemplar.owner_mode)
                 if match_status is None:
                     continue
 
+                implies = arg_checker.implies(exemplar.template)
+
                 # Try not to have more than two examples.
                 input_dict = {"utterance": utterance, "template": exemplar.template}
                 ins.append(self.example_prompt(input_dict))
-                outs.append(f"{self.label(match_status)}")
+                outs.append(f"{self.label(match_status and implies)}")
 
             # Then descriptions.
             for skill in skills:

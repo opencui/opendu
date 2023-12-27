@@ -118,10 +118,8 @@ class ExactMatcher:
             return None
 
         # now we have match, but mode does not match.
-        if OwnerMode[owner_mode] != OwnerMode.normal or OwnerMode[target_mode] != OwnerMode.normal:
-            return False
+        return OwnerMode[owner_mode] == OwnerMode.normal and OwnerMode[target_mode] == OwnerMode.normal
 
-        return True
 
     @staticmethod
     def match(owner, target, mode_in_str):
