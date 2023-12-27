@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 
 from datasets import Dataset
 from langchain.schema import BaseRetriever
@@ -10,6 +11,29 @@ from torch.utils.data import DataLoader
 from opencui.core.annotation import FrameSchema
 from opencui.core.config import LugConfig
 from opencui.core.embedding import EmbeddingStore
+from opencui.core.retriever import HybridRetriever
+from opencui.finetune.commons import DatasetFactory
+
+
+# This should be fully tested for fine-tuning embedding. Generally, there is no need for this
+# since we do not really know what domain/topic we work on.
+# For when we do, and when we need the extra improvement from the embedding, however small it is,
+# we can try to run this.
+@dataclass
+class DatasetCreatorWithIndex:
+    creator: DatasetFactory
+    desc_retriever: HybridRetriever
+    exemplar_retriever: HybridRetriever
+
+    @classmethod
+    def build(cls, creator: DatasetFactory, path: str):
+        return DatasetCreatorWithIndex(
+            creator=creator,
+            desc_retriever=HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk),
+            exemplar_retriever=HybridRetriever(
+                path, "exemplar", LugConfig.exemplar_retrieve_topk
+            ),
+        )
 
 
 def train(model: SentenceTransformer, dataset: Dataset, model_save_path: str):
@@ -34,10 +58,10 @@ def train(model: SentenceTransformer, dataset: Dataset, model_save_path: str):
 
 
 def create_sentence_pair_for_description(
-    skills: dict[str, FrameSchema],
-    dataset: Dataset,
-    retriever: BaseRetriever,
-    num_neg=1,
+        skills: dict[str, FrameSchema],
+        dataset: Dataset,
+        retriever: BaseRetriever,
+        num_neg=1,
 ):
     embedding = EmbeddingStore.get_embedding_by_task("desc")
     results = []
@@ -66,7 +90,7 @@ def create_sentence_pair_for_description(
 
 
 def create_sentence_pair_for_exemplars(
-    dataset: Dataset, retriever: BaseRetriever, num_examples=1
+        dataset: Dataset, retriever: BaseRetriever, num_examples=1
 ):
     embedding = EmbeddingStore.get_embedding_by_task("exemplar")
     results = []
@@ -99,16 +123,31 @@ def create_sentence_pair_for_exemplars(
     return results
 
 
+def generate_sentence_pairs(dataset_infos: list[DatasetCreatorWithIndex]) -> Dataset:
+    generators = []
+    for dataset_info in dataset_infos:
+        dataset = dataset_info.creator["train"]
+        generators.extend(
+            create_sentence_pair_for_description(
+                dataset_info.creator.schema.skills, dataset, dataset_info.desc_retriever
+            )
+        )
+        generators.extend(
+            create_sentence_pair_for_exemplars(dataset, dataset_info.exemplar_retriever)
+        )
+    return generators
+
+
 if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
-    from finetune.commons import (
+    from opencui.finetune.commons import (
         DatasetCreatorWithIndex,
-        generate_sentence_pairs,
-        has_no_intent,
-    )
+        has_no_intent, DatasetFactory,
+)
 
-    from finetune.sgd import SGDSkills
+    from opencui.finetune.sgd import SGDSkills
+
     print(LugConfig.embedding_model)
     dsc = [
         DatasetCreatorWithIndex.build(

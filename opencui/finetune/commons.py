@@ -181,38 +181,6 @@ class MappedDatasetDict(ABC):
         return self.dict[split]
 
 
-@dataclass
-class DatasetCreatorWithIndex:
-    creator: DatasetFactory
-    desc_retriever: HybridRetriever
-    exemplar_retriever: HybridRetriever
-
-    @classmethod
-    def build(cls, creator: DatasetFactory, path: str):
-        return DatasetCreatorWithIndex(
-            creator=creator,
-            desc_retriever=HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk),
-            exemplar_retriever=HybridRetriever(
-                path, "exemplar", LugConfig.exemplar_retrieve_topk
-            ),
-        )
-
-
-def generate_sentence_pairs(dataset_infos: list[DatasetCreatorWithIndex]) -> Dataset:
-    generators = []
-    for dataset_info in dataset_infos:
-        dataset = dataset_info.creator["train"]
-        generators.extend(
-            create_sentence_pair_for_description(
-                dataset_info.creator.schema.skills, dataset, dataset_info.desc_retriever
-            )
-        )
-        generators.extend(
-            create_sentence_pair_for_exemplars(dataset, dataset_info.exemplar_retriever)
-        )
-    return generators
-
-
 def collect_slot_values(dataset):
     entities = {}
     for exemplar in dataset:
@@ -467,8 +435,7 @@ class InstanceTrainConverter(TrainConverter):
         for idx, utterance in enumerate(batch["utterance"]):
             # We assume the input is dict version of AnnotatedExemplar
             skills, nodes = self.context_retrieve(utterance)
-            # remove the identical exemplar
-            nodes = [node for node in nodes if node.id_ != batch["id"][idx]]
+
             exemplars = [
                 Exemplar(owner=node.metadata["owner"], template=node.text, owner_mode=node.metadata["owner_mode"])
                 for node in nodes
@@ -490,12 +457,10 @@ class InstanceTrainConverter(TrainConverter):
                 if match_status is None:
                     continue
 
-                implies = arg_checker.implies(exemplar.template)
-
                 # Try not to have more than two examples.
                 input_dict = {"utterance": utterance, "template": exemplar.template}
                 ins.append(self.example_prompt(input_dict))
-                outs.append(f"{self.label(match_status and implies)}")
+                outs.append(f"{self.label(match_status)}")
 
             # Then descriptions.
             for skill in skills:
