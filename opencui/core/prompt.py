@@ -194,7 +194,7 @@ ExemplarPrompts = {
     "struct-short": Prompt(
         'Given the template: \n "{{template}}" \n'
         'and the sentence: \n "{{utterance}}" \n'
-        'Is it true that the sentence implies the template? '
+        'Is it true that the sentence means the same as the template? '
     ),
 
     "token": Prompt(

@@ -198,21 +198,6 @@ class DatasetCreatorWithIndex:
         )
 
 
-def generate_sentence_pairs(dataset_infos: list[DatasetCreatorWithIndex]) -> Dataset:
-    generators = []
-    for dataset_info in dataset_infos:
-        dataset = dataset_info.creator["train"]
-        generators.extend(
-            create_sentence_pair_for_description(
-                dataset_info.creator.schema.skills, dataset, dataset_info.desc_retriever
-            )
-        )
-        generators.extend(
-            create_sentence_pair_for_exemplars(dataset, dataset_info.exemplar_retriever)
-        )
-    return generators
-
-
 def collect_slot_values(dataset):
     entities = {}
     for exemplar in dataset:
@@ -223,6 +208,7 @@ def collect_slot_values(dataset):
             for value in values:
                 entities[key].add(value)
     return entities
+
 
 
 # Some time, the original data are over sampled, we need to purge the extra things.
@@ -490,12 +476,10 @@ class InstanceTrainConverter(TrainConverter):
                 if match_status is None:
                     continue
 
-                implies = arg_checker.implies(exemplar.template)
-
                 # Try not to have more than two examples.
                 input_dict = {"utterance": utterance, "template": exemplar.template}
                 ins.append(self.example_prompt(input_dict))
-                outs.append(f"{self.label(match_status and implies)}")
+                outs.append(f"{self.label(match_status)}")
 
             # Then descriptions.
             for skill in skills:

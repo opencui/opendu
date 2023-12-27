@@ -12,6 +12,8 @@ from opencui.core.config import LugConfig
 from opencui.core.embedding import EmbeddingStore
 
 
+# This should be fully tested for fine-tuning embedding.
+
 def train(model: SentenceTransformer, dataset: Dataset, model_save_path: str):
     word_embedding_model = model._first_module()
 
@@ -34,10 +36,10 @@ def train(model: SentenceTransformer, dataset: Dataset, model_save_path: str):
 
 
 def create_sentence_pair_for_description(
-    skills: dict[str, FrameSchema],
-    dataset: Dataset,
-    retriever: BaseRetriever,
-    num_neg=1,
+        skills: dict[str, FrameSchema],
+        dataset: Dataset,
+        retriever: BaseRetriever,
+        num_neg=1,
 ):
     embedding = EmbeddingStore.get_embedding_by_task("desc")
     results = []
@@ -66,7 +68,7 @@ def create_sentence_pair_for_description(
 
 
 def create_sentence_pair_for_exemplars(
-    dataset: Dataset, retriever: BaseRetriever, num_examples=1
+        dataset: Dataset, retriever: BaseRetriever, num_examples=1
 ):
     embedding = EmbeddingStore.get_embedding_by_task("exemplar")
     results = []
@@ -99,16 +101,31 @@ def create_sentence_pair_for_exemplars(
     return results
 
 
+def generate_sentence_pairs(dataset_infos: list[DatasetCreatorWithIndex]) -> Dataset:
+    generators = []
+    for dataset_info in dataset_infos:
+        dataset = dataset_info.creator["train"]
+        generators.extend(
+            create_sentence_pair_for_description(
+                dataset_info.creator.schema.skills, dataset, dataset_info.desc_retriever
+            )
+        )
+        generators.extend(
+            create_sentence_pair_for_exemplars(dataset, dataset_info.exemplar_retriever)
+        )
+    return generators
+
+
 if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
-    from finetune.commons import (
+    from opencui.finetune.commons import (
         DatasetCreatorWithIndex,
-        generate_sentence_pairs,
         has_no_intent,
     )
 
-    from finetune.sgd import SGDSkills
+    from opencui.finetune.sgd import SGDSkills
+
     print(LugConfig.embedding_model)
     dsc = [
         DatasetCreatorWithIndex.build(

@@ -5,8 +5,8 @@
 export PYTHONPATH="$PYTHONPATH:."
 
 python3 opencui/finetune/t2t.py \
-    --model_name_or_path google/flan-t5-base \
-    --output_dir ./output/flant5base-stbos \
+    --model_name_or_path google/flan-t5-large \
+    --output_dir ./output/flant5large \
     --logging_steps 50 \
     --save_strategy epoch \
     --data_seed 42 \
@@ -28,7 +28,7 @@ python3 opencui/finetune/t2t.py \
     --target_max_len 32 \
     --per_device_train_batch_size 16 \
     --max_steps 0 \
-    --num_train_epochs 4 \
+    --num_train_epochs 5 \
     --learning_rate 3e-4 \
     --optim adamw_torch \
     --adam_beta2 0.999 \
