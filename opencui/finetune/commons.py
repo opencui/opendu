@@ -435,8 +435,7 @@ class InstanceTrainConverter(TrainConverter):
         for idx, utterance in enumerate(batch["utterance"]):
             # We assume the input is dict version of AnnotatedExemplar
             skills, nodes = self.context_retrieve(utterance)
-            # remove the identical exemplar
-            nodes = [node for node in nodes if node.id_ != batch["id"][idx]]
+
             exemplars = [
                 Exemplar(owner=node.metadata["owner"], template=node.text, owner_mode=node.metadata["owner_mode"])
                 for node in nodes
