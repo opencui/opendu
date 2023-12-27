@@ -181,23 +181,6 @@ class MappedDatasetDict(ABC):
         return self.dict[split]
 
 
-@dataclass
-class DatasetCreatorWithIndex:
-    creator: DatasetFactory
-    desc_retriever: HybridRetriever
-    exemplar_retriever: HybridRetriever
-
-    @classmethod
-    def build(cls, creator: DatasetFactory, path: str):
-        return DatasetCreatorWithIndex(
-            creator=creator,
-            desc_retriever=HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk),
-            exemplar_retriever=HybridRetriever(
-                path, "exemplar", LugConfig.exemplar_retrieve_topk
-            ),
-        )
-
-
 def collect_slot_values(dataset):
     entities = {}
     for exemplar in dataset:
@@ -208,7 +191,6 @@ def collect_slot_values(dataset):
             for value in values:
                 entities[key].add(value)
     return entities
-
 
 
 # Some time, the original data are over sampled, we need to purge the extra things.

@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 
 from datasets import Dataset
 from langchain.schema import BaseRetriever
@@ -10,9 +11,30 @@ from torch.utils.data import DataLoader
 from opencui.core.annotation import FrameSchema
 from opencui.core.config import LugConfig
 from opencui.core.embedding import EmbeddingStore
+from opencui.core.retriever import HybridRetriever
+from opencui.finetune.commons import DatasetFactory
 
 
-# This should be fully tested for fine-tuning embedding.
+# This should be fully tested for fine-tuning embedding. Generally, there is no need for this
+# since we do not really know what domain/topic we work on.
+# For when we do, and when we need the extra improvement from the embedding, however small it is,
+# we can try to run this.
+@dataclass
+class DatasetCreatorWithIndex:
+    creator: DatasetFactory
+    desc_retriever: HybridRetriever
+    exemplar_retriever: HybridRetriever
+
+    @classmethod
+    def build(cls, creator: DatasetFactory, path: str):
+        return DatasetCreatorWithIndex(
+            creator=creator,
+            desc_retriever=HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk),
+            exemplar_retriever=HybridRetriever(
+                path, "exemplar", LugConfig.exemplar_retrieve_topk
+            ),
+        )
+
 
 def train(model: SentenceTransformer, dataset: Dataset, model_save_path: str):
     word_embedding_model = model._first_module()
@@ -121,8 +143,8 @@ if __name__ == "__main__":
     logger.setLevel(logging.CRITICAL)
     from opencui.finetune.commons import (
         DatasetCreatorWithIndex,
-        has_no_intent,
-    )
+        has_no_intent, DatasetFactory,
+)
 
     from opencui.finetune.sgd import SGDSkills
 
