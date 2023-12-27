@@ -456,7 +456,6 @@ class InstanceTrainConverter(TrainConverter):
         self.neg_k = 1
         self.mode = mode
         self.matcher = ExactMatcher
-        self.arg_check
 
     @staticmethod
     def label(value):
@@ -483,6 +482,7 @@ class InstanceTrainConverter(TrainConverter):
                 if self.mode == InstanceMode.desc:
                     continue
 
+                # We do not
                 if OwnerMode[exemplar.owner_mode] != OwnerMode.normal:
                     continue
 

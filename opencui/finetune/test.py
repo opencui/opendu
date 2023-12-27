@@ -1,11 +1,11 @@
 import logging
 
-from opencui.core.annotation import CamelToSnake, OwnerMode
+from opencui.core.annotation import CamelToSnake
 from opencui.core.embedding import EmbeddingStore
 from opencui.core.retriever import (build_nodes_from_skills, create_index, load_context_retrievers)
 from opencui.finetune.commons import build_nodes_from_dataset, JsonDatasetFactory
 from opencui.inference.converter import Converter
-
+import sys
 #
 # Converter is a lower level component of inference. This directly use the model.
 # This assumes there are fine-tune model already, but use the same client code (albeit different code path)
@@ -18,6 +18,11 @@ if __name__ == "__main__":
 
     # For now, just use the fix path.
     output = "./test"
+
+    if len(sys.argv) == 1:
+        tag = "text"
+    else:
+        tag = sys.argv[1]
 
     # Save the things to disk first.
     desc_nodes = []
