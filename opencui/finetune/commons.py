@@ -19,9 +19,7 @@ from opencui.core.prompt import (Prompt, MulticlassSkillPrompts, BinarySkillProm
                                  ExemplarPrompts, DescriptionPrompts, BoolPrompts, NliPrompts, ExtractiveSlotPrompts)
 from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher
 from opencui.core.config import LugConfig
-from opencui.core.retriever import HybridRetriever, create_index, ContextRetriever
-from opencui.finetune.embedding import (
-    create_sentence_pair_for_description, create_sentence_pair_for_exemplars)
+from opencui.core.retriever import create_index, ContextRetriever
 
 
 @dataclass_json
@@ -436,6 +434,9 @@ class InstanceTrainConverter(TrainConverter):
             # We assume the input is dict version of AnnotatedExemplar
             skills, nodes = self.context_retrieve(utterance)
 
+            # remove the identical exemplar
+            nodes = [node for node in nodes if node.id_ != batch["id"][idx]]
+
             exemplars = [
                 Exemplar(owner=node.metadata["owner"], template=node.text, owner_mode=node.metadata["owner_mode"])
                 for node in nodes
@@ -443,7 +444,11 @@ class InstanceTrainConverter(TrainConverter):
             owner = batch["owner"][idx]
             owner_mode = batch["owner_mode"][idx]
 
-            arg_checker = ArgChecker(eval(batch["arguments"][idx]))
+            # Include pairing with itself
+            input_dict = {"utterance": utterance, "template": batch["template"][idx]}
+            ins.append(self.example_prompt(input_dict))
+            outs.append(f"{self.label(True)}")
+
             # First handle exemplars.
             for exemplar in exemplars:
                 if self.mode == InstanceMode.desc:
@@ -454,6 +459,8 @@ class InstanceTrainConverter(TrainConverter):
                     continue
 
                 match_status = self.matcher.agree(owner, owner_mode, exemplar.owner, exemplar.owner_mode)
+
+                # if matching strategy can not make a decision, ignore the pair.
                 if match_status is None:
                     continue
 

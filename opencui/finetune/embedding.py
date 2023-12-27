@@ -15,10 +15,13 @@ from opencui.core.retriever import HybridRetriever
 from opencui.finetune.commons import DatasetFactory
 
 
+#
 # This should be fully tested for fine-tuning embedding. Generally, there is no need for this
 # since we do not really know what domain/topic we work on.
 # For when we do, and when we need the extra improvement from the embedding, however small it is,
 # we can try to run this.
+# We might also want to rerun this for handling slot when we have enough of the pairs.
+#
 @dataclass
 class DatasetCreatorWithIndex:
     creator: DatasetFactory
