@@ -430,36 +430,32 @@ class InstanceTrainConverter(TrainConverter):
             owner = batch["owner"][idx]
             owner_mode = batch["owner_mode"][idx]
 
-            # Include pairing with itself
-            input_dict = {"utterance": utterance, "template": batch["template"][idx]}
-            ins.append(self.example_prompt(input_dict))
-            outs.append(f"{self.label(True)}")
-
             # First handle exemplars.
-            for exemplar in exemplars:
-                if self.mode == InstanceMode.desc:
-                    continue
-
-                # if there are more details in the templates, we ignore this pair, as we do not know.
-                match_status = self.matcher.agree(owner, owner_mode, exemplar.owner, exemplar.owner_mode)
-
-                # if matching strategy can not make a decision, ignore the pair.
-                if match_status is None:
-                    print(f"Nothing normal here: {utterance} : {exemplar.template} ", flush=True)
-                    continue
-
-                # Try not to have more than two examples.
-                input_dict = {"utterance": utterance, "template": exemplar.template}
+            if self.mode != InstanceMode.desc:
+                # Include pairing with itself
+                input_dict = {"utterance": utterance, "template": batch["template"][idx]}
                 ins.append(self.example_prompt(input_dict))
-                outs.append(f"{self.label(match_status)}")
+                outs.append(f"{self.label(True)}")
+                for exemplar in exemplars:
+                    # if there are more details in the templates, we ignore this pair, as we do not know.
+                    match_status = self.matcher.agree(owner, owner_mode, exemplar.owner, exemplar.owner_mode)
+
+                    # if matching strategy can not make a decision, ignore the pair.
+                    if match_status is None:
+                        print(f"Nothing normal here: {utterance} : {exemplar.template} ", flush=True)
+                        continue
+
+                    # Try not to have more than two examples.
+                    input_dict = {"utterance": utterance, "template": exemplar.template}
+                    ins.append(self.example_prompt(input_dict))
+                    outs.append(f"{self.label(match_status)}")
 
             # Then descriptions.
-            for skill in skills:
-                if self.mode == InstanceMode.example:
-                    continue
-                input_dict = {"utterance": utterance, "skill": skill}
-                ins.append(self.desc_prompt(input_dict))
-                outs.append(f"{self.label(self.matcher.match(owner, skill['name'], owner_mode))}")
+            if self.mode != InstanceMode.example:
+                for skill in skills:
+                    input_dict = {"utterance": utterance, "skill": skill}
+                    ins.append(self.desc_prompt(input_dict))
+                    outs.append(f"{self.label(self.matcher.match(owner, skill['name'], owner_mode))}")
 
 
 #
