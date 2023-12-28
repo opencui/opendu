@@ -553,8 +553,11 @@ def train():
 
         # fix the generate_config.json
         generation_config = os.path.join(last_path, "generation_config.json")
-        config = json.load(open(generation_config))
+        with open(generation_config, 'r') as json_file:
+            config = json.load(json_file)
+        # this is what is missing.
         config['decoder_start_token_id'] = 0
+
         with open(generation_config, 'w') as json_file:
             json.dump(config, json_file, indent=2)
 
