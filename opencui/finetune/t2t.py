@@ -1,5 +1,4 @@
 import argparse
-import copy
 import json
 import logging
 import os
@@ -14,15 +13,13 @@ import evaluate
 import numpy as np
 import torch
 import transformers
-from datasets import Dataset, concatenate_datasets, load_dataset
+from datasets import Dataset, concatenate_datasets
 from peft import LoraConfig, get_peft_model, TaskType, PrefixTuningConfig
 
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed,
                           DataCollatorForSeq2Seq, AutoModelForSeq2SeqLM)
-from opencui.core.prompt import (ExtractiveSlotPrompts, NliPrompts)
 from opencui.core.special_tokens import SpecialTokens
-from opencui.finetune.commons import (MappedDatasetDict, collect_slot_values, JsonDatasetFactory,
-                                      OneSlotExtractConverter, PromptedFactory, NliConverter, load_training_dataset)
+from opencui.finetune.commons import (load_training_dataset)
 from opencui.finetune.datacollator import DataCollatorForCausalLM
 
 logger = logging.getLogger(__name__)
@@ -545,6 +542,19 @@ def train():
 
         with open(os.path.join(args.output_dir, "metrics.json"), "w") as fout:
             fout.write(json.dumps(all_metrics))
+
+        # create the soft link so that it is easy for experiments.
+        checkpoint_files = os.listdir(trainer.args.output_dir)
+        checkpoint_files = [file for file in checkpoint_files if "checkpoint" in file]
+        last_checkpoint = os.path.join(trainer.args.output_dir, max(checkpoint_files, key=lambda x: int(x.split("-")[-1])))
+        last_path = os.path.join(trainer.args.output_dir, "last")
+        os.symlink(last_checkpoint, last_path)
+
+        # fix the generate_config.json
+        generation_config = os.path.join(last_path, "generation_config.json")
+        config = json.load(open(generation_config))
+        config['decoder_start_token_id'] = 0
+        json.dump(open(generation_config, "w"), config)
 
 
 def get_lora_config():
