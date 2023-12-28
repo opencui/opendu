@@ -6,7 +6,7 @@ from enum import Enum
 
 import torch
 from peft import PeftConfig, PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, AutoModelForSeq2SeqLM
+from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, AutoModelForSeq2SeqLM, AutoConfig
 
 from opencui import ModelType
 from opencui.core.annotation import (CamelToSnake, DialogExpectation, EntityMetas, Exemplar, FrameValue, ListRecognizer,
@@ -32,6 +32,7 @@ GeneratorType = Enum("Generator", ["FftGenerator", "LoraGenerator"])
 # Generator is responsible for low level things, we will have two different implementation
 # local/s-lora. Converter is built on top of generator.
 class Generator(ABC):
+
     @staticmethod
     def build():
         if GeneratorType[LugConfig.generator] == GeneratorType.FftGenerator:
@@ -40,24 +41,29 @@ class Generator(ABC):
             return LoraGenerator()
 
     @staticmethod
-    def process_return(outputs: list[str], input_texts: list[str]):
-        if ModelType[LugConfig.model_type] == ModelType.t5:
-            return outputs
-        if ModelType[LugConfig.model_type] == ModelType.gpt:
-            return [
-            output[len(input_texts[index]):] for index, output in enumerate(outputs)
-        ]
+    def get_model_type(model_name_or_path):
+        config = AutoConfig.from_pretrained(model_name_or_path)
+        return config.model_type
 
     @staticmethod
     def from_pretrained(*args, **kwargs):
-        if ModelType[LugConfig.model_type] == ModelType.t5:
+        config = AutoConfig.from_pretrained(args[0])
+        # Check the model type
+        print(f"loading model: {args[0]} with type: {config.model_type}")
+        if ModelType[config.model_type] == ModelType.t5:
             return AutoModelForSeq2SeqLM.from_pretrained(*args, **kwargs)
-        if ModelType[LugConfig.model_type] == ModelType.gpt:
+        if ModelType[config.model_type] == ModelType.gpt:
             return AutoModelForCausalLM.from_pretrained(*args, **kwargs)
 
     @abstractmethod
     def generate(self, input_texts: list[str], mode: GenerateMode = None):
         pass
+
+    def process_return(self, outputs: list[str], input_texts: list[str]):
+        if ModelType[self.model_type] == ModelType.t5:
+            return outputs
+        if ModelType[self.model_type] == ModelType.gpt:
+            return [output[len(input_texts[index]):] for index, output in enumerate(outputs)]
 
 
 # This should be desc/exemplar based.
@@ -140,7 +146,7 @@ class FftGenerator(Generator, ABC):
             trust_remote_code=True,
             torch_dtype=torch.bfloat16
         )
-
+        self.model_type = Generator.get_model_type(LugConfig.model)
         self.model.eval()
         self.tokenizer = AutoTokenizer.from_pretrained(LugConfig.model)
         self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -170,7 +176,7 @@ class FftGenerator(Generator, ABC):
                 ),
             )
         results = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
-        return Generator.process_return(results, input_texts)
+        return self.process_return(results, input_texts)
 
 
 class SkillConverter(ABC):
@@ -353,6 +359,7 @@ class ISkillConverter(SkillConverter, ABC):
         self.update(exemplar_preds, exemplar_truth, count_dict["exemplar"], exemplar_prompts, exemplar_outputs, debug_output)
         print("\n")
         self.update(desc_preds, desc_truth, count_dict["desc"], desc_prompts, desc_outputs, debug_output)
+
 
 class Converter:
     def __init__(
