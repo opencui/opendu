@@ -343,21 +343,23 @@ class ISkillConverter(SkillConverter, ABC):
 
         picker.accumulate(desc_preds, owners, 1)
         counts = count_dict["skill"]
-        pred = picker.decide()
-        if pred == owner and OwnerMode[owner_mode] in picker.modes:
+        predicted_owner = picker.decide()
+        concrete = count_dict["skills"]
+        if predicted_owner == owner and OwnerMode[owner_mode] in picker.modes:
             counts[1] += 1
             debug_output = False
+            concrete[owner][1] += 1
         else:
             counts[0] += 1
             debug_output = True
+            concrete[owner][0] += 1
 
         if debug_output:
-            print(f"\n\nMade mistakes on {text} expecting {owner} but get {pred}.")
+            print(f"\n\nMade mistakes on {text} expecting {owner} but get {predicted_owner}.")
             print(json.dumps(picker.counts))
 
         # We only output when there is a need for study
         self.update(exemplar_preds, exemplar_truth, count_dict["exemplar"], exemplar_prompts, exemplar_outputs, debug_output)
-        print("\n")
         self.update(desc_preds, desc_truth, count_dict["desc"], desc_prompts, desc_outputs, debug_output)
 
 
