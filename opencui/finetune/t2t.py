@@ -3,6 +3,7 @@ import json
 import logging
 import os
 
+
 import shutil
 from dataclasses import dataclass, field
 from enum import Enum
@@ -548,8 +549,13 @@ def train():
         checkpoint_files = [file for file in checkpoint_files if "checkpoint" in file]
         last_checkpoint = os.path.join(trainer.args.output_dir, max(checkpoint_files, key=lambda x: int(x.split("-")[-1])))
         last_path = os.path.join(trainer.args.output_dir, "last")
-        if not os.path.exists(last_path):
-            os.symlink(last_checkpoint, last_path)
+
+        if os.path.exists(last_path):
+            print(f"remove {last_path}")
+            os.remove(last_path)
+
+        check_name = os.path.basename(last_checkpoint)
+        os.symlink(check_name, last_path)
 
         # fix the generate_config.json
         generation_config = os.path.join(last_path, "generation_config.json")
@@ -560,6 +566,7 @@ def train():
 
         with open(generation_config, 'w') as json_file:
             json.dump(config, json_file, indent=2)
+
 
 
 def get_lora_config():
