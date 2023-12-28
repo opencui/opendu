@@ -298,11 +298,14 @@ class ISkillConverter(SkillConverter, ABC):
 
     @staticmethod
     def update(preds, truth, counts, skill_prompts, skill_outputs, output=True):
+        pairs = list[zip(preds, truth)]
+        if output:
+            print(json.dumps(skill_prompts, indent=2))
+            print(json.dumps(pairs, indent=2))
+
         pairs = zip(preds, truth)
         for index, pair in enumerate(pairs):
             if pair[0] != pair[1] and output:
-                print(json.dumps(skill_prompts, indent=2))
-                print(json.dumps(skill_outputs, indent=2))
                 print(f"At {index}, {skill_prompts[index]} : {skill_outputs[index]}, not correct.")
 
         pairs = zip(preds, truth)
