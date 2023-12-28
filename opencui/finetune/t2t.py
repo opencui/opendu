@@ -537,7 +537,7 @@ def train():
         all_metrics.update(metrics)
 
         # append save the config
-        if ModelType[LugConfig.model_type] == ModelType.t5:
+        if ModelType[args.model_type] == ModelType.t5:
             shutil.copy("./opencui/finetune/t5.sh", f"{args.output_dir}/")
         else:
             shutil.copy("./opencui/finetune/gpt.sh", f"{args.output_dir}/")

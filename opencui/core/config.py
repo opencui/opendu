@@ -21,7 +21,6 @@ class LugConfig:
     skill_arity = 1
     llm_device = "cuda:0"
 
-    model_type = "t5"
     skill_prompt = "struct-short"
     slot_prompt = "default"
     nli_prompt = "default"
