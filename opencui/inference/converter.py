@@ -301,9 +301,9 @@ class ISkillConverter(SkillConverter, ABC):
         pairs = zip(preds, truth)
         for index, pair in enumerate(pairs):
             if pair[0] != pair[1] and output:
-                print(skill_prompts)
-                print(skill_outputs)
-                print(f"{skill_prompts[index]} : {skill_outputs[index]}, not correct.")
+                print(json.dumps(skill_prompts, indent=2))
+                print(json.dumps(skill_outputs, indent=2))
+                print(f"At {index}, {skill_prompts[index]} : {skill_outputs[index]}, not correct.")
 
         pairs = zip(preds, truth)
         for pair in pairs:
@@ -357,7 +357,7 @@ class ISkillConverter(SkillConverter, ABC):
             concrete[owner][0] += 1
 
         if debug_output:
-            print(f"\n\nMade mistakes on {text} expecting {owner} but get {predicted_owner}.")
+            print(f"\n\nMade mistakes on: [ {text} ] expecting [{owner}] but get [{predicted_owner}].")
             print(json.dumps(picker.counts))
 
         # We only output when there is a need for study
