@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 
 from opencui.core.annotation import CamelToSnake
 from opencui.core.embedding import EmbeddingStore
@@ -51,7 +52,8 @@ if __name__ == "__main__":
     counts = {
         "exemplar": [0, 0, 0, 0],
         "desc": [0, 0, 0, 0],
-        "skill": [0, 0]
+        "skill": [0, 0],
+        "skills": defaultdict(lambda: (0, 0))
     }
 
     total = 0
