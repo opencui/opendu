@@ -53,7 +53,7 @@ if __name__ == "__main__":
         "exemplar": [0, 0, 0, 0],
         "desc": [0, 0, 0, 0],
         "skill": [0, 0],
-        "skills": defaultdict(lambda: (0, 0))
+        "skills": defaultdict(lambda: [0, 0])
     }
 
     total = 0
