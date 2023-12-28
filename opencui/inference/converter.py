@@ -298,7 +298,7 @@ class ISkillConverter(SkillConverter, ABC):
 
     @staticmethod
     def update(preds, truth, counts, skill_prompts, skill_outputs, output=True):
-        pairs = list[zip(preds, truth)]
+        pairs = list([str(item) for item in zip(preds, truth)])
         if output:
             print(json.dumps(skill_prompts, indent=2))
             print(json.dumps(pairs, indent=2))

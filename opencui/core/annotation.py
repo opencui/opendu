@@ -125,6 +125,10 @@ class ExactMatcher:
     def match(owner, target, mode_in_str):
         return owner == target and OwnerMode[mode_in_str] == OwnerMode.normal
 
+    @staticmethod
+    def is_good_mode(mode_in_str):
+        return OwnerMode[mode_in_str] == OwnerMode.normal
+
 
 @dataclass_json
 @dataclass

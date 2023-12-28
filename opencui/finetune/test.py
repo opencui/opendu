@@ -1,7 +1,8 @@
+import json
 import logging
 from collections import defaultdict
 
-from opencui.core.annotation import CamelToSnake
+from opencui.core.annotation import CamelToSnake, ExactMatcher
 from opencui.core.embedding import EmbeddingStore
 from opencui.core.retriever import (build_nodes_from_skills, create_index, load_context_retrievers)
 from opencui.finetune.commons import build_nodes_from_dataset, JsonDatasetFactory
@@ -52,23 +53,24 @@ if __name__ == "__main__":
     counts = {
         "exemplar": [0, 0, 0, 0],
         "desc": [0, 0, 0, 0],
-        "skill": [0, 0],
+        "skill": [0, 0, 0, 0],
         "skills": defaultdict(lambda: [0, 0])
     }
 
-    total = 0
+    mode_counts = [0, 0]
     max = -1
     for factory in factories:
         dataset = factory[tag]
         for item in dataset:
-            if 0 < max < total:
-                break
-            total += 1
             # We only support snake function name.
             owner = to_snake.encode(item["owner"])
             arguments = item["arguments"]
             owner_mode = item["owner_mode"]
+            if ExactMatcher.is_good_mode(owner_mode):
+                mode_counts[1] += 1
+            else:
+                mode_counts[0] += 1
             converter.skill_converter.grade(item["utterance"], owner, owner_mode, counts)
 
-    print(counts)
-    print(total)
+    print(json.jumps(counts))
+    print(mode_counts)
