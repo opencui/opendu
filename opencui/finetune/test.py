@@ -20,7 +20,8 @@ if __name__ == "__main__":
     output = "./test"
 
     if len(sys.argv) == 1:
-        tag = "text"
+        print("usage: python3 opencui/finetune/test.pyt test/train")
+        exit()
     else:
         tag = sys.argv[1]
 
