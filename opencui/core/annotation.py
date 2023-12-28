@@ -256,9 +256,10 @@ def build_nodes_from_exemplar_store(
                     metadata={
                         "owner": label,
                         "context": get_value(exemplar, "context", ""),
+                        "owner_mode" : exemplar["owner_mode"],
                         "module": module,
                     },
-                    excluded_embed_metadata_keys=["owner", "context", "module"],
+                    excluded_embed_metadata_keys=["owner", "context", "module", "owner_mode"],
                 )
             )
 
