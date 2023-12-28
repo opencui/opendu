@@ -27,7 +27,7 @@ def build_nodes_from_skills(module: str, skills: dict[str, FrameSchema], nodes):
                 metadata={
                     "owner": name,
                     "module": module,
-                    "owner_mode": "desc"
+                    "owner_mode": "normal"
                 },
                 excluded_embed_metadata_keys=["owner", "module", "owner_mode"],
             ))
@@ -103,9 +103,7 @@ class HybridRetriever(BaseRetriever):
             index=embedding_index,
             similarity_top_k=topk)
 
-        self._keyword_retriever = BM25Retriever.from_defaults(
-            docstore=embedding_index.docstore,
-            similarity_top_k=topk)
+        self._keyword_retriever = BM25Retriever(embedding_index.docstore, None, similarity_top_k=topk)
 
     def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
         """Retrieve nodes given query."""

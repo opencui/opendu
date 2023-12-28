@@ -458,12 +458,14 @@ class InstanceTrainConverter(TrainConverter):
                 # if there are more details in the templates, we ignore this pair, as we do not know.
                 implies = arg_checker.implies(exemplar.template)
                 if not implies:
+                    print(f"Not implies with {utterance} : {exemplar.template} ")
                     continue
 
                 match_status = self.matcher.agree(owner, owner_mode, exemplar.owner, exemplar.owner_mode)
 
                 # if matching strategy can not make a decision, ignore the pair.
                 if match_status is None:
+                    print(f"Nothing normal here: {utterance} : {exemplar.template} ")
                     continue
 
                 # Try not to have more than two examples.

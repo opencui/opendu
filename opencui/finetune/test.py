@@ -68,3 +68,4 @@ if __name__ == "__main__":
             converter.skill_converter.grade(item["utterance"], owner, owner_mode, counts)
 
     print(counts)
+    print(total)

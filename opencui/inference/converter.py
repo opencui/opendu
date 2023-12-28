@@ -298,8 +298,8 @@ class ISkillConverter(SkillConverter, ABC):
     def update(preds, truth, counts, skill_prompts, skill_outputs):
         pairs = zip(preds, truth)
         for index, pair in enumerate(pairs):
-            if pair[0] != pair[1] and pair[1] is not None:
-                print(f"{skill_prompts[index]} {skill_outputs[index]}, not correct.")
+            if pair[0] != pair[1]:
+                print(f"{skill_prompts[index]} : {skill_outputs[index]}, not correct.")
 
         pairs = zip(preds, truth)
         for pair in pairs:
