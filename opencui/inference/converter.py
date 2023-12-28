@@ -301,6 +301,8 @@ class ISkillConverter(SkillConverter, ABC):
         pairs = zip(preds, truth)
         for index, pair in enumerate(pairs):
             if pair[0] != pair[1] and output:
+                print(skill_prompts)
+                print(skill_outputs)
                 print(f"{skill_prompts[index]} : {skill_outputs[index]}, not correct.")
 
         pairs = zip(preds, truth)
