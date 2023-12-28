@@ -548,13 +548,15 @@ def train():
         checkpoint_files = [file for file in checkpoint_files if "checkpoint" in file]
         last_checkpoint = os.path.join(trainer.args.output_dir, max(checkpoint_files, key=lambda x: int(x.split("-")[-1])))
         last_path = os.path.join(trainer.args.output_dir, "last")
-        os.symlink(last_checkpoint, last_path)
+        if not os.path.exists(last_path):
+            os.symlink(last_checkpoint, last_path)
 
         # fix the generate_config.json
         generation_config = os.path.join(last_path, "generation_config.json")
         config = json.load(open(generation_config))
         config['decoder_start_token_id'] = 0
-        json.dump(open(generation_config, "w"), config)
+        with open(generation_config, 'w') as json_file:
+            json.dump(config, json_file, indent=2)
 
 
 def get_lora_config():
