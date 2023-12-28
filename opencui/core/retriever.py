@@ -102,8 +102,9 @@ class HybridRetriever(BaseRetriever):
         self._vector_retriever = VectorIndexRetriever(
             index=embedding_index,
             similarity_top_k=topk)
-
-        self._keyword_retriever = BM25Retriever(embedding_index.docstore, None, similarity_top_k=topk)
+        # For now, we do index everytime we restart the inference.
+        self._keyword_retriever = BM25Retriever.from_defaults(
+            docstore=embedding_index.docstore, similarity_top_k=topk)
 
     def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
         """Retrieve nodes given query."""

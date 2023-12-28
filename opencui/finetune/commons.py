@@ -398,20 +398,6 @@ class OneSkillTrainConverter(TrainConverter):
 InstanceMode = Enum("InstanceMode", ["desc", "example", "both"])
 
 
-class ArgChecker:
-    def __init__(self, args_for_utterance):
-        print(f"getting {json.dumps(args_for_utterance)}")
-        self.args_for_utterance = args_for_utterance
-
-    def implies(self, template):
-        # if every arg in args_for_template is inside args for utterance, utterance means template.
-        args = [key.strip() for key in re.findall(r"<(.+?)>", template)]
-        for key in args:
-            if key not in self.args_for_utterance:
-                return False
-        return True
-
-
 # For this one, we first use example based prediction, and then description based prediction.
 class InstanceTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever, mode=InstanceMode.both):
@@ -450,22 +436,16 @@ class InstanceTrainConverter(TrainConverter):
             outs.append(f"{self.label(True)}")
 
             # First handle exemplars.
-            arg_checker = ArgChecker(eval(batch["arguments"][idx]))
             for exemplar in exemplars:
                 if self.mode == InstanceMode.desc:
                     continue
 
                 # if there are more details in the templates, we ignore this pair, as we do not know.
-                implies = arg_checker.implies(exemplar.template)
-                if not implies:
-                    print(f"Not implies with {utterance} : {exemplar.template} ")
-                    continue
-
                 match_status = self.matcher.agree(owner, owner_mode, exemplar.owner, exemplar.owner_mode)
 
                 # if matching strategy can not make a decision, ignore the pair.
                 if match_status is None:
-                    print(f"Nothing normal here: {utterance} : {exemplar.template} ")
+                    print(f"Nothing normal here: {utterance} : {exemplar.template} ", flush=True)
                     continue
 
                 # Try not to have more than two examples.
