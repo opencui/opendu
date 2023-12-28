@@ -204,14 +204,10 @@ class OwnerPicker:
             if flag:
                 self.counts[owners[index]] += weight
 
-    def decide(self, owner, owner_mode, counts):
+    def decide(self):
         pairs = list(self.counts.items())
         pairs.sort(key=lambda x: -x[1])
-        pred = None if len(pairs) == 0 else pairs[0][0]
-        if pred == owner and OwnerMode[owner_mode] in self.modes:
-            counts[1] += 1
-        else:
-            counts[0] += 1
+        return None if len(pairs) == 0 else pairs[0][0]
 
 
 class ISkillConverter(SkillConverter, ABC):
@@ -295,10 +291,10 @@ class ISkillConverter(SkillConverter, ABC):
         return []
 
     @staticmethod
-    def update(preds, truth, counts, skill_prompts, skill_outputs):
+    def update(preds, truth, counts, skill_prompts, skill_outputs, output=True):
         pairs = zip(preds, truth)
         for index, pair in enumerate(pairs):
-            if pair[0] != pair[1]:
+            if pair[0] != pair[1] and output:
                 print(f"{skill_prompts[index]} : {skill_outputs[index]}, not correct.")
 
         pairs = zip(preds, truth)
@@ -316,35 +312,47 @@ class ISkillConverter(SkillConverter, ABC):
         skills, nodes = self.retrieve(text)
 
         # for exemplar
-        skill_prompts, owners, owner_modes = self.build_prompts_by_examples(text, nodes, to_snake)
-        skill_outputs = self.generator.generate(skill_prompts, GenerateMode.exemplar)
-        preds = [
+        exemplar_prompts, owners, owner_modes = self.build_prompts_by_examples(text, nodes, to_snake)
+        exemplar_outputs = self.generator.generate(exemplar_prompts, GenerateMode.exemplar)
+        exemplar_preds = [
             parse_json_from_string(raw_flag, raw_flag)
-            for index, raw_flag in enumerate(skill_outputs)
+            for index, raw_flag in enumerate(exemplar_outputs)
         ]
-        truth = [
+        exemplar_truth = [
             self.matcher.agree(owner, owner_mode, lowner, owner_modes[index])
             for index, lowner in enumerate(owners)]
 
-        assert len(preds) == len(truth)
-        picker.accumulate(preds, owners, 2)
-        self.update(preds, truth, count_dict["exemplar"], skill_prompts, skill_outputs)
+        assert len(exemplar_preds) == len(exemplar_truth)
+        picker.accumulate(exemplar_preds, owners, 2)
 
         # for desc
-        skill_prompts, owners = self.build_prompts_by_desc(text, skills, to_snake)
-        skill_outputs = self.generator.generate(skill_prompts, GenerateMode.desc)
-        preds = [
+        desc_prompts, owners = self.build_prompts_by_desc(text, skills, to_snake)
+        desc_outputs = self.generator.generate(desc_prompts, GenerateMode.desc)
+        desc_preds = [
             parse_json_from_string(raw_flag, None)
-            for index, raw_flag in enumerate(skill_outputs)
+            for index, raw_flag in enumerate(desc_outputs)
         ]
-        truth = [owner == lowner and OwnerMode[owner_mode] == OwnerMode.normal for lowner in owners]
-        assert len(preds) == len(truth)
+        desc_truth = [owner == lowner and OwnerMode[owner_mode] == OwnerMode.normal for lowner in owners]
+        assert len(desc_preds) == len(desc_truth)
 
-        self.update(preds, truth, count_dict["desc"], skill_prompts, skill_outputs)
+        picker.accumulate(desc_preds, owners, 1)
+        counts = count_dict["skill"]
+        pred = picker.decide()
+        if pred == owner and OwnerMode[owner_mode] in picker.modes:
+            counts[1] += 1
+            debug_output = False
+        else:
+            counts[0] += 1
+            debug_output = True
 
-        picker.accumulate(preds, owners, 1)
-        picker.decide(owner, owner_mode, count_dict["skill"])
+        if debug_output:
+            print(f"\n\nMade mistakes on {text} expecting {owner} but get {pred}.")
+            print(json.dumps(picker.counts))
 
+        # We only output when there is a need for study
+        self.update(exemplar_preds, exemplar_truth, count_dict["exemplar"], exemplar_prompts, exemplar_outputs, debug_output)
+        print("\n")
+        self.update(desc_preds, desc_truth, count_dict["desc"], desc_prompts, desc_outputs, debug_output)
 
 class Converter:
     def __init__(

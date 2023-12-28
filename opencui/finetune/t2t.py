@@ -537,8 +537,10 @@ def train():
         all_metrics.update(metrics)
 
         # append save the config
-        shutil.copy("./opencui/finetune/t5.sh", f"{args.output_dir}/")
-        shutil.copy("./opencui/finetune/gpt.sh", f"{args.output_dir}/")
+        if ModelType[LugConfig.model_type] == ModelType.t5:
+            shutil.copy("./opencui/finetune/t5.sh", f"{args.output_dir}/")
+        else:
+            shutil.copy("./opencui/finetune/gpt.sh", f"{args.output_dir}/")
         shutil.copy("./opencui/core/config.py", f"{args.output_dir}/")
 
         with open(os.path.join(args.output_dir, "metrics.json"), "w") as fout:
