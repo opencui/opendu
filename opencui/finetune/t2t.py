@@ -496,16 +496,27 @@ def train():
         eval_dataset = eval_dataset.map(preprocess, batched=True, remove_columns=['input', 'output'])
         train_dataset = train_dataset.map(preprocess, batched=True, remove_columns=['input', 'output'])
 
-    trainer = Seq2SeqTrainer(
-        model=model,
-        tokenizer=tokenizer,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset,
-        data_collator=data_collator,
-        compute_metrics=F1MetricComputer(tokenizer),
-        preprocess_logits_for_metrics=preprocess_logits_for_metrics
-    )
+    if ModelType[args.model_type] == ModelType.t5:
+        trainer = Seq2SeqTrainer(
+            model=model,
+            tokenizer=tokenizer,
+            args=training_args,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
+            data_collator=data_collator,
+            compute_metrics=F1MetricComputer(tokenizer),
+            preprocess_logits_for_metrics=preprocess_logits_for_metrics
+        )
+
+    if ModelType[args.model_type] == ModelType.gpt:
+        trainer = Seq2SeqTrainer(
+            model=model,
+            tokenizer=tokenizer,
+            args=training_args,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
+            data_collator=data_collator,
+        )
 
     # Verifying the datatypes and parameter counts before training.
     print_trainable_parameters(args, model)
