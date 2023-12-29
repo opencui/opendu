@@ -50,9 +50,9 @@ class Generator(ABC):
         config = AutoConfig.from_pretrained(args[0])
         # Check the model type
         print(f"loading model: {args[0]} with type: {config.model_type}")
-        if ModelType[config.model_type] == ModelType.t5:
+        if ModelType.normalize(config.model_type) == ModelType.t5:
             return AutoModelForSeq2SeqLM.from_pretrained(*args, **kwargs)
-        if ModelType[config.model_type] == ModelType.gpt:
+        if ModelType.normalize(config.model_type) == ModelType.gpt:
             return AutoModelForCausalLM.from_pretrained(*args, **kwargs)
 
     @abstractmethod
@@ -60,9 +60,9 @@ class Generator(ABC):
         pass
 
     def process_return(self, outputs: list[str], input_texts: list[str]):
-        if ModelType[self.model_type] == ModelType.t5:
+        if ModelType.normalize(self.model_type) == ModelType.t5:
             return outputs
-        if ModelType[self.model_type] == ModelType.gpt:
+        if ModelType.normalize(self.model_type) == ModelType.gpt:
             return [output[len(input_texts[index]):] for index, output in enumerate(outputs)]
 
 

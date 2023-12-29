@@ -9,6 +9,19 @@ from pydantic import BaseModel, Field
 from enum import Enum
 
 
+class ModelType(Enum):
+    t5 = 1
+    gpt = 2
+    llama = 3
+
+    # This normalizes type to t5/gpt/bert (potentially)
+    @staticmethod
+    def normalize(model_in_str):
+        if ModelType[model_in_str] == ModelType.llama:
+            return ModelType.gpt
+        return ModelType[model_in_str]
+
+
 @dataclass_json
 @dataclass
 class SlotSchema:

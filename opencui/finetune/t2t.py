@@ -19,6 +19,8 @@ from peft import LoraConfig, get_peft_model, TaskType, PrefixTuningConfig
 
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed,
                           DataCollatorForSeq2Seq, AutoModelForSeq2SeqLM)
+
+from opencui.core.annotation import ModelType
 from opencui.core.special_tokens import SpecialTokens
 from opencui.finetune.commons import (load_training_dataset)
 from opencui.finetune.datacollator import DataCollatorForCausalLM
@@ -27,8 +29,6 @@ logger = logging.getLogger(__name__)
 
 IGNORE_INDEX = -100
 
-
-ModelType = Enum("ModelType", ["gpt", "t5"])
 BoolType = Enum("BoolType", ["true", "false"])
 
 @dataclass
