@@ -37,5 +37,6 @@ python3 opencui/finetune/t2t.py \
     --debug_dataset False \
     --training_mode desc-exemplar-extractive-slot \
     --peft_mode null \
+    --model_type gpt \
     --trust_remote_code \
     --report_to wandb
