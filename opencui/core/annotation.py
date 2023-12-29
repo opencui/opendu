@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 from enum import Enum
 
 
-
 @dataclass_json
 @dataclass
 class SlotSchema:
@@ -119,7 +118,6 @@ class ExactMatcher:
 
         # now we have match, but mode does not match.
         return OwnerMode[owner_mode] == OwnerMode.normal and OwnerMode[target_mode] == OwnerMode.normal
-
 
     @staticmethod
     def match(owner, target, mode_in_str):

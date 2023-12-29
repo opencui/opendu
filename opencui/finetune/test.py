@@ -72,5 +72,5 @@ if __name__ == "__main__":
                 mode_counts[0] += 1
             converter.skill_converter.grade(item["utterance"], owner, owner_mode, counts)
 
-    print(json.jumps(counts))
+    print(json.dumps(counts))
     print(mode_counts)
