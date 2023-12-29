@@ -317,6 +317,9 @@ class ISkillConverter(SkillConverter, ABC):
             counts[index] += 1
 
     def grade(self, text, owner, owner_mode, count_dict):
+        if not self.matcher.is_good_mode(owner_mode):
+            return
+
         picker = OwnerPicker()
         to_snake = CamelToSnake()
         # nodes owner are always included in the
