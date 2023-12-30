@@ -143,11 +143,8 @@ DescriptionPrompts = {
         'Is it true that "{{utterance}}" fits the description "{{skill.description}}"?'
     ),
     "structural": Prompt(
-        '### Instruction:\n'
-        'Decide whether the input fit the function {{skill.name}} with description: {{skill.description}}.'
-        '### Input:\n'
-        '{{utterance}}'
-        '### Answer(only in "true" or "false"):'
+        'Decide whether the input fit this function description: {{skill.description}}'
+        'Input: {{utterance}} \n\n Decision:'
     ),
     "struct-short": Prompt(
         'Given the function description:\n "{{skill.description}}" \n'
@@ -185,11 +182,8 @@ ExemplarPrompts = {
         'Is it true that "{{utterance}}" means the same as the example: "{{template}}"?'
     ),
     "structural": Prompt(
-        '### Instruction:\n'
-        'Decide whether the input means the same as the template: {{template}}.'
-        '### Input:\n'
-        '{{utterance}}'
-        '### Answer(only in "true" or "false"):'
+        'Decide whether the input means the same as this template: {{template}}.'
+        'Input: {{utterance}} \n\n Decision:'
     ),
     "struct-short": Prompt(
         'Given the template: \n "{{template}}" \n'
@@ -234,7 +228,8 @@ ExtractiveSlotPrompts = {
 
 NliPrompts = {
     "default": Prompt(
-        'Given the premise: "{{premise}}", the hypothesis: "{{hypothesis}}" is its '
+        'Decide whether the response to this yes/no question, {{question}}, is affirmative or negative.'
+        'Response: {{response}} \n\n Decision:'
     ),
     "boolq": Prompt(
         'Given the premise: "{{premise}}", the hypothesis: "{{hypothesis}}" is its '
