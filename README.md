@@ -1,13 +1,19 @@
-# LUG 
+# DUG
 
-LUG, or Language Understanding and Generation, is a open sourced, retrieval augmented generation
-(RAG) based function calling API implementation. It is designed both for dialog understanding in chatbot development
-and tool-using agent development. Because of this, the terminology can be a bit confusing, we will use function
-interchangeably with skill, intent, and parameter with slot. 
+DUG, or Dialogue Understanding and Generation, is an open-source, retrieval-augmented generation (RAG) based 
+function-calling API implementation. It is designed for both dialog understanding in chatbot development
+and tool-using agent development. Consequently, we will use the term 'function' interchangeably
+with 'skill', 'intent', and 'parameter' with 'slot'.
 
 It can be used with any LLMs with provided finetune script for both embedding model and generation model.
 Efficient inference is possible using excellent project like llama.cpp, vllm. With open sourced LLM, you 
 can privately deploy the entire function calling API solution anywhere you want.
+
+It can be utilized with any Language Models (LLMs) using the provided finetune script for both the 
+embedding model and generation model. Efficient inference is achievable through excellent projects like llama.cpp 
+and vllm. With an open-sourced LLM, you have the flexibility to privately deploy the entire function-calling
+API solution wherever you prefer. For now, this repo focus on decoder only or encoder-decoder models required by
+text generation.
 
 There are couple basic goals for this project:
 1. It should use the same return as OpenAI function calling API.
@@ -16,7 +22,7 @@ There are couple basic goals for this project:
 4. It should be easy to utilize the external entity recognizer for slot filling. 
 
 ## What signal can be used to define conversion?
-LUG takes three kind of different signal to shape how conversion is done:
+DUG takes three kind of different signal to shape how conversion is done:
 1. Function schema, particular [OpenAPI](https://spec.openapis.org/oas/latest.html)/[OpenAI](https://platform.openai.com/docs/api-reference/chat/create#chat/create-functions) function schema.
 2. Function exemplar, the utterance template that is associated with function.
 3. Entity recognizer for the slots.
@@ -71,7 +77,7 @@ An example in the json format is as follows:
 
 ### Entity recognizer for the slots.
 It is common that business have some private entity that is not well represented in the public domain text that is
-used during the training of LLMs, so it can be difficult to LLMs to recognize these entities out of box. LUG allow you
+used during the training of LLMs, so it can be difficult to LLMs to recognize these entities out of box. DUG allow you
 to specify a recognizer for each slot, which recognizer can be a list of entity instance or some pattern.
 
 An example in the json format is as follows:

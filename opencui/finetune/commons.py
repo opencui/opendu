@@ -36,6 +36,7 @@ class AnnotatedExemplar:
     owner_mode: str = "normal"
     template: str = None
     expectations: Optional[list] = None
+    context: str = None
 
     def flatten(self):
         return {
@@ -43,9 +44,10 @@ class AnnotatedExemplar:
             "owner": self.owner,
             "utterance": self.utterance,
             "arguments": str(self.arguments),
-            "owner_mode": str(self.owner_mode),
+            "owner_mode": self.owner_mode,
             "template": self.template,
             "expectations": str(self.expectations),
+            "context": self.context
         }
 
     @staticmethod
