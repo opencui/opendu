@@ -8,7 +8,7 @@ import shutil
 from dataclasses import dataclass, field
 from enum import Enum
 from os.path import exists, isdir, join
-from typing import Dict, Optional, Sequence, List, Tuple
+from typing import Dict, Optional, List, Tuple
 
 import evaluate
 import numpy as np
@@ -20,6 +20,7 @@ from peft import LoraConfig, get_peft_model, TaskType, PrefixTuningConfig
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed,
                           DataCollatorForSeq2Seq, AutoModelForSeq2SeqLM)
 
+from opencui import LugConfig
 from opencui.core.annotation import ModelType
 from opencui.core.special_tokens import SpecialTokens
 from opencui.finetune.commons import (load_training_dataset)
@@ -422,8 +423,8 @@ def preprocess_logits_for_metrics(logits, labels):
 
 
 def train():
-    # Turn of the evaluation mode. Main difference is
-    LugConfig.eval_mode = False
+    # Turn of the evaluation mode.
+    LugConfig.get().eval_mode = False
 
     hfparser = transformers.HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments, GenerationArguments)
@@ -615,10 +616,5 @@ def get_lora_config():
 if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
-
-    from opencui.core.config import LugConfig
-
-    LugConfig.embedding_device = "cuda:0"
-
     # Now we need to create the converters.
     train()

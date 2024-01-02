@@ -35,9 +35,9 @@ class Generator(ABC):
 
     @staticmethod
     def build():
-        if GeneratorType[LugConfig.generator] == GeneratorType.FftGenerator:
+        if GeneratorType[LugConfig.get().generator] == GeneratorType.FftGenerator:
             return FftGenerator()
-        if GeneratorType[LugConfig.generator] == GeneratorType.LoraGenerator:
+        if GeneratorType[LugConfig.get().generator] == GeneratorType.LoraGenerator:
             return LoraGenerator()
 
     @staticmethod
@@ -69,7 +69,7 @@ class Generator(ABC):
 # This should be desc/exemplar based.
 class LoraGenerator(Generator, ABC):
     def __init__(self):
-        parts = LugConfig.skill_model.split("/")
+        parts = LugConfig.get().skill_model.split("/")
 
         desc_model = f"{parts[0]}/desc-{parts[1]}"
         exemplar_model = f"{parts[0]}/exemplar-{parts[1]}"
@@ -84,7 +84,7 @@ class LoraGenerator(Generator, ABC):
         base_model = Generator.from_pretrained(
             skill_config.base_model_name_or_path,
             return_dict=True,
-            device_map=LugConfig.llm_device,
+            device_map=LugConfig.get().llm_device,
             trust_remote_code=True,
             torch_dtype=torch.bfloat16
         )
@@ -101,20 +101,20 @@ class LoraGenerator(Generator, ABC):
             exemplar_model, adapter_name=GenerateMode.exemplar.name)
 
         self.lora_model.load_adapter(
-            LugConfig.extractive_slot_model, adapter_name=GenerateMode.extractive.name)
+            LugConfig.get().extractive_slot_model, adapter_name=GenerateMode.extractive.name)
 
-        if LugConfig.nli_model != "":
-            self.lora_model.load_adapter(LugConfig.nli_model, adapter_name=GenerateMode.nli.name)
+        if LugConfig.get().nli_model != "":
+            self.lora_model.load_adapter(LugConfig.get().nli_model, adapter_name=GenerateMode.nli.name)
 
         # Move to device
-        self.lora_model.to(LugConfig.llm_device)
+        self.lora_model.to(LugConfig.get().llm_device)
         self.lora_model.eval()
 
     def generate(self, input_texts: list[str], mode: GenerateMode):
         self.lora_model.set_adapter(mode.name)
         encoding = self.tokenizer(
             input_texts, padding=True, return_tensors="pt"
-        ).to(LugConfig.llm_device)
+        ).to(LugConfig.get().llm_device)
 
         with torch.no_grad():
             peft_outputs = self.lora_model.generate(
@@ -140,26 +140,26 @@ class FftGenerator(Generator, ABC):
         # Is this the right place to clean cache.
         torch.cuda.empty_cache()
         self.model = Generator.from_pretrained(
-            LugConfig.model,
+            LugConfig.get().model,
             return_dict=True,
-            device_map=LugConfig.llm_device,
+            device_map=LugConfig.get().llm_device,
             trust_remote_code=True,
             torch_dtype=torch.bfloat16
         )
-        self.model_type = Generator.get_model_type(LugConfig.model)
+        self.model_type = Generator.get_model_type(LugConfig.get().model)
         self.model.eval()
-        self.tokenizer = AutoTokenizer.from_pretrained(LugConfig.model)
+        self.tokenizer = AutoTokenizer.from_pretrained(LugConfig.get().model)
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "left"
 
         # Move to device
-        self.model.to(LugConfig.llm_device)
+        self.model.to(LugConfig.get().llm_device)
         self.model.eval()
 
     def generate(self, input_texts: list[str], mode: GenerateMode):
         encoding = self.tokenizer(
             input_texts, padding=True, truncation=True, return_tensors="pt"
-        ).to(LugConfig.llm_device)
+        ).to(LugConfig.get().llm_device)
 
         with torch.no_grad():
             outputs = self.model.generate(
@@ -220,8 +220,8 @@ class ISkillConverter(SkillConverter, ABC):
     def __init__(self, retriever: ContextRetriever, generator):
         self.retrieve = retriever
         self.generator = generator
-        self.desc_prompt = DescriptionPrompts[LugConfig.skill_prompt]
-        self.example_prompt = ExemplarPrompts[LugConfig.skill_prompt]
+        self.desc_prompt = DescriptionPrompts[LugConfig.get().skill_prompt]
+        self.example_prompt = ExemplarPrompts[LugConfig.get().skill_prompt]
         self.use_exemplar = False
         self.use_desc = True
         assert self.use_desc or self.use_exemplar
@@ -267,7 +267,7 @@ class ISkillConverter(SkillConverter, ABC):
 
     @staticmethod
     def parse_results(skill_prompts, owners, skill_outputs, owner_modes):
-        if LugConfig.converter_debug:
+        if LugConfig.get().converter_debug:
             print(json.dumps(skill_prompts, indent=2))
             print(json.dumps(skill_outputs, indent=2))
 
@@ -384,8 +384,8 @@ class Converter:
             self.recognizer = ListRecognizer(entity_metas)
 
         self.generator = Generator.build()
-        self.slot_prompt = ExtractiveSlotPrompts[LugConfig.slot_prompt]
-        self.nli_prompt = NliPrompts[LugConfig.nli_prompt]
+        self.slot_prompt = ExtractiveSlotPrompts[LugConfig.get().slot_prompt]
+        self.nli_prompt = NliPrompts[LugConfig.get().nli_prompt]
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r"\[([^]]*)\]")
         self.skill_converter = None
@@ -426,11 +426,11 @@ class Converter:
             slot_input_dict.update(module.slots[slot].to_dict())
             slot_prompts.append(self.slot_prompt(slot_input_dict))
 
-        if LugConfig.converter_debug:
+        if LugConfig.get().converter_debug:
             print(json.dumps(slot_prompts, indent=2))
         slot_outputs = self.generator.generate(slot_prompts, GenerateMode.extractive)
 
-        if LugConfig.converter_debug:
+        if LugConfig.get().converter_debug:
             print(json.dumps(slot_outputs, indent=2))
 
         slot_values = [parse_json_from_string(seq) for seq in slot_outputs]
@@ -451,7 +451,7 @@ class Converter:
         input_dict = {"premise": utterance, "hypothesis": f"{question}."}
         input_prompt = self.nli_prompt(input_dict)
         output = self.generator.for_nli(input_prompt)
-        if LugConfig.converter_debug:
+        if LugConfig.get().converter_debug:
             print(f"{input_prompt} {output}")
         if output not in self.nli_labels:
             return None
@@ -461,12 +461,17 @@ class Converter:
         raise NotImplemented
 
 
-def load_converter(module_path, index_path):
+def load_converter(module_paths, index_path):
+    pathlist = module_paths.split(",")
+    module_dict = {}
+
     # First load the schema info.
-    module_schema, examplers, recognizers = load_all_from_directory(module_path)
+    for module_path in pathlist:
+        module_schema, examplers, recognizers = load_all_from_directory(module_path)
+        module_dict[module_path] = module_schema
+
     # Then load the retriever by pointing to index directory
-    context_retriever = load_context_retrievers(
-        {module_path: module_schema}, index_path
-    )
+    context_retriever = load_context_retrievers(module_dict, index_path)
+
     # Finally build the converter.
     return Converter(context_retriever)

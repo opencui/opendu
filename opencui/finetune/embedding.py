@@ -32,9 +32,9 @@ class DatasetCreatorWithIndex:
     def build(cls, creator: DatasetFactory, path: str):
         return DatasetCreatorWithIndex(
             creator=creator,
-            desc_retriever=HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk),
+            desc_retriever=HybridRetriever(path, "desc", LugConfig.get().desc_retrieve_topk),
             exemplar_retriever=HybridRetriever(
-                path, "exemplar", LugConfig.exemplar_retrieve_topk
+                path, "exemplar", LugConfig.get().exemplar_retrieve_topk
             ),
         )
 
@@ -151,12 +151,12 @@ if __name__ == "__main__":
 
     from opencui.finetune.sgd import SGDSkills
 
-    print(LugConfig.embedding_model)
+    print(LugConfig.get().embedding_model)
     dsc = [
         DatasetCreatorWithIndex.build(
             SGDSkills("/home/sean/src/dstc8-schema-guided-dialogue/"),
             "./index/sgdskill/")
     ]
     dataset = DataLoader(generate_sentence_pairs(dsc))
-    base_model = EmbeddingStore.get_model(LugConfig.embedding_model)
+    base_model = EmbeddingStore.get_model(LugConfig.get().embedding_model)
     train(base_model, dataset, "./output/embedding/")

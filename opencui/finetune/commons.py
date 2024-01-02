@@ -33,7 +33,7 @@ class AnnotatedExemplar:
     owner: str
     utterance: str
     arguments: dict
-    owner_mode: str = "normal"
+    owner_mode: Optional[str] = "normal"
     template: str = None
     expectations: Optional[list] = None
     context: str = None
@@ -254,7 +254,7 @@ class SlotExtractConverter(TrainConverter, ABC):
 # This only works with simple use case where we only match in normal/exact/literal sense.
 class SkillTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever):
-        self.prompt = MulticlassSkillPrompts[LugConfig.skill_prompt]
+        self.prompt = MulticlassSkillPrompts[LugConfig.get().skill_prompt]
         self.context_retrieve = retriever
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
@@ -337,7 +337,7 @@ class SkillTrainConverter(TrainConverter):
 
 class OneSkillTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever):
-        self.prompt = BinarySkillPrompts[LugConfig.skill_prompt]
+        self.prompt = BinarySkillPrompts[LugConfig.get().skill_prompt]
         self.context_retrieve = retriever
         self.neg_k = 1
         self.match_mode = "normal"
@@ -404,8 +404,8 @@ InstanceMode = Enum("InstanceMode", ["desc", "example", "both"])
 class InstanceTrainConverter(TrainConverter):
     def __init__(self, retriever: ContextRetriever, mode=InstanceMode.both):
         # Make sure that we have the same key for Desc and exemplar prompt.
-        self.desc_prompt = DescriptionPrompts[LugConfig.skill_prompt]
-        self.example_prompt = ExemplarPrompts[LugConfig.skill_prompt]
+        self.desc_prompt = DescriptionPrompts[LugConfig.get().skill_prompt]
+        self.example_prompt = ExemplarPrompts[LugConfig.get().skill_prompt]
         self.context_retrieve = retriever
         self.neg_k = 1
         self.mode = mode
@@ -414,7 +414,7 @@ class InstanceTrainConverter(TrainConverter):
     @staticmethod
     def label(value):
         label_dict = {"label": "true" if value else "false"}
-        return BoolPrompts[LugConfig.bool_prompt](label_dict)
+        return BoolPrompts[LugConfig.get().bool_prompt](label_dict)
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # Working on the batched dataset, with first dimension is column then index.
@@ -601,7 +601,7 @@ def build_skill_factory(skill_modes, factories):
     # make sure run build_skill_dataset first.
     for skill_mode in skill_modes:
         factories.append(
-            JsonDatasetFactory("./datasets/sgd/", "sgd", f"{skill_mode}-{LugConfig.skill_prompt}.")
+            JsonDatasetFactory("./datasets/sgd/", "sgd", f"{skill_mode}-{LugConfig.get().skill_prompt}.")
         )
 
 
@@ -612,7 +612,7 @@ def build_extractive_slot_factory(converted_factories):
     for index, factory in enumerate(factories):
         entity_values = collect_slot_values(factory.__getitem__("train"))
         slot_converter = OneSlotExtractConverter(
-            factory.schema, ExtractiveSlotPrompts[LugConfig.slot_prompt], entity_values
+            factory.schema, ExtractiveSlotPrompts[LugConfig.get().slot_prompt], entity_values
         )
         converted_factories.append(PromptedFactory(factory, [slot_converter]))
 
@@ -622,7 +622,7 @@ def build_nli_factory(converted_factories):
     semeval2016 = load_dataset("glue", "mnli")
     factories = [MappedDatasetDict(semeval2016, "validation_matched", "validation_mismatched")]
     for index, factory in enumerate(factories):
-        converter = NliConverter(NliPrompts[LugConfig.nli_prompt])
+        converter = NliConverter(NliPrompts[LugConfig.get().nli_prompt])
         converted_factories.append(PromptedFactory(factory, [converter], []))
 
 

@@ -10,15 +10,15 @@ if __name__ == "__main__":
     cmd = False
     for opt, arg in opts:
         if opt == "-h":
-            print("cmd.py -s <module_directory> -i <index_directory>")
+            print("cmd.py -s <api_directories> -i <index_directory>")
             sys.exit()
         elif opt == "-i":
             index_path = arg
         elif opt == "-s":
-            module_path = arg
+            module_paths = arg
 
     # First load the schema info.
-    converter = load_converter(module_path, index_path)
+    converter = load_converter(module_paths, index_path)
 
     text = ""
 
