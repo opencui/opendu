@@ -1,38 +1,50 @@
 # This is used for configure the project during the index and training.
-from dataclasses import dataclass
 
-from dataclasses_json import dataclass_json
+from pydantic import BaseModel
 
 
-@dataclass_json
-@dataclass
 class LugConfig:
-    embedding_device = "cpu"
-    embedding_model = "BAAI/bge-base-en-v1.5"
-    embedding_desc_model = ""
-    embedding_desc_prompt = "baai_desc"
-    embedding_exemplar_prompt = "baai_exemplar"
+    _instance = None
+
+    @classmethod
+    def init(cls, jsonobj):
+        LugConfig._instance = InferenceConfig(**jsonobj)
+
+    @classmethod
+    def get(cls):
+        if LugConfig._instance is None:
+            LugConfig._instance = InferenceConfig()
+        return LugConfig._instance
+
+
+class InferenceConfig(BaseModel):
+    embedding_device: str = "cpu"
+    embedding_model: str = "BAAI/bge-base-en-v1.5"
+    embedding_desc_model: str = ""
+    embedding_desc_prompt: str = "baai_desc"
+    embedding_exemplar_prompt: str = "baai_exemplar"
 
     # We might not want to touch this, without rerun find_k
-    desc_retrieve_topk = 8
-    exemplar_retrieve_topk = 8
-    exemplar_retrieve_arity = 8
+    desc_retrieve_topk: int = 8
+    exemplar_retrieve_topk: int = 8
+    exemplar_retrieve_arity: int = 8
 
-    skill_arity = 1
-    llm_device = "cuda:0"
+    skill_arity: int = 1
+    llm_device: str = "cuda:0"
 
-    skill_prompt = "structural"
-    slot_prompt = "default"
-    nli_prompt = "default"
-    bool_prompt = "plain"
+    skill_prompt: str = "structural"
+    slot_prompt: str = "default"
+    nli_prompt: str = "default"
+    bool_prompt: str = "plain"
 
-    eval_mode = True
+    eval_mode: bool = True
 
     # We will append instance.desc/instance.exemplar to this.
-    generator = "FftGenerator"
-    model="./output/flant5base/last/"
+    generator: str = "FftGenerator"
+    model: str = "OpenCUI/flant5base-multitask-1.9"
 
-    skill_model = "OpenCUI/skill-tinyllama-0.1"
-    extractive_slot_model = "OpenCUI/extractive-tinyllama2.5t-1.0"
-    nli_model = ""
-    converter_debug = True
+    skill_model: str = "OpenCUI/skill-tinyllama-0.1"
+    extractive_slot_model: str = "OpenCUI/extractive-tinyllama2.5t-1.0"
+    nli_model: str = ""
+    converter_debug: str = True
+

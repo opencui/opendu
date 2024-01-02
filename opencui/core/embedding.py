@@ -72,25 +72,25 @@ class EmbeddingStore:
             return EmbeddingStore._models[model_name]
         else:
             model = SentenceTransformer(model_name,
-                                        device=LugConfig.embedding_device)
+                                        device=LugConfig.get().embedding_device)
             EmbeddingStore._models[model_name] = model
             return model
 
     @classmethod
     def get_embedding_by_task(cls, kind):
-        model = EmbeddingStore.get_model(LugConfig.embedding_model)
+        model = EmbeddingStore.get_model(LugConfig.get().embedding_model)
         return InstructedEmbeddings(model, EmbeddingStore.INSTRUCTIONS[kind])
 
     @classmethod
     def for_description(cls) -> BaseEmbedding:
-        model = EmbeddingStore.get_model(LugConfig.embedding_model)
-        kind = LugConfig.embedding_desc_prompt
+        model = EmbeddingStore.get_model(LugConfig.get().embedding_model)
+        kind = LugConfig.get().embedding_desc_prompt
         return InstructedEmbeddings(model, EmbeddingStore.INSTRUCTIONS[kind])
 
     @classmethod
     def for_exemplar(cls) -> BaseEmbedding:
-        model = EmbeddingStore.get_model(LugConfig.embedding_model)
-        kind = LugConfig.embedding_desc_prompt
+        model = EmbeddingStore.get_model(LugConfig.get().embedding_model)
+        kind = LugConfig.get().embedding_desc_prompt
         return InstructedEmbeddings(model, EmbeddingStore.INSTRUCTIONS[kind])
 
 
@@ -143,10 +143,10 @@ class InstructedEmbeddings(BaseEmbedding):
 class HFEmbeddingStore:
     query_encoder = HuggingFaceEmbedding(
         model_name="facebook/dragon-plus-query-encoder",
-        device=LugConfig.embedding_device)
+        device=LugConfig.get().embedding_device)
     context_encoder = HuggingFaceEmbedding(
         model_name="facebook/dragon-plus-context-encoder",
-        device=LugConfig.embedding_device)
+        device=LugConfig.get().embedding_device)
 
     @classmethod
     def get_embedding_by_task(cls, kind):
@@ -203,10 +203,10 @@ class Comparer:
     def __init__(self):
         self.encoder0 = HuggingFaceEmbedding(
             model_name="facebook/dragon-plus-query-encoder",
-            device=LugConfig.embedding_device)
+            device=LugConfig.get().embedding_device)
         self.encoder1 = HuggingFaceEmbedding(
             model_name='BAAI/bge-large-en-v1.5',
-            device=LugConfig.embedding_device)
+            device=LugConfig.get().embedding_device)
 
     def __call__(self, u0, t0):
         print(similarity(u0, t0, self.encoder0))

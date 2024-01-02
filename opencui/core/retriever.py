@@ -131,7 +131,7 @@ class ContextRetriever:
         self.module = module
         self.desc_retriever = d_retrievers
         self.exemplar_retriever = e_retriever
-        self.arity = LugConfig.exemplar_retrieve_arity
+        self.arity = LugConfig.get().exemplar_retrieve_arity
         self.extended_mode = False
 
     def retrieve_by_desc(self, query):
@@ -166,8 +166,8 @@ class ContextRetriever:
 def load_context_retrievers(module_dict: dict[str, Schema], path: str):
     return ContextRetriever(
         SchemaStore(module_dict),
-        HybridRetriever(path, "desc", LugConfig.desc_retrieve_topk),
-        HybridRetriever(path,"exemplar", LugConfig.exemplar_retrieve_topk),
+        HybridRetriever(path, "desc", LugConfig.get().desc_retrieve_topk),
+        HybridRetriever(path,"exemplar", LugConfig.get().exemplar_retrieve_topk),
     )
 
 
@@ -179,8 +179,6 @@ if __name__ == "__main__":
     from opencui.finetune.sgd import SGD
 
     dsc = SGD("/home/sean/src/dstc8-schema-guided-dialogue/")
-
-    LugConfig.embedding_device = "cuda:0"
     dataset = dsc.build("train")
     # print(compute_hits(dataset, output, 8))
     # print(compute_k(dataset, output, "exemplar"))

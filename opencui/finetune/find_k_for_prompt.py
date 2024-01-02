@@ -2,7 +2,6 @@ import logging
 
 from datasets import Dataset
 import numpy as np
-from opencui.core.config import LugConfig
 from opencui.core.embedding import EmbeddingStore
 from opencui.core.retriever import (ContextRetriever, build_desc_index, load_context_retrievers)
 from opencui.finetune.commons import build_dataset_index, JsonDatasetFactory
@@ -48,7 +47,6 @@ def compute_k_examplar(dataset: Dataset, retrieve: ContextRetriever):
 
 def find_percentile(a, percentile=98, reverse=False):
     a.sort()
-    print(a)
     npa = np.array(a)
     return np.percentile(npa, percentile)
 
@@ -66,8 +64,6 @@ if __name__ == "__main__":
     # Then figure out the good k using validation split. These Ks will be used for inference and training.
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
-
-    LugConfig.embedding_device = "cuda:0"
 
     factories = [JsonDatasetFactory("./datasets/sgd", "sgd")]
 

@@ -257,9 +257,7 @@ class CamelToSnake:
         return self.backward[snake]
 
 
-def build_nodes_from_exemplar_store(
-    module: str, store: ExemplarStore, nodes: List[TextNode]
-):
+def build_nodes_from_exemplar_store(module: str, store: ExemplarStore, nodes: List[TextNode]):
     to_snake = CamelToSnake()
     for label, exemplars in store.items():
         for exemplar in exemplars:
@@ -271,7 +269,7 @@ def build_nodes_from_exemplar_store(
                     metadata={
                         "owner": label,
                         "context": get_value(exemplar, "context", ""),
-                        "owner_mode" : exemplar["owner_mode"],
+                        "owner_mode": get_value(exemplar, "owner_mode", "normal"),
                         "module": module,
                     },
                     excluded_embed_metadata_keys=["owner", "context", "module", "owner_mode"],
