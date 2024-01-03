@@ -31,15 +31,15 @@ if __name__ == "__main__":
     argv = sys.argv[1:]
     input_paths = ''
     output_path = './index/'
-    opts, args = getopt.getopt(argv, "hi:o:")
+    opts, args = getopt.getopt(argv, "hs:i:")
 
     for opt, arg in opts:
         if opt == '-h':
-            print('index.py -o <output_directory> -i <input_directory>')
+            print('index.py -s <services/agent meta directory, separated by ,> -i <directory for index>')
             sys.exit()
-        elif opt == "-i":
+        elif opt == "-s":
             input_paths = arg
-        elif opt == "-o":
+        elif opt == "-i":
             output_path = arg
 
     modules = input_paths.split(",")

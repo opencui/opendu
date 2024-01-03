@@ -50,8 +50,8 @@ if __name__ == "__main__":
     opts, args = getopt.getopt(argv, "hi:s:")
     cmd = False
     for opt, arg in opts:
-        if opt == "-h":
-            print("cmd.py -s <api_directories> -i <index_directory>")
+        if opt == "-h":    
+            print('serve.py -s <services/agent meta directory, separated by ,> -i <directory for index>')
             sys.exit()
         elif opt == "-i":
             index_path = arg
