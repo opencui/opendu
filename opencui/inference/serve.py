@@ -51,7 +51,7 @@ if __name__ == "__main__":
     cmd = False
     for opt, arg in opts:
         if opt == "-h":    
-            print('index.py -s <services/agent meta directory, separated by ,> -i <directory for index>')
+            print('serve.py -s <services/agent meta directory, separated by ,> -i <directory for index>')
             sys.exit()
         elif opt == "-i":
             index_path = arg
