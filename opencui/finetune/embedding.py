@@ -147,14 +147,12 @@ if __name__ == "__main__":
     from opencui.finetune.commons import (
         DatasetCreatorWithIndex,
         has_no_intent, DatasetFactory,
-)
-
-    from opencui.finetune.sgd import SGDSkills
+    )
 
     print(LugConfig.get().embedding_model)
     dsc = [
         DatasetCreatorWithIndex.build(
-            SGDSkills("/home/sean/src/dstc8-schema-guided-dialogue/"),
+            JsonDatasetFactory("./datasets/sgd/"),
             "./index/sgdskill/")
     ]
     dataset = DataLoader(generate_sentence_pairs(dsc))

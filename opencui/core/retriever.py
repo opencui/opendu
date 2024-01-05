@@ -169,16 +169,3 @@ def load_context_retrievers(module_dict: dict[str, Schema], path: str):
         HybridRetriever(path, "desc", LugConfig.get().desc_retrieve_topk),
         HybridRetriever(path,"exemplar", LugConfig.get().exemplar_retrieve_topk),
     )
-
-
-if __name__ == "__main__":
-    logger = logging.getLogger()
-    logger.setLevel(logging.CRITICAL)
-
-    output = "./index/sgdskill/"
-    from opencui.finetune.sgd import SGD
-
-    dsc = SGD("/home/sean/src/dstc8-schema-guided-dialogue/")
-    dataset = dsc.build("train")
-    # print(compute_hits(dataset, output, 8))
-    # print(compute_k(dataset, output, "exemplar"))
