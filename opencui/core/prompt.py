@@ -218,7 +218,7 @@ ExemplarPrompts = {
 # For the slots of enum type, we used different prompt in order to improve the
 ExtractiveSlotPrompts = {
     "default": Prompt(
-        "{{#list_values values}} {{value}} {{/list_values}}\n"
+        '{{#list_values values}} {{value}} {{/list_values}}\n'
         'The value for {{name}} ({{description}}) from "{{utterance}}" is:'
     ),
     "basic": Prompt(
@@ -228,7 +228,8 @@ ExtractiveSlotPrompts = {
 
 NliPrompts = {
     "default": Prompt(
-        'Decide whether the response to this yes/no question, {{question}}, is affirmative or negative.'
+        'Decide whether the response to this yes/no question: {{question}}'
+        ', is affirmative, negative, indifferent or irrelevant.'
         'Response: {{response}} \n\n Decision:'
     ),
     "boolq": Prompt(
