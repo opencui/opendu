@@ -34,7 +34,7 @@ class InferenceConfig(BaseModel):
 
     skill_prompt: str = "structural"
     slot_prompt: str = "default"
-    nli_prompt: str = "default"
+    yni_prompt: str = "default"
     bool_prompt: str = "plain"
 
     eval_mode: bool = True

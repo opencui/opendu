@@ -226,12 +226,15 @@ ExtractiveSlotPrompts = {
     ),
 }
 
-NliPrompts = {
+YniPrompts = {
     "default": Prompt(
         'Decide whether the response to this yes/no question: {{question}}'
         ', is affirmative, negative, indifferent or irrelevant.'
         'Response: {{response}} \n\n Decision:'
     ),
+}
+
+NliPrompts = {
     "boolq": Prompt(
         'Given the premise: "{{premise}}", the hypothesis: "{{hypothesis}}" is its '
     ),
