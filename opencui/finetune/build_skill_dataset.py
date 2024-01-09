@@ -29,7 +29,16 @@ def build_skill_factory(output, factory, mode, index=True):
         )
 
     context_retriever = load_context_retrievers({factory.tag: factory.schema}, f"{output}/index/")
-    return PromptedFactory(factory, [skill_converter(context_retriever, mode)])
+    skill_columns = [
+        "id",
+        "utterance",
+        "template",
+        "owner",
+        "owner_mode",
+        "arguments",
+        "expectations",
+    ]
+    return PromptedFactory(factory, [skill_converter(context_retriever, mode)], skill_columns)
 
 
 if __name__ == "__main__":
