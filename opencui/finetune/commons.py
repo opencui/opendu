@@ -235,6 +235,21 @@ class JsonDatasetFactory(DatasetFactory, ABC):
         return self.datasets[item]
 
 
+class JsonBareDatasetFactory(DatasetFactory, ABC):
+    def __init__(self, path, tag=None, prefix=""):
+        self.path = path
+        files = {
+            "train": f"{self.path}/{prefix}train.jsonl",
+            "test": f"{self.path}/{prefix}test.jsonl",
+            "validation": f"{self.path}/{prefix}validation.jsonl",
+        }
+        self.datasets = load_dataset('json', data_files=files)
+        self.tag = tag
+
+    def __getitem__(self, item):
+        return self.datasets[item]
+
+
 # This inference is responsible for convert the exemplars in the original dataset into what is needed
 # by generation fine-tuning. The assumed the columns are input and output, and we added id for debugging
 # purpose.
@@ -620,7 +635,7 @@ def build_extractive_slot_factory(converted_factories):
 def build_nli_factory(converted_factories):
     # Here we assume the raw input is sentence, focus and label (positive, negative and neutral)
     converted_factories.append(
-        JsonDatasetFactory("./datasets/yni/", "yni", f"yni-{LugConfig.get().nli_prompt}.")
+        JsonBareDatasetFactory("./datasets/yni/", "yni")
     )
 
 
