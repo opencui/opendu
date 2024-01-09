@@ -571,6 +571,21 @@ class NliConverter(TrainConverter, ABC):
             outs.append(f"{label}</s>")
 
 
+class YniConverter(TrainConverter, ABC):
+    def __init__(self, prompt):
+        self.prompt = prompt
+
+    def __call__(self, batch, ins: list[str], outs: list[str]):
+        # We assume the input is dict version of AnnotatedExemplar
+        for idx, question in enumerate(batch["question"]):
+            response = batch["response"][idx]
+            label = self.labels[int(batch["label"][idx])]
+            input_dict = {"question": question, "response": response}
+            ins.append(self.prompt(input_dict))
+            outs.append(f"{label}</s>")
+
+
+
 # This inference is needed for cases where users' utterance is response to bot's prompt questions, and
 # needs the abstractive understanding instead of extractive understanding.
 # This is needed to determine the intention, intended function or skill
@@ -634,8 +649,9 @@ def build_extractive_slot_factory(converted_factories):
 
 def build_nli_factory(converted_factories):
     # Here we assume the raw input is sentence, focus and label (positive, negative and neutral)
+    converter = YniConverter()
     converted_factories.append(
-        JsonBareDatasetFactory("./datasets/yni/", "yni")
+        PromptedFactory(JsonBareDatasetFactory("./datasets/yni/", "yni"), [converter])
     )
 
 
