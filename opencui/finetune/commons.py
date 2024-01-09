@@ -619,11 +619,9 @@ def build_extractive_slot_factory(converted_factories):
 
 def build_nli_factory(converted_factories):
     # Here we assume the raw input is sentence, focus and label (positive, negative and neutral)
-    semeval2016 = load_dataset("glue", "mnli")
-    factories = [MappedDatasetDict(semeval2016, "validation_matched", "validation_mismatched")]
-    for index, factory in enumerate(factories):
-        converter = NliConverter(NliPrompts[LugConfig.get().nli_prompt])
-        converted_factories.append(PromptedFactory(factory, [converter], []))
+    converted_factories.append(
+        JsonDatasetFactory("./datasets/yni/", "yni", f"yni-{LugConfig.get().nli_prompt}.")
+    )
 
 
 # Load training set, based on what is inside the --training_mode desc-exemplar-extractive-slot

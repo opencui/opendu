@@ -36,7 +36,7 @@ python3 opencui/finetune/t2t.py \
     --weight_decay 0.01 \
     --seed 0 \
     --debug_dataset False \
-    --training_mode desc-exemplar-extractive_slot \
+    --training_mode desc-exemplar-extractive_slot-nli \
     --peft_mode null \
     --trust_remote_code \
     --model_type t5 \
