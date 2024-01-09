@@ -649,7 +649,7 @@ def build_extractive_slot_factory(converted_factories):
 
 def build_nli_factory(converted_factories):
     # Here we assume the raw input is sentence, focus and label (positive, negative and neutral)
-    converter = YniConverter()
+    converter = YniConverter(YniPrompts[LugConfig.get().yni_prompt])
     converted_factories.append(
         PromptedFactory(JsonBareDatasetFactory("./datasets/yni/", "yni"), [converter])
     )
