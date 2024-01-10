@@ -31,12 +31,12 @@ class AnnotatedExemplar:
 
     id: str
     owner: str
-    utterance: str
+    utterance: str  # useful for slot model
     arguments: dict
-    owner_mode: Optional[str] = "normal"
+    owner_mode: Optional[str] = "normal"   # this is the label
     template: str = None
-    expectations: Optional[list] = None
-    context: str = None
+    context_frame: str = None
+    context_slot: str = None
 
     def flatten(self):
         return {
@@ -46,8 +46,8 @@ class AnnotatedExemplar:
             "arguments": str(self.arguments),
             "owner_mode": self.owner_mode,
             "template": self.template,
-            "expectations": str(self.expectations),
-            "context": self.context
+            "context_frame": self.context_frame,
+            "context_slot": self.context_slot
         }
 
     @staticmethod
@@ -106,9 +106,10 @@ def build_nodes_from_dataset(module: str, dataset: Dataset, nodes):
                     "arguments": item["arguments"],
                     "owner": (item["owner"]),
                     "owner_mode": item["owner_mode"],
+                    "context": item["context"],
                     "module": module,
                 },
-                excluded_embed_metadata_keys=["arguments", "owner", "module", "owner_mode"],
+                excluded_embed_metadata_keys=["arguments", "owner", "module", "owner_mode", "context"],
             )
         )
 
@@ -579,7 +580,7 @@ class YniConverter(TrainConverter, ABC):
         # We assume the input is dict version of AnnotatedExemplar
         for idx, question in enumerate(batch["question"]):
             response = batch["response"][idx]
-            label = self.labels[int(batch["label"][idx])]
+            label = batch["label"][idx]
             input_dict = {"question": question, "response": response}
             ins.append(self.prompt(input_dict))
             outs.append(f"{label}</s>")

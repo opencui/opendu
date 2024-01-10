@@ -219,10 +219,10 @@ ExemplarPrompts = {
 ExtractiveSlotPrompts = {
     "default": Prompt(
         '{{#list_values values}} {{value}} {{/list_values}}\n'
-        'The value for {{name}} ({{description}}) from "{{utterance}}" is:'
+        'The value for {{name}} from "{{utterance}}" is:'
     ),
     "basic": Prompt(
-        'The value for {{name}} ({{description}}) from "{{utterance}}" is:'
+        'The value for {{name}} from "{{utterance}}" is:'
     ),
 }
 
