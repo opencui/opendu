@@ -192,44 +192,19 @@ DescriptionPrompts = {
 }
 
 # This should have the same exact key as the above prompt dictionary.
-ExemplarPrompts = {
-    "default": Prompt(
-        'Is it true that "{{utterance}}" means the same as the example: "{{template}}"?'
-    ),
-    "structural": Prompt(
-        'Decide whether the input means the same as this template: {{template}}.'
-        'Input: {{utterance}} \n\n Decision:'
-    ),
+ExemplarPrompts = ClassPrompts(
+    default='Is it true that "{{utterance}}" means the same as the example: "{{template}}"?',
+    structural='Decide whether the following template means the same as:\n {{utterance}}.\n\n'
+               '{{#list_examples examples}}Template: {{template}}\nDecision:{{label}}\n\n{{/list_examples}}'
+               'Template: {{template}}\nDecision:',
 
-    "struct-short": Prompt(
-        'Given the template: \n "{{template}}" \n'
-        'and the sentence: \n "{{utterance}}" \n'
-        'Is it true that the sentence means the same as the template? '
-    ),
+    reverse='Decide whether the input means the same as this template: {{template}}.'
+            'Input: {{utterance}} \n\n Decision:',
 
-    "token": Prompt(
-        '<utterance> {{utterance}} </utterance> <exemplar> {{template}} </exemplar> <exemplar>'
-    ),
-    "struct-token": Prompt(
-        'Given the template <template> {{template}} </template>, '
-        'decide whether <utterance> {{utterance}} </utterance> means the same as this template.'
-        'The answer is '
-    ),
-    "struct-token1": Prompt(
-        'Given:\n'
-        'the utterance: <utterance> {{utterance}} </utterance>\n'  
-        'the template: <template> {{template}} </template>\n'
-        'Is it true that the utterance means the same as the template?'
-        '<exemplar> The answer is '
-    ),
-    "struct-token2": Prompt(
-        'Given:\n'
-        'the utterance: <utterance> {{utterance}} </utterance>\n'
-        'the template: <template> {{template}} </template>\n'
-        'Is it true that the utterance means the same as the template?'
-        '<exemplar>'
-    ),
-}
+    struct_short='Given the template: \n "{{template}}" \n'
+                 'and the sentence: \n "{{utterance}}" \n'
+                 'Is it true that the sentence means the same as the template? '
+)
 
 # For the slots of enum type, we used different prompt in order to improve the
 ExtractiveSlotPrompts = {
@@ -279,3 +254,15 @@ if __name__ == "__main__":
     }
 
     print(YniPrompts["default"](x))
+
+    examples = [
+        {"template": "April 2st", "label": "related"},
+        {"template": "April 3st", "label": "unrelated"}
+    ]
+    x = {
+        "template": "what day is tomorrow?",
+        "utterance": "April 1st",
+        "label": "related",
+        "examples": examples
+    }
+    print(ExemplarPrompts["structural"](x))
