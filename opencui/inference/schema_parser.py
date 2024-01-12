@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import json
-
+import os
+from os.path import exists
 from opencui.core.annotation import (CamelToSnake, EntityMetas,
                                      ExemplarStore, FrameSchema, Schema, SlotSchema, get_value)
 
@@ -67,17 +68,23 @@ def from_openapi(specs) -> Schema:
 # recognizers.
 def load_schema_from_directory(path):
     schema_object = json.load(open(path))
-    return (
-        from_openai(schema_object)
-        if isinstance(schema_object, list)
-        else from_openapi(schema_object)
-    )
+    if isinstance(schema_object, list):
+        l_schema = from_openai(schema_object)
+    elif "slots" in schema_object and "skills" in schema_object:
+        l_schema = Schema.from_dict(schema_object)
+    else:
+        l_schema = from_openapi(schema_object)
+
+    return l_schema
 
 
 def load_all_from_directory(input_path):
     module_schema = load_schema_from_directory(f"{input_path}/schemas.json")
     examplers = ExemplarStore(**json.load(open(f"{input_path}/exemplars.json")))
-    recognizers = EntityMetas(**json.load(open(f"{input_path}/recognizers.json")))
+    if os.path.exists(f"{input_path}/recognizers.json"):
+        recognizers = EntityMetas(**json.load(open(f"{input_path}/recognizers.json")))
+    else:
+        recognizers = None
     return module_schema, examplers, recognizers
 
 
