@@ -571,6 +571,20 @@ class NliConverter(TrainConverter, ABC):
             outs.append(f"{label}</s>")
 
 
+class YniConverter(TrainConverter, ABC):
+    def __init__(self, prompt):
+        self.prompt = prompt
+
+    def __call__(self, batch, ins: list[str], outs: list[str]):
+        # We assume the input is dict version of AnnotatedExemplar
+        for idx, question in enumerate(batch["question"]):
+            response = batch["response"][idx]
+            label = batch["label"][idx]
+            input_dict = {"question": question, "response": response}
+            ins.append(self.prompt(input_dict))
+            outs.append(f"{label}</s>")
+
+
 class ConllLabel:
     label_info = {
             "PER" : {"name": "person"},
