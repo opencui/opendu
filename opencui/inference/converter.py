@@ -460,14 +460,14 @@ class Converter:
 
         return FrameValue(name=final_name, arguments=slot_values)
 
-    def detectTriggerables(self, utterance, expectations)-> List[str]:
+    def detectTriggerables(self, utterance, expectations)-> list[str]:
         func_name = self.skill_converter.get_skill(text)
         if func_name is None:
             return []
         else:
             return [func_name]
 
-    def fillSlots(self, text, slots:List[Dict[str, str]], entities:Map[str, list[str]])-> Map[str, List[str]]:
+    def fillSlots(self, text, slots:list[dict[str, str]], entities:dict[str, list[str]])-> dict[str, list[str]]:
         slot_prompts = []
         for slot in slots:
             label = slot["label"]
@@ -490,7 +490,7 @@ class Converter:
             key: value for key, value in slot_values.items() if value is not None
         }
 
-    def inference(self, utterance:String, questions:List[str]) -> List[str]:
+    def inference(self, utterance:str, questions:list[str]) -> list[str]:
         input_prompts = []
         for question in questions:
             # For now, we ignore the language
