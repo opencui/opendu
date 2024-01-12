@@ -34,7 +34,7 @@ class ObjectLister:
     def __call__(self, this, options, items):
         result = []
         # If the item list is empty.
-        if len(items) == 0:
+        if items is None or len(items) == 0:
             return result
         result.append(self.block_header)
         for index, thing in enumerate(items):

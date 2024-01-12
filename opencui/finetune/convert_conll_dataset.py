@@ -1,12 +1,13 @@
 import json
 from datasets import Dataset, load_dataset
 from opencui.finetune.commons import Conll03OneSlotConverter, PromptedFactory
-
+from opencui.core.config import LugConfig
+from opencui.core.prompts import ExtractiveSlotPrompts
 
 if __name__ == "__main__":
     path = "./datasets/conllner"
-    factory = load_dataset('tner/conll2003')["train"]
-    converter = Conll03OneSlotConverter("PER")
+    factory = load_dataset('tner/conll2003')
+    converter = Conll03OneSlotConverter(ExtractiveSlotPrompts[LugConfig.get().slot_prompt], "PER")
     prompted_factory = PromptedFactory(factory, [converter], ["tokens", "tags"])
 
     tags = ["train", "test", "validation"]
