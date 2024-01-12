@@ -586,6 +586,106 @@ class YniConverter(TrainConverter, ABC):
             outs.append(f"{label}</s>")
 
 
+class ConllLabel:
+    label_info = {
+            "PER" : {"name": "person"},
+            "LOC" : {"name": "location"},
+            "ORG" : {"name": "organization"}
+        }
+
+    def __init__(self, label):
+        self.labels = label.split("-")
+
+    def is_payload(self):
+        return len(self.labels) != 1
+
+    def is_start(self):
+        return self.is_payload() and self.labels[0] == "B"
+
+    def payload(self):
+        return self.labels[1]
+
+    def is_close(self, last):
+        if last is None:
+            return True
+        if not self.is_payload():
+            return True
+        if self.is_start():
+            return True
+        return False
+
+    def get_name(self):
+        return label_info[label.payload()]
+
+
+class ConllLabelBuilder:
+    def __init__(self, cares):
+        self.sep = "|"
+        self.start = "["
+        self.end = ']'
+        self.cares = cares
+
+    def care(self, label: ConllLabel):
+        return labe.payload() in self.cares
+
+    def __call__(self, tokens, tags):
+        check(len(tokens) == len(tags))
+        out = []
+        last_label = None
+        for index, tag in enumerate(tags):
+            label = ConllLabel(tag)
+            # We need to make two decisions, whether to add start marker, whether to add end marker.
+            if label.is_close(last) and last is not None and self.care(last):
+                out.add(self.sep)
+                out.add(last_label.get_name())
+                out.add(self.end)
+
+            if label.is_start() and self.care(last):
+                out.add(self.start)
+
+            out.add(tokens[index])
+            last_label = label
+        return " ".join(out)
+
+
+class Conll03OneSlotConverter(TrainConverter, ABC):
+    def __init__(self, prompt, care):
+        self.prompt = prompt
+        self.label_to_id = {
+            "O": 0,
+            "B-ORG": 1,
+            "B-MISC": 2,
+            "B-PER": 3,
+            "I-PER": 4,
+            "B-LOC": 5,
+            "I-ORG": 6,
+            "I-MISC": 7,
+            "I-LOC": 8
+        }
+        pairs = list(self.label_to_id.items()).sort(lambda x: x[1])
+        self.id_to_label = list(map(lambda x: x[0], pairs))
+
+        self.care = care
+        self.build_label = ConllLabelBuilder()
+
+    def __call__(self, batch, ins: list[str], outs: list[str]):
+        # We assume the input is dict version of AnnotatedExemplar
+        for idx, tokens in enumerate(batch["tokens"]):
+            tags = batch["tags"][idx]
+            label = ConllLabel(tag)
+
+            input_dict = {"utterance": " ".join(tokens)}
+            input_dict.update(ConllLabel.label_info[self.care])
+
+            build_label = ConllLabelBuilder(tokens, tags, [self.care])
+
+            # without the values for conll.
+            input_dict["values"] = []
+            ins.append(self.prompt(input_dict))
+            outs.append(f"{build_label()}</s>")
+
+
+
 
 # This inference is needed for cases where users' utterance is response to bot's prompt questions, and
 # needs the abstractive understanding instead of extractive understanding.
