@@ -17,7 +17,7 @@ from llama_index.schema import TextNode
 
 from opencui.core.prompt import (Prompt, MulticlassSkillPrompts, BinarySkillPrompts,
                                  ExemplarPrompts, DescriptionPrompts, BoolPrompts, YniPrompts, ExtractiveSlotPrompts)
-from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher
+from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher, get_value
 from opencui.core.config import LugConfig
 from opencui.core.retriever import create_index, ContextRetriever
 
@@ -106,7 +106,8 @@ def build_nodes_from_dataset(module: str, dataset: Dataset, nodes):
                     "arguments": item["arguments"],
                     "owner": (item["owner"]),
                     "owner_mode": item["owner_mode"],
-                    "context": item["context"],
+                    "context_frame": get_value(item, "context_frame", ""),
+                    "context_slot": get_value(item, "context_slot", ""),
                     "module": module,
                 },
                 excluded_embed_metadata_keys=["arguments", "owner", "module", "owner_mode", "context"],
