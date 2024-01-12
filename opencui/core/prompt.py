@@ -55,10 +55,7 @@ class ObjectLister:
 # Assume the source have examples, slots, skills, values as well as utterance.
 # This prompt template is designed to address template for full skill.
 class Prompt:
-    def __init__(self, source: str):
-        self.template = Compiler().compile(source)
-        self.extra_tokens = []
-        self.helpers = {
+    default_helpers = {
             "list_examples": ObjectLister(),
             "list_skills": ObjectLister(
                 block_header="\nGiven the definition for the following functions:\n"
@@ -76,6 +73,12 @@ class Prompt:
                 block_tail="null]",
             ),
         }
+
+    def __init__(self, source: str, helpers = default_helpers):
+        self.template = Compiler().compile(source)
+        self.source = source
+        self.extra_tokens = []
+        self.helpers = helpers
         self.partials = {}
 
     def __call__(self, item: dict[str, any]) -> str:
@@ -85,6 +88,19 @@ class Prompt:
         )
 
 
+# Each class prompt assumes the same set of variables.
+class ClassPrompts:
+    def __init__(self, **kvargs):
+        self.helpers = Prompt.default_helpers
+        self.prompt_map = {
+            key: Prompt(source, self.helpers) for key, source in kvargs.items()
+        }
+        print(self.prompt_map)
+
+    def __getitem__(self, item):
+        return self.prompt_map[item]
+
+
 #
 # LugPrompts assumes the following prompt template in pybars depending on the following information:
 # skills: List[SkillSpec]
@@ -92,13 +108,12 @@ class Prompt:
 # exemplars: List[Exemplar]
 # values: ?
 #
-
 MulticlassSkillPrompts = {
     "specs_only": Prompt(
         "{{#list_skills skills}} {{name}}: {{description}} {{/list_skills}}\n"
         'Classify the input sentence: "{{utterance}}" as one of '
         '{{#list_skill_names skills}} "{{name}}" {{/list_skill_names}}.\n'
-        "The prediction is:"
+        'The prediction is:'
     ),
     "specs_exampled": Prompt(
         '{{#list_skills skills}} "{{name}}": {{description}} {{/list_skills}}\n'
@@ -177,65 +192,46 @@ DescriptionPrompts = {
 }
 
 # This should have the same exact key as the above prompt dictionary.
-ExemplarPrompts = {
-    "default": Prompt(
-        'Is it true that "{{utterance}}" means the same as the example: "{{template}}"?'
-    ),
-    "structural": Prompt(
-        'Decide whether the input means the same as this template: {{template}}.'
-        'Input: {{utterance}} \n\n Decision:'
-    ),
-    "struct-short": Prompt(
-        'Given the template: \n "{{template}}" \n'
-        'and the sentence: \n "{{utterance}}" \n'
-        'Is it true that the sentence means the same as the template? '
-    ),
+ExemplarPrompts = ClassPrompts(
+    default='Is it true that "{{utterance}}" means the same as the example: "{{template}}"?',
+    structural='Decide whether the following template means the same as:\n {{utterance}}.\n\n'
+               '{{#list_examples examples}}Template: {{template}}\nDecision:{{label}}\n\n{{/list_examples}}'
+               'Template: {{template}}\nDecision:',
 
-    "token": Prompt(
-        '<utterance> {{utterance}} </utterance> <exemplar> {{template}} </exemplar> <exemplar>'
-    ),
-    "struct-token": Prompt(
-        'Given the template <template> {{template}} </template>, '
-        'decide whether <utterance> {{utterance}} </utterance> means the same as this template.'
-        'The answer is '
-    ),
-    "struct-token1": Prompt(
-        'Given:\n'
-        'the utterance: <utterance> {{utterance}} </utterance>\n'  
-        'the template: <template> {{template}} </template>\n'
-        'Is it true that the utterance means the same as the template?'
-        '<exemplar> The answer is '
-    ),
-    "struct-token2": Prompt(
-        'Given:\n'
-        'the utterance: <utterance> {{utterance}} </utterance>\n'
-        'the template: <template> {{template}} </template>\n'
-        'Is it true that the utterance means the same as the template?'
-        '<exemplar>'
-    ),
-}
+    reverse='Decide whether the input means the same as this template: {{template}}.'
+            'Input: {{utterance}} \n\n Decision:',
+
+    struct_short='Given the template: \n "{{template}}" \n'
+                 'and the sentence: \n "{{utterance}}" \n'
+                 'Is it true that the sentence means the same as the template? '
+)
 
 # For the slots of enum type, we used different prompt in order to improve the
 ExtractiveSlotPrompts = {
     "default": Prompt(
         '{{#list_values values}} {{value}} {{/list_values}}\n'
-        'The value for {{name}} ({{description}}) from "{{utterance}}" is:'
+        'The value for {{name}} from "{{utterance}}" is:'
+    ),
+    "structural": Prompt(
+        'Extract value for the slot {{name}} from the following utterance.\n\n'
+        'Utterance: {{utterance}} \n Candidates: {{#list_values values}} {{value}} {{/list_values}} \n Output:'
     ),
     "basic": Prompt(
-        'The value for {{name}} ({{description}}) from "{{utterance}}" is:'
+        'The value for {{name}} from "{{utterance}}" is:'
     ),
 }
 
-NliPrompts = {
-    "default": Prompt(
-        'Decide whether the response to this yes/no question: {{question}}'
-        ', is affirmative, negative, indifferent or irrelevant.'
-        'Response: {{response}} \n\n Decision:'
-    ),
-    "boolq": Prompt(
-        'Given the premise: "{{premise}}", the hypothesis: "{{hypothesis}}" is its '
-    ),
-}
+YniPrompts = ClassPrompts(
+    default='Decide whether the response is affirmative, negative, indifferent or irrelevant to this yes/no question:\n\n'
+            '{{question}}\n'
+            '{{#list_examples examples}}Response: {{response}}\nDecision:{{label}}\n\n{{/list_examples}}'
+            'Response: {{response}}\nDecision:'
+)
+
+
+NliPrompts = ClassPrompts(
+    boolq='Given the premise: "{{premise}}", the hypothesis: "{{hypothesis}}" is its '
+)
 
 BoolPrompts = {
     "default": Prompt('{{label}}</s>'),
@@ -243,3 +239,30 @@ BoolPrompts = {
     "truefalse": Prompt('{{label}}</true_false_response></s>'),
     "yesno": Prompt('{{label}}</yes_no_response></s>')
 }
+
+
+if __name__ == "__main__":
+    examples = [
+        {"response": "April 2st", "label": "related"},
+        {"response": "April 3st", "label": "unrelated"}
+    ]
+    x = {
+        "question": "what day is tomorrow?",
+        "response": "April 1st",
+        "label": "related",
+        "examples": examples
+    }
+
+    print(YniPrompts["default"](x))
+
+    examples = [
+        {"template": "April 2st", "label": "related"},
+        {"template": "April 3st", "label": "unrelated"}
+    ]
+    x = {
+        "template": "what day is tomorrow?",
+        "utterance": "April 1st",
+        "label": "related",
+        "examples": examples
+    }
+    print(ExemplarPrompts["structural"](x))

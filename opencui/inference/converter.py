@@ -19,7 +19,7 @@ from opencui.inference.schema_parser import load_all_from_directory
 # The modes that we will support.
 GenerateMode = Enum("GenerateMode", ["desc", "exemplar", "extractive", "nli"])
 GeneratorType = Enum("Generator", ["FftGenerator", "LoraGenerator"])
-
+YesNoResult = Enum("YesNoResult", ["Affirmative", "Negative", "Indifferent", "Irrelevant"])
 
 # In case you are curious about decoding: https://huggingface.co/blog/how-to-generate
 # We are not interested in the variance, so we do not do sampling not beam search.
@@ -198,7 +198,7 @@ def parse_json_from_string(text, default=None):
 
 # This is used to pick the owner by first accumulate on the exemplars by weight 2
 # then accumulate on desc by weight 1.
-class OwnerPicker:
+class SingleOwnerPicker:
     def __init__(self):
         self.counts = defaultdict(int)
         # This we make sure that
@@ -277,24 +277,41 @@ class ISkillConverter(SkillConverter, ABC):
         ]
         return [owners[index] for index, flag in enumerate(flags) if flag]
 
-    def get_skill(self, text):
+    def get_skills(self, text):
+        # For now, we only pick one skill
+        picker = SingleOwnerPicker()
         to_snake = CamelToSnake()
+
         # nodes owner are always included in the
         skills, nodes = self.retrieve(text)
 
+        # for exemplar
         if self.use_exemplar:
-            skill_prompts, owners, owner_modes = self.build_prompts_by_examples(text, nodes, to_snake)
-            skill_outputs = self.generator.generate(skill_prompts, GenerateMode.exemplar)
-            functions = self.parse_results(skill_prompts, owners, skill_outputs)
-            if len(functions) != 0:
-                return functions
+            exemplar_prompts, owners, owner_modes = self.build_prompts_by_examples(text, nodes, to_snake)
+            exemplar_outputs = self.generator.generate(exemplar_prompts, GenerateMode.exemplar)
+            exemplar_preds = [
+                parse_json_from_string(raw_flag, raw_flag)
+                for index, raw_flag in enumerate(exemplar_outputs)
+            ]
+            exemplar_truth = [
+                self.matcher.agree(owner, owner_mode, lowner, owner_modes[index])
+                for index, lowner in enumerate(owners)]
 
+            assert len(exemplar_preds) == len(exemplar_truth)
+            picker.accumulate(exemplar_preds, owners, 2)
+
+        # for desc
         if self.use_desc:
-            skill_prompts, owners = self.build_prompts_by_desc(text, skills, to_snake)
-            skill_outputs = self.generator.generate(skill_prompts, GenerateMode.desc)
-            return self.parse_results(skill_prompts, owners, skill_outputs)
-
-        return []
+            desc_prompts, owners = self.build_prompts_by_desc(text, skills, to_snake)
+            desc_outputs = self.generator.generate(desc_prompts, GenerateMode.desc)
+            desc_preds = [
+                parse_json_from_string(raw_flag, None)
+                for index, raw_flag in enumerate(desc_outputs)
+            ]
+            desc_truth = [owner == lowner and OwnerMode[owner_mode] == OwnerMode.normal for lowner in owners]
+            assert len(desc_preds) == len(desc_truth)
+            picker.accumulate(desc_preds, owners, 1)
+        return picker.decide()
 
     @staticmethod
     def update(preds, truth, counts, skill_prompts, skill_outputs, output=True):
@@ -320,7 +337,7 @@ class ISkillConverter(SkillConverter, ABC):
         if not self.matcher.is_good_mode(owner_mode):
             return
 
-        picker = OwnerPicker()
+        picker = SingleOwnerPicker()
         to_snake = CamelToSnake()
         # nodes owner are always included in the
         skills, nodes = self.retrieve(text)
@@ -393,9 +410,7 @@ class Converter:
         self.skill_converter = ISkillConverter(retriever, self.generator)
         self.nli_labels = {"entailment": True, "neutral": None, "contradiction": False}
 
-    def understand(
-            self, text: str, expectation: DialogExpectation = None
-    ) -> FrameValue:
+    def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
         # low level get skill.
         func_names = self.skill_converter.get_skill(text)
 
@@ -445,17 +460,48 @@ class Converter:
 
         return FrameValue(name=final_name, arguments=slot_values)
 
-    # There are three different
-    def decide(self, question, utterance, lang="en") -> bool:
-        # For now, we ignore the language
-        input_dict = {"premise": utterance, "hypothesis": f"{question}."}
-        input_prompt = self.nli_prompt(input_dict)
-        output = self.generator.for_nli(input_prompt)
+    def detectTriggerables(self, utterance, expectations)-> list[str]:
+        func_name = self.skill_converter.get_skill(text)
+        if func_name is None:
+            return []
+        else:
+            return [func_name]
+
+    def fillSlots(self, text, slots:list[dict[str, str]], entities:dict[str, list[str]])-> dict[str, list[str]]:
+        slot_prompts = []
+        for slot in slots:
+            label = slot["label"]
+            name = slot["name"]
+            values = entities[label]
+            slot_input_dict = {"utterance": text, "name": name, "values": values}
+            slot_input_dict.update(module.slots[slot].to_dict())
+            slot_prompts.append(self.slot_prompt(slot_input_dict))
+
         if LugConfig.get().converter_debug:
-            print(f"{input_prompt} {output}")
-        if output not in self.nli_labels:
-            return None
-        return self.nli_labels[output]
+            print(json.dumps(slot_prompts, indent=2))
+        slot_outputs = self.generator.generate(slot_prompts, GenerateMode.extractive)
+
+        if LugConfig.get().converter_debug:
+            print(json.dumps(slot_outputs, indent=2))
+
+        slot_values = [parse_json_from_string(seq) for seq in slot_outputs]
+        slot_values = dict(zip(slot_labels_of_func, slot_values))
+        return {
+            key: value for key, value in slot_values.items() if value is not None
+        }
+
+    def inference(self, utterance:str, questions:list[str]) -> list[str]:
+        input_prompts = []
+        for question in questions:
+            # For now, we ignore the language
+            input_dict = {"response": utterance, "question": f"{question}."}
+            input_prompts.add(self.nli_prompt(input_dict))
+
+        outputs = self.generator.for_nli(input_prompts)
+
+        if LugConfig.get().converter_debug:
+            print(f"{input_prompts} {outputs}")
+        return outputs
 
     def generate(self, struct: FrameValue) -> str:
         raise NotImplemented

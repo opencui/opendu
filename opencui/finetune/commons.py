@@ -16,7 +16,7 @@ from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode
 
 from opencui.core.prompt import (Prompt, MulticlassSkillPrompts, BinarySkillPrompts,
-                                 ExemplarPrompts, DescriptionPrompts, BoolPrompts, NliPrompts, ExtractiveSlotPrompts)
+                                 ExemplarPrompts, DescriptionPrompts, BoolPrompts, YniPrompts, ExtractiveSlotPrompts)
 from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher
 from opencui.core.config import LugConfig
 from opencui.core.retriever import create_index, ContextRetriever
@@ -31,12 +31,12 @@ class AnnotatedExemplar:
 
     id: str
     owner: str
-    utterance: str
+    utterance: str  # useful for slot model
     arguments: dict
-    owner_mode: Optional[str] = "normal"
+    owner_mode: Optional[str] = "normal"   # this is the label
     template: str = None
-    expectations: Optional[list] = None
-    context: str = None
+    context_frame: str = None
+    context_slot: str = None
 
     def flatten(self):
         return {
@@ -46,8 +46,8 @@ class AnnotatedExemplar:
             "arguments": str(self.arguments),
             "owner_mode": self.owner_mode,
             "template": self.template,
-            "expectations": str(self.expectations),
-            "context": self.context
+            "context_frame": self.context_frame,
+            "context_slot": self.context_slot
         }
 
     @staticmethod
@@ -106,9 +106,10 @@ def build_nodes_from_dataset(module: str, dataset: Dataset, nodes):
                     "arguments": item["arguments"],
                     "owner": (item["owner"]),
                     "owner_mode": item["owner_mode"],
+                    "context": item["context"],
                     "module": module,
                 },
-                excluded_embed_metadata_keys=["arguments", "owner", "module", "owner_mode"],
+                excluded_embed_metadata_keys=["arguments", "owner", "module", "owner_mode", "context"],
             )
         )
 
@@ -693,21 +694,11 @@ class Conll03OneSlotConverter(TrainConverter, ABC):
 @dataclass
 class PromptedFactory(DatasetFactory):
     __metaclass__ = abc.ABCMeta
-    skill_columns = [
-        "id",
-        "utterance",
-        "template",
-        "owner",
-        "owner_mode",
-        "arguments",
-        "expectations",
-    ]
-
     def __init__(
         self,
         dsf: DatasetFactory,
         convert: list[TrainConverter],
-        unused_columns=skill_columns,
+        unused_columns,
     ):
         self.creator = dsf
         self.converters: list[TrainConverter] = convert
@@ -739,18 +730,29 @@ def build_extractive_slot_factory(converted_factories):
     factories = [
         JsonDatasetFactory("./datasets/sgd/", "sgd"),
     ]
+    skill_columns = [
+        "id",
+        "utterance",
+        "template",
+        "owner",
+        "owner_mode",
+        "arguments",
+        "expectations",
+    ]
     for index, factory in enumerate(factories):
         entity_values = collect_slot_values(factory.__getitem__("train"))
         slot_converter = OneSlotExtractConverter(
             factory.schema, ExtractiveSlotPrompts[LugConfig.get().slot_prompt], entity_values
         )
-        converted_factories.append(PromptedFactory(factory, [slot_converter]))
+        converted_factories.append(PromptedFactory(factory, [slot_converter], skill_columns))
 
 
 def build_nli_factory(converted_factories):
     # Here we assume the raw input is sentence, focus and label (positive, negative and neutral)
+    converter = YniConverter(YniPrompts[LugConfig.get().yni_prompt])
+    columns = ["question", "response", "label"]
     converted_factories.append(
-        JsonBareDatasetFactory("./datasets/yni/", "yni")
+        PromptedFactory(JsonBareDatasetFactory("./datasets/yni/", "yni"), [converter], columns)
     )
 
 
