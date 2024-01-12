@@ -594,8 +594,23 @@ class ConllLabel:
             "ORG" : {"name": "organization"}
         }
 
+    label_to_id = {
+        "O": 0,
+        "B-ORG": 1,
+        "B-MISC": 2,
+        "B-PER": 3,
+        "I-PER": 4,
+        "B-LOC": 5,
+        "I-ORG": 6,
+        "I-MISC": 7,
+        "I-LOC": 8
+    }
+    pairs = list(self.label_to_id.items())
+    pairs.sort(key=lambda x: x[1])
+    id_to_label = list(map(lambda x: x[0], pairs))
+
     def __init__(self, label):
-        self.labels = label.split("-")
+        self.labels = id_to_label[int(label)].split("-")
 
     def is_payload(self):
         return len(self.labels) != 1
@@ -630,7 +645,6 @@ class ConllLabelBuilder:
         return labe.payload() in self.cares
 
     def __call__(self, tokens, tags):
-        check(len(tokens) == len(tags))
         out = []
         last_label = None
         for index, tag in enumerate(tags):
@@ -652,40 +666,20 @@ class ConllLabelBuilder:
 class Conll03OneSlotConverter(TrainConverter, ABC):
     def __init__(self, prompt, care):
         self.prompt = prompt
-        self.label_to_id = {
-            "O": 0,
-            "B-ORG": 1,
-            "B-MISC": 2,
-            "B-PER": 3,
-            "I-PER": 4,
-            "B-LOC": 5,
-            "I-ORG": 6,
-            "I-MISC": 7,
-            "I-LOC": 8
-        }
-        pairs = list(self.label_to_id.items()).sort(lambda x: x[1])
-        self.id_to_label = list(map(lambda x: x[0], pairs))
-
         self.care = care
-        self.build_label = ConllLabelBuilder()
+        self.build_label = ConllLabelBuilder([self.care])
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # We assume the input is dict version of AnnotatedExemplar
         for idx, tokens in enumerate(batch["tokens"]):
             tags = batch["tags"][idx]
-            label = ConllLabel(tag)
-
             input_dict = {"utterance": " ".join(tokens)}
             input_dict.update(ConllLabel.label_info[self.care])
-
-            build_label = ConllLabelBuilder(tokens, tags, [self.care])
 
             # without the values for conll.
             input_dict["values"] = []
             ins.append(self.prompt(input_dict))
-            outs.append(f"{build_label()}</s>")
-
-
+            outs.append(f"{self.build_label(tokens, tags)}</s>")
 
 
 # This inference is needed for cases where users' utterance is response to bot's prompt questions, and
