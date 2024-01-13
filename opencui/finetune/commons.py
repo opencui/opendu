@@ -195,29 +195,6 @@ def collect_slot_values(dataset):
     return entities
 
 
-# Some time, the original data are over sampled, we need to purge the extra things.
-def purge_dataset(dataset, k=32):
-    # make it somewhat repeatable
-    seed(42)
-
-    def uptok(items):
-        if len(items) < k:
-            return items
-        else:
-            return sample(items, k=k)
-
-    intents = defaultdict(list)
-    utterances = set()
-    count = 0
-    for item in dataset:
-        utterance = item["utterance"].lower()
-        if utterance not in utterances:
-            utterances.add(utterance)
-            intents[item["owner"]].append(item)
-        else:
-            count += 1
-    print(f"There are {len(intents)} intents: {intents.keys()} with {count} duplicates.")
-    return [example for examples in intents.values() for example in uptok(examples)]
 
 
 class JsonDatasetFactory(DatasetFactory, ABC):
