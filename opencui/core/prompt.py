@@ -207,19 +207,16 @@ ExemplarPrompts = ClassPrompts(
 )
 
 # For the slots of enum type, we used different prompt in order to improve the
-ExtractiveSlotPrompts = {
-    "default": Prompt(
-        '{{#list_values values}} {{value}} {{/list_values}}\n'
-        'The value for {{name}} from "{{utterance}}" is:'
-    ),
-    "structural": Prompt(
-        'Extract value for the slot {{name}} from the following utterance.\n\n'
-        'Utterance: {{utterance}} \n Candidates: {{#list_values values}} {{value}} {{/list_values}} \n Output:'
-    ),
-    "basic": Prompt(
-        'The value for {{name}} from "{{utterance}}" is:'
-    ),
-}
+ExtractiveSlotPrompts = ClassPrompts(
+    default='{{#list_values values}} {{value}} {{/list_values}}\n'
+            'The value for {{name}} from "{{utterance}}" is:',
+    structural='Mark the value for the slot: {{name}} in the following utterance.\n\n'
+               '{{#list_examples examples}}Utterance: {{utterance}}\nOutput:{{label}}\n\n{{/list_examples}}'
+               'Utterance: {{utterance}}\nOutput:',
+    structural1='Mark the value for the slot: {{name}} in the following utterance.\n\n'
+               'Utterance: {{utterance}} \n Candidates: {{#list_values values}} {{value}} {{/list_values}} \n Output:',
+
+)
 
 YniPrompts = ClassPrompts(
     default='Decide whether the response is affirmative, negative, indifferent or irrelevant to this yes/no question:\n\n'
