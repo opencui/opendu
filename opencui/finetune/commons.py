@@ -593,8 +593,8 @@ class ConllLabel:
             "LOC" : {"name": "location"},
             "ORG" : {"name": "organization"}
         }
-
-    id_to_label = [ "O", "B-ORG", "B-MISC", "B-PER", "I-PER", "B-LOC", "I-ORG", "I-MISC", "I-LOC"]
+    # One need to make sure that label encoded in this order.
+    id_to_label = ['O', 'B-PER', 'I-PER', 'B-ORG', 'I-ORG', 'B-LOC', 'I-LOC', 'B-MISC', 'I-MISC']
 
     def __init__(self, label):
         self.labels = ConllLabel.id_to_label[int(label)].split("-")
@@ -665,7 +665,7 @@ class Conll03OneSlotConverter(TrainConverter, ABC):
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # We assume the input is dict version of AnnotatedExemplar
         for idx, tokens in enumerate(batch["tokens"]):
-            tags = batch["tags"][idx]
+            tags = batch["ner_tags"][idx]
             input_dict = {"utterance": " ".join(tokens)}
             input_dict.update(ConllLabel.label_info[self.care])
 

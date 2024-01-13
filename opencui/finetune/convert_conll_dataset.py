@@ -6,9 +6,9 @@ from opencui.core.prompt import ExtractiveSlotPrompts
 
 if __name__ == "__main__":
     path = "./datasets/conllner"
-    factory = load_dataset('tner/conll2003')
+    factory = load_dataset('conll2003')
     converter = Conll03OneSlotConverter(ExtractiveSlotPrompts[LugConfig.get().slot_prompt], "PER")
-    prompted_factory = PromptedFactory(factory, [converter], ["tokens", "tags"])
+    prompted_factory = PromptedFactory(factory, [converter], ["id", "tokens", "pos_tags", "chunk_tags", "ner_tags"])
 
     tags = ["train", "test", "validation"]
     for tag in tags:
