@@ -629,7 +629,7 @@ class ConllLabelBuilder:
         self.cares = cares
 
     def care(self, label: ConllLabel):
-        return label is None or label.payload() in self.cares
+        return label.payload() in self.cares
 
     def __call__(self, tokens, tags):
         out = []
@@ -642,12 +642,18 @@ class ConllLabelBuilder:
                 out.append(last_label.get_name())
                 out.append(self.end)
 
-            if label.is_start() and self.care(last_label):
+            if label.is_start() and self.care(label):
                 out.append(self.start)
 
             out.append(tokens[index])
             last_label = label
         return " ".join(out)
+
+    def good(self, tags):
+        for tag in tags:
+            label = ConllLabel(tag)
+            if self.care(label): return True
+        return False
 
 
 class Conll03OneSlotConverter(TrainConverter, ABC):
@@ -665,8 +671,9 @@ class Conll03OneSlotConverter(TrainConverter, ABC):
 
             # without the values for conll.
             input_dict["values"] = []
-            ins.append(self.prompt(input_dict))
-            outs.append(f"{self.build_label(tokens, tags)}</s>")
+            if self.build_label.good(tags):
+                ins.append(self.prompt(input_dict))
+                outs.append(f"{self.build_label(tokens, tags)}</s>")
 
 
 # This inference is needed for cases where users' utterance is response to bot's prompt questions, and
