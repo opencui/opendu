@@ -633,7 +633,7 @@ class ConllLabelBuilder:
         for index, tag in enumerate(tags):
             label = ConllLabel(tag)
             # We need to make two decisions, whether to add start marker, whether to add end marker.
-            if last_label is not None and self.is_close(last_label) and self.care(last_label):
+            if last_label is not None and label.is_close(last_label) and self.care(last_label):
                 out.append(self.sep)
                 out.append(last_label.get_name())
                 out.append(self.end)
@@ -787,3 +787,12 @@ def print_factories(factories):
             print(item)
             count += 1
         print(f"There are {count} instances")
+
+
+
+if __name__ == "__main__":
+    build_label = ConllLabelBuilder(["PER"])
+    tokens = ["peter", "norvig"]
+    tags = [1, 2]
+
+    print(build_label(tokens, tags))
