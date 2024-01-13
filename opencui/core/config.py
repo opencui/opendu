@@ -33,7 +33,7 @@ class InferenceConfig(BaseModel):
     llm_device: str = "cuda:0"
 
     skill_prompt: str = "structural"
-    slot_prompt: str = "default"
+    slot_prompt: str = "structural"
     yni_prompt: str = "default"
     bool_prompt: str = "plain"
 
