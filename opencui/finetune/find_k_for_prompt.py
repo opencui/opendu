@@ -58,14 +58,14 @@ def find_percentile(a, percentile=98, reverse=False):
 # include to have a high enough probability to have correct function included in the context.
 #
 if __name__ == "__main__":
-    # The first thing is to create the schema and create the datasets of annotated exemplars.
+    # The first thing is to create the schema and create the dugsets of annotated exemplars.
     # Then create the index for both descriptions and exemplars on training split.
     # Then define the prompt.
     # Then figure out the good k using validation split. These Ks will be used for inference and training.
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
-    factories = [JsonDatasetFactory("./datasets/sgd", "sgd")]
+    factories = [JsonDatasetFactory("./dugsets/sgd", "sgd")]
 
     # For now, just use the fix path.
     output = "./output"

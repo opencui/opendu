@@ -42,7 +42,7 @@ def build_skill_factory(output, factory, mode, index=True):
 
 
 if __name__ == "__main__":
-    path = "./datasets/sgd"
+    path = "./dugsets/sgd"
     tag = "sgd"
 
     factory = JsonDatasetFactory(path, tag)

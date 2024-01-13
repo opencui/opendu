@@ -152,7 +152,7 @@ if __name__ == "__main__":
     print(LugConfig.get().embedding_model)
     dsc = [
         DatasetCreatorWithIndex.build(
-            JsonDatasetFactory("./datasets/sgd/"),
+            JsonDatasetFactory("./dugsets/sgd/"),
             "./index/sgdskill/")
     ]
     dataset = DataLoader(generate_sentence_pairs(dsc))

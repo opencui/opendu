@@ -622,13 +622,13 @@ def build_skill_factory(skill_modes, factories):
     # make sure run build_skill_dataset first.
     for skill_mode in skill_modes:
         factories.append(
-            JsonDatasetFactory("./datasets/sgd/", "sgd", f"{skill_mode}-{LugConfig.get().skill_prompt}.")
+            JsonDatasetFactory("./dugsets/sgd/", "sgd", f"{skill_mode}-{LugConfig.get().skill_prompt}.")
         )
 
 
 def build_extractive_slot_factory(converted_factories):
     factories = [
-        JsonDatasetFactory("./datasets/sgd/", "sgd"),
+        JsonDatasetFactory("./dugsets/sgd/", "sgd"),
     ]
     skill_columns = [
         "id",
@@ -652,7 +652,7 @@ def build_nli_factory(converted_factories):
     converter = YniConverter(YniPrompts[LugConfig.get().yni_prompt])
     columns = ["question", "response", "label"]
     converted_factories.append(
-        PromptedFactory(JsonBareDatasetFactory("./datasets/yni/", "yni"), [converter], columns)
+        PromptedFactory(JsonBareDatasetFactory("./dugsets/yni/", "yni"), [converter], columns)
     )
 
 
