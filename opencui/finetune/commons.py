@@ -606,7 +606,7 @@ class ConllLabel:
         return self.is_payload() and self.labels[0] == "B"
 
     def payload(self):
-        return self.labels[1]
+        return self.labels[-1]
 
     def is_close(self, last):
         if last is None:
@@ -618,7 +618,7 @@ class ConllLabel:
         return False
 
     def get_name(self):
-        return label_info[label.payload()]
+        return ConllLabel.label_info[self.payload()]["name"]
 
 
 class ConllLabelBuilder:
@@ -637,7 +637,7 @@ class ConllLabelBuilder:
         for index, tag in enumerate(tags):
             label = ConllLabel(tag)
             # We need to make two decisions, whether to add start marker, whether to add end marker.
-            if label.is_close(last_label) and last is not None and self.care(last_label):
+            if label.is_close(last_label) and last_label is not None and self.care(last_label):
                 out.append(self.sep)
                 out.append(last_label.get_name())
                 out.append(self.end)
