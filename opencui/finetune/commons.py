@@ -629,7 +629,7 @@ class ConllLabelBuilder:
         self.cares = cares
 
     def care(self, label: ConllLabel):
-        return labe.payload() in self.cares
+        return label is None or label.payload() in self.cares
 
     def __call__(self, tokens, tags):
         out = []
@@ -637,15 +637,15 @@ class ConllLabelBuilder:
         for index, tag in enumerate(tags):
             label = ConllLabel(tag)
             # We need to make two decisions, whether to add start marker, whether to add end marker.
-            if label.is_close(last) and last is not None and self.care(last):
-                out.add(self.sep)
-                out.add(last_label.get_name())
-                out.add(self.end)
+            if label.is_close(last_label) and last is not None and self.care(last_label):
+                out.append(self.sep)
+                out.append(last_label.get_name())
+                out.append(self.end)
 
-            if label.is_start() and self.care(last):
-                out.add(self.start)
+            if label.is_start() and self.care(last_label):
+                out.append(self.start)
 
-            out.add(tokens[index])
+            out.append(tokens[index])
             last_label = label
         return " ".join(out)
 
