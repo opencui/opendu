@@ -2,7 +2,7 @@ import json
 from datasets import Dataset, load_dataset
 from opencui.finetune.commons import Conll03OneSlotConverter, PromptedFactory
 from opencui.core.config import LugConfig
-from opencui.core.prompts import ExtractiveSlotPrompts
+from opencui.core.prompt import ExtractiveSlotPrompts
 
 if __name__ == "__main__":
     path = "./datasets/conllner"

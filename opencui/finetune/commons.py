@@ -594,23 +594,10 @@ class ConllLabel:
             "ORG" : {"name": "organization"}
         }
 
-    label_to_id = {
-        "O": 0,
-        "B-ORG": 1,
-        "B-MISC": 2,
-        "B-PER": 3,
-        "I-PER": 4,
-        "B-LOC": 5,
-        "I-ORG": 6,
-        "I-MISC": 7,
-        "I-LOC": 8
-    }
-    pairs = list(self.label_to_id.items())
-    pairs.sort(key=lambda x: x[1])
-    id_to_label = list(map(lambda x: x[0], pairs))
+    id_to_label = [ "O", "B-ORG", "B-MISC", "B-PER", "I-PER", "B-LOC", "I-ORG", "I-MISC", "I-LOC"]
 
     def __init__(self, label):
-        self.labels = id_to_label[int(label)].split("-")
+        self.labels = ConllLabel.id_to_label[int(label)].split("-")
 
     def is_payload(self):
         return len(self.labels) != 1
