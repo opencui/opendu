@@ -195,29 +195,6 @@ def collect_slot_values(dataset):
     return entities
 
 
-# Some time, the original data are over sampled, we need to purge the extra things.
-def purge_dataset(dataset, k=32):
-    # make it somewhat repeatable
-    seed(42)
-
-    def uptok(items):
-        if len(items) < k:
-            return items
-        else:
-            return sample(items, k=k)
-
-    intents = defaultdict(list)
-    utterances = set()
-    count = 0
-    for item in dataset:
-        utterance = item["utterance"].lower()
-        if utterance not in utterances:
-            utterances.add(utterance)
-            intents[item["owner"]].append(item)
-        else:
-            count += 1
-    print(f"There are {len(intents)} intents: {intents.keys()} with {count} duplicates.")
-    return [example for examples in intents.values() for example in uptok(examples)]
 
 
 class JsonDatasetFactory(DatasetFactory, ABC):
@@ -622,13 +599,13 @@ def build_skill_factory(skill_modes, factories):
     # make sure run build_skill_dataset first.
     for skill_mode in skill_modes:
         factories.append(
-            JsonDatasetFactory("./datasets/sgd/", "sgd", f"{skill_mode}-{LugConfig.get().skill_prompt}.")
+            JsonDatasetFactory("./dugsets/sgd/", "sgd", f"{skill_mode}-{LugConfig.get().skill_prompt}.")
         )
 
 
 def build_extractive_slot_factory(converted_factories):
     factories = [
-        JsonDatasetFactory("./datasets/sgd/", "sgd"),
+        JsonDatasetFactory("./dugsets/sgd/", "sgd"),
     ]
     skill_columns = [
         "id",
@@ -652,7 +629,7 @@ def build_nli_factory(converted_factories):
     converter = YniConverter(YniPrompts[LugConfig.get().yni_prompt])
     columns = ["question", "response", "label"]
     converted_factories.append(
-        PromptedFactory(JsonBareDatasetFactory("./datasets/yni/", "yni"), [converter], columns)
+        PromptedFactory(JsonBareDatasetFactory("./dugsets/yni/", "yni"), [converter], columns)
     )
 
 

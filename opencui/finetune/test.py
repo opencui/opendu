@@ -16,7 +16,7 @@ if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
 
-    factories = [JsonDatasetFactory("./datasets/sgd/", "sgd")]
+    factories = [JsonDatasetFactory("./dugsets/sgd/", "sgd")]
 
     # For now, just use the fix path.
     output = "./test"
