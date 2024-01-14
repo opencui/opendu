@@ -705,6 +705,16 @@ class SlotSimplifier:
     def __call__(self, text):
         return re.findall(self.pattern, text)
 
+
+class SlotFinalizer:
+    def __init__(self):
+        self.extract = SlotSimplifier()
+        self.prefix = ["person", "|"]
+    def __call__(self, text):
+        matches = self.extract(text)
+        payloads = list(map(lambda x: x.split("|")[0].strip(), matches))
+        return " ".join(payloads)
+
 if __name__ == "__main__":
 
     tokens = "[ peter  norvig ] er "
