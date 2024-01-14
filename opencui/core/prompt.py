@@ -211,10 +211,10 @@ ExemplarPrompts = ClassPrompts(
 ExtractiveSlotPrompts = ClassPrompts(
     default='{{#list_values values}} {{value}} {{/list_values}}\n'
             'The value for {{name}} from "{{utterance}}" is:',
-    structural='Mark the value for {{name}}.\n\n'
+    structural='Mark the value for {{name}} in utterance.\n\n'
                '{{#list_examples examples}}Utterance: {{utterance}}\nOutput:{{label}}\n\n{{/list_examples}}'
                'Utterance: {{utterance}}\nOutput:',
-    candidates='Mark the value for {{name}}.\n\n'
+    candidates='Mark the value for {{name}} in utterance.\n\n'
                '{{#list_examples examples}}Utterance: {{utterance}}\nCandidates: {{candidates}}\nOutput:{{label}}\n\n{{/list_examples}}'
                'Utterance: {{utterance}}\nCandidates: {{candidates}}\nOutput:',
 
