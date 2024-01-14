@@ -674,6 +674,30 @@ def print_factories(factories):
         print(f"There are {count} instances")
 
 
+def purge_dataset(dataset, k=32, extract=lambda x: x["item"]):
+    # make it somewhat repeatable
+    seed(42)
+
+    def uptok(items):
+        if len(items) < k:
+            return items
+        else:
+            return sample(items, k=k)
+
+    intents = defaultdict(list)
+    utterances = set()
+    count = 0
+    for item in dataset:
+        utterance = item["utterance"].lower()
+        if utterance not in utterances:
+            utterances.add(utterance)
+            intents[extract(item)].append(item)
+        else:
+            count += 1
+    print(f"There are {len(intents)} intents: {intents.keys()} with {count} duplicates.")
+    return [example for examples in intents.values() for example in uptok(examples)]
+
+
 class SlotSimplifier:
     def __init__(self):
         self.pattern = re.compile(r'\[(.*?)\]')
