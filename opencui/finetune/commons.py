@@ -674,7 +674,7 @@ def print_factories(factories):
         print(f"There are {count} instances")
 
 
-def purge_dataset(dataset, k=32, extract=lambda x: x["item"]):
+def purge_dataset(dataset, k=32, extract=lambda x: x["tag"]):
     # make it somewhat repeatable
     seed(42)
 
