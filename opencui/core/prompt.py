@@ -207,14 +207,16 @@ ExemplarPrompts = ClassPrompts(
 )
 
 # For the slots of enum type, we used different prompt in order to improve the
+# Candidates should be , separated string for now.
 ExtractiveSlotPrompts = ClassPrompts(
     default='{{#list_values values}} {{value}} {{/list_values}}\n'
             'The value for {{name}} from "{{utterance}}" is:',
-    structural='Mark the value for the slot: {{name}} in the following utterance.\n\n'
+    structural='Mark the value for {{name}}.\n\n'
                '{{#list_examples examples}}Utterance: {{utterance}}\nOutput:{{label}}\n\n{{/list_examples}}'
                'Utterance: {{utterance}}\nOutput:',
-    structural1='Mark the value for the slot: {{name}} in the following utterance.\n\n'
-               'Utterance: {{utterance}} \n Candidates: {{#list_values values}} {{value}} {{/list_values}} \n Output:',
+    candidates='Mark the value for {{name}}.\n\n'
+               '{{#list_examples examples}}Utterance: {{utterance}}\nCandidates: {{candidates}}\nOutput:{{label}}\n\n{{/list_examples}}'
+               'Utterance: {{utterance}}\nCandidates: {{candidates}}\nOutput:',
 
 )
 

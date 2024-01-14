@@ -674,10 +674,18 @@ def print_factories(factories):
         print(f"There are {count} instances")
 
 
+class SlotSimplifier:
+    def __init__(self):
+        self.pattern = re.compile(r'\[(.*?)\]')
+
+    def __call__(self, text):
+        return re.findall(self.pattern, text)
 
 if __name__ == "__main__":
-    build_label = ConllLabelBuilder(["PER"])
-    tokens = ["peter", "norvig"]
-    tags = [1, 2]
 
-    print(build_label(tokens, tags))
+    tokens = "[ peter  norvig ] er "
+
+
+    simplify = SlotSimplifier()
+
+    print(" ".join(map(lambda x: x.strip(), simplify(tokens))))
