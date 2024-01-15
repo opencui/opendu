@@ -30,27 +30,28 @@ def get_exemplars(nodes) -> list[Exemplar]:
 if __name__ == "__main__":
     argv = sys.argv[1:]
     input_paths = ''
-    output_path = './index/'
     opts, args = getopt.getopt(argv, "hs:i:")
 
     for opt, arg in opts:
         if opt == '-h':
-            print('index.py -s <services/agent meta directory, separated by ,> -i <directory for index>')
+            print('index.py -s <services/agent meta directory, separated by ,>')
             sys.exit()
         elif opt == "-s":
             input_paths = arg
-        elif opt == "-i":
-            output_path = arg
 
     modules = input_paths.split(",")
 
     # For now, we only support single module
     try:
         # We assume that there are schema.json, exemplars.json and recognizers.json under the directory
-        desc_nodes = []
-        exemplar_nodes = []
-        schemas = {}
+
         for module in modules:
+            desc_nodes = []
+            exemplar_nodes = []
+            schemas = {}
+
+            output_path = f"{module}/index/"
+
             print(f"load {module}")
             module_schema, examplers, recognizers = load_all_from_directory(module)
             print(module_schema)
@@ -58,11 +59,13 @@ if __name__ == "__main__":
             build_nodes_from_exemplar_store(module, examplers, exemplar_nodes)
             schemas[module] = module_schema
 
-        # now we create index for both desc and exemplar for all modules.
-        create_index(output_path, "exemplar", exemplar_nodes,
-                     EmbeddingStore.for_exemplar())
-        create_index(output_path, "desc", desc_nodes,
-                     EmbeddingStore.for_description())
+            # now we create index for both desc and exemplar for all modules.
+            if len(exemplar_nodes) != 0:
+                create_index(output_path, "exemplar", exemplar_nodes,
+                             EmbeddingStore.for_exemplar())
+            if len(desc_nodes) != 0:
+                create_index(output_path, "desc", desc_nodes,
+                             EmbeddingStore.for_description())
     except:
         traceback.print_exc()
         shutil.rmtree(output_path, ignore_errors=True)

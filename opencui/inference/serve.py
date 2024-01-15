@@ -4,6 +4,7 @@ import dataclasses
 import sys
 import logging
 import getopt
+from enum import Enum
 from aiohttp import web
 from opencui.inference.converter import load_converter
 
@@ -73,10 +74,10 @@ if __name__ == "__main__":
         if opt == "-h":    
             print('serve.py -s <services/agent meta directory, separated by ,> -i <directory for index>')
             sys.exit()
-        elif opt == "-i":
-            index_path = arg
         elif opt == "-s":
             module_paths = arg
+
+    index_path = f"{module_paths}/index/"
 
     # First load the schema info.
     converter = load_converter(module_paths, index_path)
