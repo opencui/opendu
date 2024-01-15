@@ -20,6 +20,8 @@ def build_nodes_from_skills(module: str, skills: dict[str, FrameSchema], nodes):
     for label, skill in skills.items():
         desc = skill["description"]
         name = skill["name"]
+        if desc.strip() == "":
+            continue
         nodes.append(
             TextNode(
                 text=desc,
@@ -84,8 +86,8 @@ def merge_nodes(nodes0: list[NodeWithScore], nodes1: list[NodeWithScore])-> list
 #
 class HybridRetriever(BaseRetriever):
     """Custom retriever that performs both semantic search and hybrid search."""
-
-    def __init__(self, path: str, tag: str, topk: int = 8) -> None:
+    @staticmethod
+    def load_hybrid_retriever(path: str, tag: str, topk: int = 8) -> None:
         embedding = EmbeddingStore.get_embedding_by_task(tag)
         service_context = ServiceContext.from_defaults(
             llm=None,
@@ -99,12 +101,21 @@ class HybridRetriever(BaseRetriever):
             storage_context,
             index_id="embedding",
             service_context=service_context)
-        self._vector_retriever = VectorIndexRetriever(
-            index=embedding_index,
-            similarity_top_k=topk)
+
+        try:
+            vector_retriever = VectorIndexRetriever(
+                index=embedding_index,
+                similarity_top_k=topk)
         # For now, we do index everytime we restart the inference.
-        self._keyword_retriever = BM25Retriever.from_defaults(
-            docstore=embedding_index.docstore, similarity_top_k=topk)
+            keyword_retriever = BM25Retriever.from_defaults(
+                docstore=embedding_index.docstore, similarity_top_k=topk)
+            return HybridRetriever(vector_retriever, keyword_retriever)
+        except ZeroDivisionError:
+            return None
+
+    def __init__(self, vec_retriever, word_retriever):
+        self._vector_retriever = vec_retriever
+        self._keyword_retriever = word_retriever
 
     def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
         """Retrieve nodes given query."""
@@ -143,9 +154,14 @@ class ContextRetriever:
 
     def __call__(self, query):
         # The goal here is to find the combined descriptions and exemplars.
-        desc_nodes = [
-            item.node for item in self.desc_retriever.retrieve(query)
-        ]
+
+        if self.desc_retriever is not None:
+            desc_nodes = [
+                item.node for item in self.desc_retriever.retrieve(query)
+            ]
+        else:
+            desc_nodes = []
+
         exemplar_nodes = [
             item.node for item in self.exemplar_retriever.retrieve(query)
         ]
@@ -164,8 +180,9 @@ class ContextRetriever:
 
 
 def load_context_retrievers(module_dict: dict[str, Schema], path: str):
+
     return ContextRetriever(
         SchemaStore(module_dict),
-        HybridRetriever(path, "desc", LugConfig.get().desc_retrieve_topk),
-        HybridRetriever(path,"exemplar", LugConfig.get().exemplar_retrieve_topk),
+        HybridRetriever.load_hybrid_retriever(path, "desc", LugConfig.get().desc_retrieve_topk),
+        HybridRetriever.load_hybrid_retriever(path,"exemplar", LugConfig.get().exemplar_retrieve_topk),
     )
