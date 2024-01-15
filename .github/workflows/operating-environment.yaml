@@ -1,0 +1,27 @@
+name: build operating environment
+on:
+  push:
+    tags: [build-image-*]
+jobs:
+  build-docker-image:
+    runs-on: [self-hosted, linux, x64]
+    steps:
+      - uses: framely/actions-feishu-bot-hook@v1
+        with:
+          hook-id: ${{ secrets.FEISHU_HOOK_ID }}
+          github-token: ${{ secrets.PAT_TOKEN }}
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+      - run: |
+          set -x
+          image_name=${{ vars.ACR_REGISTRY}}/dug-runtime
+          image_name_1=$image_name:$(date +'%Y%m%d%H%M%S')
+
+          docker build --no-cache -t $image_name .
+          docker tag $image_name $image_name_1
+          docker push $image_name
+          docker push $image_name_1
