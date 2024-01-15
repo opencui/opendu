@@ -12,7 +12,7 @@ from opencui import ModelType
 from opencui.core.annotation import (CamelToSnake, DialogExpectation, EntityMetas, Exemplar, FrameValue, ListRecognizer,
                                      OwnerMode, ExactMatcher)
 from opencui.core.config import LugConfig
-from opencui.core.prompt import (ExtractiveSlotPrompts, NliPrompts, DescriptionPrompts, ExemplarPrompts)
+from opencui.core.prompt import (ExtractiveSlotPrompts, YniPrompts, DescriptionPrompts, ExemplarPrompts)
 from opencui.core.retriever import (ContextRetriever, load_context_retrievers)
 from opencui.inference.schema_parser import load_all_from_directory
 
@@ -402,7 +402,7 @@ class Converter:
 
         self.generator = Generator.build()
         self.slot_prompt = ExtractiveSlotPrompts[LugConfig.get().slot_prompt]
-        self.nli_prompt = NliPrompts[LugConfig.get().nli_prompt]
+        self.yni_prompt = YniPrompts[LugConfig.get().yni_prompt]
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r"\[([^]]*)\]")
         self.skill_converter = None
@@ -495,7 +495,7 @@ class Converter:
         for question in questions:
             # For now, we ignore the language
             input_dict = {"response": utterance, "question": f"{question}."}
-            input_prompts.add(self.nli_prompt(input_dict))
+            input_prompts.add(self.yni_prompt(input_dict))
 
         outputs = self.generator.for_nli(input_prompts)
 
