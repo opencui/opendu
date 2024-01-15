@@ -1,0 +1,13 @@
+name: build operating environment
+on:
+  push:
+    tags: [build-image-*]
+jobs:
+  build-docker-image:
+    runs-on: [self-hosted, linux, x64]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
