@@ -181,7 +181,7 @@ class FftGenerator(Generator, ABC):
 
 class SkillConverter(ABC):
     @abstractmethod
-    def get_skill(self, text) -> list[str]:
+    def get_skills(self, text) -> list[str]:
         pass
 
     @abstractmethod
@@ -412,7 +412,7 @@ class Converter:
 
     def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
         # low level get skill.
-        func_names = self.skill_converter.get_skill(text)
+        func_names = self.skill_converter.get_skills(text)
 
         if len(func_names) == 0:
             return None
