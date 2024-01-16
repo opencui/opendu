@@ -41,7 +41,7 @@ class InferenceConfig(BaseModel):
 
     # We will append instance.desc/instance.exemplar to this.
     generator: str = "FftGenerator"
-    model: str = "OpenCUI/flant5base-multitask-1.9"
+    model: str = "OpenCUI/multitask-t5base-0.1"
 
     skill_model: str = "OpenCUI/skill-tinyllama-0.1"
     extractive_slot_model: str = "OpenCUI/extractive-tinyllama2.5t-1.0"
