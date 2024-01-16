@@ -97,7 +97,7 @@ class HybridRetriever(BaseRetriever):
         try:
             storage_context = StorageContext.from_defaults(
                 persist_dir=f"{path}/{tag}/")
-            
+
             embedding_index = load_index_from_storage(
                 storage_context,
                 index_id="embedding",
