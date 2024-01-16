@@ -110,8 +110,7 @@ class HybridRetriever(BaseRetriever):
             keyword_retriever = BM25Retriever.from_defaults(
                 docstore=embedding_index.docstore, similarity_top_k=topk)
             return HybridRetriever(vector_retriever, keyword_retriever)
-        except (ZeroDivisionError, FileNotFoundError) as error:
-            print(error)
+        except:
             return None
 
     def __init__(self, vec_retriever, word_retriever):
