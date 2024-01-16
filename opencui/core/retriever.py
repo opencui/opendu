@@ -97,12 +97,12 @@ class HybridRetriever(BaseRetriever):
         storage_context = StorageContext.from_defaults(
             persist_dir=f"{path}/{tag}/")
 
-        embedding_index = load_index_from_storage(
-            storage_context,
-            index_id="embedding",
-            service_context=service_context)
-
         try:
+            embedding_index = load_index_from_storage(
+                storage_context,
+                index_id="embedding",
+                service_context=service_context)
+
             vector_retriever = VectorIndexRetriever(
                 index=embedding_index,
                 similarity_top_k=topk)
@@ -110,7 +110,8 @@ class HybridRetriever(BaseRetriever):
             keyword_retriever = BM25Retriever.from_defaults(
                 docstore=embedding_index.docstore, similarity_top_k=topk)
             return HybridRetriever(vector_retriever, keyword_retriever)
-        except:
+        except (ZeroDivisionError, FileNotFoundError) as error:
+            print(error)
             return None
 
     def __init__(self, vec_retriever, word_retriever):
