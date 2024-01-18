@@ -22,6 +22,10 @@ class AgentTest(unittest.TestCase):
         utterance = "I like to order some food"
         result = AgentTest.converter.detect_triggerables(utterance, [])
         print(result)
+        truth = "me.test.foodOrderingModule.FoodOrdering"
+        self.assertTrue(len(result) == 1)
+        self.assertTrue(result[0] == truth)
+
 
 
 if __name__ == "__main__":

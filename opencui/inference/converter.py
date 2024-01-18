@@ -463,7 +463,7 @@ class Converter:
         else:
             return [self.retrieve.module.normalize(func_name)]
 
-    def fillSlots(self, text, slots:list[dict[str, str]], entities:dict[str, list[str]])-> dict[str, list[str]]:
+    def fill_slots(self, text, slots:list[dict[str, str]], entities:dict[str, list[str]])-> dict[str, list[str]]:
         slot_prompts = []
         for slot in slots:
             label = slot["label"]

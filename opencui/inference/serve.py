@@ -54,7 +54,7 @@ async def understand(request: web.Request):
         case DugMode.SLOT:
             slots = req.get("slots")
             entities = req.get("entities")
-            results = l_converter.fillSlots(utterance, slots, entities)
+            results = l_converter.fill_slots(utterance, slots, entities)
             return web.json_response(dataclasses.asdict(results))
 
         case DugMode.BINARY:
