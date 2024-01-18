@@ -82,8 +82,7 @@ if __name__ == "__main__":
     retrievers = []
     for factory in factories:
         retrievers.append(
-            load_context_retrievers({factory.tag: factory.schema},
-                                    f"{output}/index/{factory.tag}"))
+            load_context_retrievers(factory.schema, f"{output}/index/{factory.tag}"))
 
     for index in range(len(factories)):
         factory = factories[index]

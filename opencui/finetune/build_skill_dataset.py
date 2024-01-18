@@ -28,7 +28,7 @@ def build_skill_factory(output, factory, mode, index=True):
             EmbeddingStore.for_exemplar(),
         )
 
-    context_retriever = load_context_retrievers({factory.tag: factory.schema}, f"{output}/index/")
+    context_retriever = load_context_retrievers(factory.schema, f"{output}/index/")
     skill_columns = [
         "id",
         "utterance",

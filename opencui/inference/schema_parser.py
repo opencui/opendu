@@ -71,11 +71,24 @@ def load_schema_from_directory(path):
     if isinstance(schema_object, list):
         l_schema = from_openai(schema_object)
     elif "slots" in schema_object and "skills" in schema_object:
-        l_schema = Schema.from_dict(schema_object)
+        l_schema = to_snake(Schema.from_dict(schema_object))
     else:
         l_schema = from_openapi(schema_object)
-
     return l_schema
+
+
+def to_snake(schema):
+    skills = {}
+    slots = {}
+    to_snake = CamelToSnake()
+
+    for key, skill in schema.skills.items():
+        skills[to_snake.encode(key)] = skill.to_snake(to_snake)
+
+    for key, slot in schema.slots.items():
+        slots[key] = slot.to_snake(to_snake)
+
+    return Schema(skills=skills, slots=slots, backward=to_snake.backward)
 
 
 def load_all_from_directory(input_path):
