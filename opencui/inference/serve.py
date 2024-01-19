@@ -21,12 +21,12 @@ Enum("DugMode", ["SKILL", "SLOT", "BINARY", "SEGMENT"])
 # This can be used to serve the whole thing, or just prompt service.
 
 
-@routes.get("/")
+@routes.get("/hello")
 async def hello(_: web.Request):  # For heart beat
     return web.Response(text="Hello, world")
 
 
-@routes.post("/understand")
+@routes.post("/v1/predict")
 async def understand(request: web.Request):
     req = await request.json()
     logging.info(req)
