@@ -222,7 +222,7 @@ class ISkillConverter(SkillConverter, ABC):
         self.generator = generator
         self.desc_prompt = DescriptionPrompts[LugConfig.get().skill_prompt]
         self.example_prompt = ExemplarPrompts[LugConfig.get().skill_prompt]
-        self.use_exemplar = False
+        self.use_exemplar = True
         self.use_desc = True
         assert self.use_desc or self.use_exemplar
         self.matcher = ExactMatcher
@@ -281,7 +281,7 @@ class ISkillConverter(SkillConverter, ABC):
         # For now, we only pick one skill
         picker = SingleOwnerPicker()
         to_snake = CamelToSnake()
-
+        print(f"get_skills for {text}\n")
         # nodes owner are always included in the
         skills, nodes = self.retrieve(text)
 
@@ -289,27 +289,23 @@ class ISkillConverter(SkillConverter, ABC):
         if self.use_exemplar:
             exemplar_prompts, owners, owner_modes = self.build_prompts_by_examples(text, nodes, to_snake)
             exemplar_outputs = self.generator.generate(exemplar_prompts, GenerateMode.exemplar)
+
             exemplar_preds = [
                 parse_json_from_string(raw_flag, raw_flag)
                 for index, raw_flag in enumerate(exemplar_outputs)
             ]
-            exemplar_truth = [
-                self.matcher.agree(owner, owner_mode, lowner, owner_modes[index])
-                for index, lowner in enumerate(owners)]
-
-            assert len(exemplar_preds) == len(exemplar_truth)
             picker.accumulate(exemplar_preds, owners, 2)
 
         # for desc
         if self.use_desc:
             desc_prompts, owners = self.build_prompts_by_desc(text, skills, to_snake)
+
             desc_outputs = self.generator.generate(desc_prompts, GenerateMode.desc)
             desc_preds = [
                 parse_json_from_string(raw_flag, None)
                 for index, raw_flag in enumerate(desc_outputs)
             ]
-            desc_truth = [owner == lowner and OwnerMode[owner_mode] == OwnerMode.normal for lowner in owners]
-            assert len(desc_preds) == len(desc_truth)
+
             picker.accumulate(desc_preds, owners, 1)
         return picker.decide()
 
@@ -460,21 +456,19 @@ class Converter:
 
         return FrameValue(name=final_name, arguments=slot_values)
 
-    def detectTriggerables(self, utterance, expectations)-> list[str]:
-        func_name = self.skill_converter.get_skill(text)
+    def detect_triggerables(self, utterance, expectations)-> list[str]:
+        func_name = self.skill_converter.get_skills(utterance)
         if func_name is None:
             return []
         else:
-            return [func_name]
+            return [self.retrieve.module.normalize(func_name)]
 
-    def fillSlots(self, text, slots:list[dict[str, str]], entities:dict[str, list[str]])-> dict[str, list[str]]:
+    def fill_slots(self, text, slots:list[dict[str, str]], entities:dict[str, list[str]])-> dict[str, str]:
         slot_prompts = []
         for slot in slots:
-            label = slot["label"]
             name = slot["name"]
-            values = entities[label]
+            values = entities[name]
             slot_input_dict = {"utterance": text, "name": name, "values": values}
-            slot_input_dict.update(module.slots[slot].to_dict())
             slot_prompts.append(self.slot_prompt(slot_input_dict))
 
         if LugConfig.get().converter_debug:
@@ -484,20 +478,19 @@ class Converter:
         if LugConfig.get().converter_debug:
             print(json.dumps(slot_outputs, indent=2))
 
-        slot_values = [parse_json_from_string(seq) for seq in slot_outputs]
-        slot_values = dict(zip(slot_labels_of_func, slot_values))
-        return {
-            key: value for key, value in slot_values.items() if value is not None
-        }
+        results = {}
+        for index, slot in enumerate(slots):
+            results[slot["name"]] = slot_outputs[index]
+        return results
 
     def inference(self, utterance:str, questions:list[str]) -> list[str]:
         input_prompts = []
         for question in questions:
             # For now, we ignore the language
             input_dict = {"response": utterance, "question": f"{question}."}
-            input_prompts.add(self.yni_prompt(input_dict))
+            input_prompts.append(self.yni_prompt(input_dict))
 
-        outputs = self.generator.for_nli(input_prompts)
+        outputs = self.generator.generate(input_prompts, GenerateMode.nli)
 
         if LugConfig.get().converter_debug:
             print(f"{input_prompts} {outputs}")
@@ -507,17 +500,12 @@ class Converter:
         raise NotImplemented
 
 
-def load_converter(module_paths, index_path):
-    pathlist = module_paths.split(",")
-    module_dict = {}
-
+def load_converter(module_path, index_path):
     # First load the schema info.
-    for module_path in pathlist:
-        module_schema, examplers, recognizers = load_all_from_directory(module_path)
-        module_dict[module_path] = module_schema
+    module_schema, _, _ = load_all_from_directory(module_path)
 
     # Then load the retriever by pointing to index directory
-    context_retriever = load_context_retrievers(module_dict, index_path)
+    context_retriever = load_context_retrievers(module_schema, index_path)
 
     # Finally build the converter.
     return Converter(context_retriever)

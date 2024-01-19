@@ -40,6 +40,10 @@ class SlotSchema:
             case _:
                 raise RuntimeError("wrong property.")
 
+    def to_snake(self, to_snake):
+        new_name = to_snake.encode(self.name)
+        return SlotSchema(name=new_name, description=self.description, type=self.type)
+
 
 @dataclass_json
 @dataclass
@@ -66,6 +70,11 @@ class FrameSchema:
             raise RuntimeError("wrong property.")
 
 
+    def to_snake(self, to_snake):
+        new_name = to_snake.encode(self.name)
+        return FrameSchema(name=new_name, description=self.description, slots=self.slots)
+
+
 @dataclass_json
 @dataclass
 class FrameId:
@@ -89,29 +98,11 @@ class Schema:
         self.slots = slots
         self.backward = backward
 
-
-@dataclass_json
-@dataclass
-class SchemaStore:
-    schemas: Dict[str, Schema]
-
-    def __init__(self, schemas: dict[str, Schema]):
-        self.schemas = schemas
-        self.func_to_module = {
-            skill["name"]: schema
-            for schema in schemas.values()
-            for skill in schema.skills.values()
-        }
+    def normalize(self, label):
+        return self.backward[label]
 
     def get_skill(self, frame_id: FrameId):
-        module = self.schemas[frame_id.module]
-        return module.skills[frame_id.name]
-
-    def get_module(self, func_name):
-        return self.func_to_module[func_name]
-
-    def has_module(self, func_name):
-        return func_name in self.func_to_module
+        return self.skills[frame_id.name]
 
 
 OwnerMode = Enum('OwnerMode', ["normal", "extended"])

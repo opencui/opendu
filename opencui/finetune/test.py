@@ -31,9 +31,10 @@ if __name__ == "__main__":
     desc_nodes = []
     exemplar_nodes = []
 
-    for factory in factories:
-        build_nodes_from_skills(factory.tag, factory.schema.skills, desc_nodes)
-        build_nodes_from_dataset(factory.tag, factory[tag], exemplar_nodes)
+    factory = JsonDatasetFactory("./dugsets/sgd/", "sgd")
+
+    build_nodes_from_skills(factory.tag, factory.schema.skills, desc_nodes)
+    build_nodes_from_dataset(factory.tag, factory[tag], exemplar_nodes)
 
     # For inference, we only create one index.
     create_index(
@@ -43,10 +44,8 @@ if __name__ == "__main__":
         f"{output}/index", "desc", desc_nodes, EmbeddingStore.for_description()
     )
 
-    schemas = {factory.tag: factory.schema for factory in factories}
-
     to_snake = CamelToSnake()
-    context_retriever = load_context_retrievers(schemas, f"{output}/index")
+    context_retriever = load_context_retrievers(factory.schema, f"{output}/index")
 
     converter = Converter(context_retriever)
 

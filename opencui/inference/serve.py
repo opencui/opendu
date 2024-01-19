@@ -45,7 +45,7 @@ async def understand(request: web.Request):
 
         case DugMode.SKILL:
             expectations = req.get("expectations")
-            results = l_converter.detectTriggerable(utterance, expectations)
+            results = l_converter.detect_triggerables(utterance, expectations)
             response = [
                 {"utterance": utterance, "ownerFrame": func} for func in results
             ]
@@ -54,7 +54,7 @@ async def understand(request: web.Request):
         case DugMode.SLOT:
             slots = req.get("slots")
             entities = req.get("entities")
-            results = l_converter.fillSlots(utterance, slots, entities)
+            results = l_converter.fill_slots(utterance, slots, entities)
             return web.json_response(dataclasses.asdict(results))
 
         case DugMode.BINARY:
@@ -70,6 +70,9 @@ def init_app(converter):
     app["converter"] = converter
     return app
 
+def load_converter_from_meta(module_path):
+    index_path = f"{module_path}/index/"
+    return load_converter(module_path, index_path)
 
 if __name__ == "__main__":
     argv = sys.argv[1:]
@@ -82,9 +85,8 @@ if __name__ == "__main__":
             )
             sys.exit()
         elif opt == "-s":
-            module_paths = arg
-    index_path = f"{module_paths}/index/"
-    # First load the schema info.
-    converter = load_converter(module_paths, index_path)
+            module_path = arg
+
+    converter = load_converter_from_meta(module_path)
 
     web.run_app(init_app(converter), port=3001)

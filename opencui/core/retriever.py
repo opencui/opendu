@@ -11,7 +11,7 @@ from llama_index.retrievers import (BaseRetriever, BM25Retriever, VectorIndexRet
 
 from llama_index.schema import NodeWithScore, TextNode
 
-from opencui.core.annotation import (FrameId, FrameSchema, Schema, SchemaStore)
+from opencui.core.annotation import (FrameId, FrameSchema, Schema)
 from opencui.core.config import LugConfig
 from opencui.core.embedding import EmbeddingStore
 
@@ -139,7 +139,7 @@ def dedup_nodes(old_results: list[TextNode], with_mode, arity=1):
 # This allows us to use the same logic on both the inference and fine-tuning side.
 # This is used to create the context for prompt needed for generate the solution for skills.
 class ContextRetriever:
-    def __init__(self, module: SchemaStore, d_retrievers, e_retriever):
+    def __init__(self, module: Schema, d_retrievers, e_retriever):
         self.module = module
         self.desc_retriever = d_retrievers
         self.exemplar_retriever = e_retriever
@@ -180,10 +180,10 @@ class ContextRetriever:
         return skills, exemplar_nodes
 
 
-def load_context_retrievers(module_dict: dict[str, Schema], path: str):
+def load_context_retrievers(module: Schema, path: str):
 
     return ContextRetriever(
-        SchemaStore(module_dict),
+        module,
         HybridRetriever.load_hybrid_retriever(path, "desc", LugConfig.get().desc_retrieve_topk),
         HybridRetriever.load_hybrid_retriever(path,"exemplar", LugConfig.get().exemplar_retrieve_topk),
     )
