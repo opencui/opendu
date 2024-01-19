@@ -26,6 +26,22 @@ class AgentTest(unittest.TestCase):
         self.assertTrue(len(result) == 1)
         self.assertTrue(result[0] == truth)
 
+    def testFillSlots(self):
+        utterance = "I like to order some Pizza"
+        slots = [{"name": "dishes", "description": "dishes"}]
+        candiates = {"dishes":["pizza", "apple"]}
+        result = AgentTest.converter.fill_slots(utterance, slots, candiates)
+        print(result)
+        self.assertTrue(len(result) == 1)
+        self.assertTrue(result["dishes"] == "Pizza")
+
+
+    def testInference(self):
+        utterance = "I like to"
+        questions = "Do you need more dish?"
+        result = AgentTest.converter.inference(utterance, [questions])
+        print(result)
+
 
 
 if __name__ == "__main__":

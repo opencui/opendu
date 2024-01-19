@@ -463,14 +463,12 @@ class Converter:
         else:
             return [self.retrieve.module.normalize(func_name)]
 
-    def fill_slots(self, text, slots:list[dict[str, str]], entities:dict[str, list[str]])-> dict[str, list[str]]:
+    def fill_slots(self, text, slots:list[dict[str, str]], entities:dict[str, list[str]])-> dict[str, str]:
         slot_prompts = []
         for slot in slots:
-            label = slot["label"]
             name = slot["name"]
-            values = entities[label]
+            values = entities[name]
             slot_input_dict = {"utterance": text, "name": name, "values": values}
-            slot_input_dict.update(module.slots[slot].to_dict())
             slot_prompts.append(self.slot_prompt(slot_input_dict))
 
         if LugConfig.get().converter_debug:
@@ -480,20 +478,19 @@ class Converter:
         if LugConfig.get().converter_debug:
             print(json.dumps(slot_outputs, indent=2))
 
-        slot_values = [parse_json_from_string(seq) for seq in slot_outputs]
-        slot_values = dict(zip(slot_labels_of_func, slot_values))
-        return {
-            key: value for key, value in slot_values.items() if value is not None
-        }
+        results = {}
+        for index, slot in enumerate(slots):
+            results[slot["name"]] = slot_outputs[index]
+        return results
 
     def inference(self, utterance:str, questions:list[str]) -> list[str]:
         input_prompts = []
         for question in questions:
             # For now, we ignore the language
             input_dict = {"response": utterance, "question": f"{question}."}
-            input_prompts.add(self.yni_prompt(input_dict))
+            input_prompts.append(self.yni_prompt(input_dict))
 
-        outputs = self.generator.for_nli(input_prompts)
+        outputs = self.generator.generate(input_prompts, GenerateMode.nli)
 
         if LugConfig.get().converter_debug:
             print(f"{input_prompts} {outputs}")
