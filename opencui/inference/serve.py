@@ -3,6 +3,7 @@
 import dataclasses
 import getopt
 import logging
+import json
 import sys
 from enum import Enum
 
@@ -21,12 +22,12 @@ Enum("DugMode", ["SKILL", "SLOT", "BINARY", "SEGMENT"])
 # This can be used to serve the whole thing, or just prompt service.
 
 
-@routes.get("/")
+@routes.get("/hello")
 async def hello(_: web.Request):  # For heart beat
     return web.Response(text="Hello, world")
 
 
-@routes.post("/understand")
+@routes.post("/v1/predict")
 async def understand(request: web.Request):
     req = await request.json()
     logging.info(req)
@@ -37,31 +38,32 @@ async def understand(request: web.Request):
         return web.json_response({"errMsg": f"empty user input."})
 
     mode = req.get("mode")
-    l_converter: Converter = req.app["converter"]
+    l_converter: Converter = request.app["converter"]
 
-    match (DugMode[mode]):
-        case DugMode.SEGMENT:
-            return web.json_response({"errMsg": f"Not implemented yet."})
+    if mode == "SEGMENT":
+        return web.json_response({"errMsg": f"Not implemented yet."})
 
-        case DugMode.SKILL:
-            expectations = req.get("expectations")
-            results = l_converter.detect_triggerables(utterance, expectations)
-            response = [
-                {"utterance": utterance, "ownerFrame": func} for func in results
-            ]
-            return web.json_response(dataclasses.aslist(response))
+    if mode == "SKILL":
+        expectations = req.get("expectations")
+        results = l_converter.detect_triggerables(utterance, expectations)
+        response = [
+            {"utterance": utterance, "ownerFrame": func} for func in results
+        ]
+        return web.json_response(response)
 
-        case DugMode.SLOT:
-            slots = req.get("slots")
-            entities = req.get("entities")
-            results = l_converter.fill_slots(utterance, slots, entities)
-            return web.json_response(dataclasses.asdict(results))
+    if mode == "SLOT":
+        slots = req.get("slots")
+        entities = req.get("candidates")
+        results = l_converter.fill_slots(utterance, slots, entities)
+        logging.info(results)
+        return web.json_response(results)
 
-        case DugMode.BINARY:
-            questions = req.get(questions)
-            # So that we can use different llm.
-            resp = l_converter.generate(utterance, questions)
-            return web.json_response(dataclasses.asdict(resp.aslist(resp)))
+    if mode == "BINARY":
+        questions = req.get("questions")
+        dialog_acts = req.get("dialogActs")
+        # So that we can use different llm.
+        resp = l_converter.inference(utterance, questions)
+        return web.json_response(resp)
 
 
 def init_app(converter):

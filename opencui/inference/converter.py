@@ -10,7 +10,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, 
 
 from opencui import ModelType
 from opencui.core.annotation import (CamelToSnake, DialogExpectation, EntityMetas, Exemplar, FrameValue, ListRecognizer,
-                                     OwnerMode, ExactMatcher)
+                                     OwnerMode, ExactMatcher, get_value)
 from opencui.core.config import LugConfig
 from opencui.core.prompt import (ExtractiveSlotPrompts, YniPrompts, DescriptionPrompts, ExemplarPrompts)
 from opencui.core.retriever import (ContextRetriever, load_context_retrievers)
@@ -463,12 +463,12 @@ class Converter:
         else:
             return [self.retrieve.module.normalize(func_name)]
 
-    def fill_slots(self, text, slots:list[dict[str, str]], entities:dict[str, list[str]])-> dict[str, str]:
+    def fill_slots(self, text, slots:list[dict[str, str]], candidates:dict[str, list[str]])-> dict[str, str]:
         slot_prompts = []
         for slot in slots:
             name = slot["name"]
-            values = entities[name]
-            slot_input_dict = {"utterance": text, "name": name, "values": values}
+            values = get_value(candidates, name, [])
+            slot_input_dict = {"utterance": text, "name": name, "candidates": values}
             slot_prompts.append(self.slot_prompt(slot_input_dict))
 
         if LugConfig.get().converter_debug:
@@ -480,7 +480,10 @@ class Converter:
 
         results = {}
         for index, slot in enumerate(slots):
-            results[slot["name"]] = slot_outputs[index]
+            # TODO(sean): this the source where we know what is the value, while we do not do
+            # normalization here, we need to explicitly
+            if slot_outputs[index] != "":
+                results[slot["name"]] = {"values" : [slot_outputs[index]], "operator": "=="}
         return results
 
     def inference(self, utterance:str, questions:list[str]) -> list[str]:
