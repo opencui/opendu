@@ -33,7 +33,7 @@ class AgentTest(unittest.TestCase):
         result = AgentTest.converter.fill_slots(utterance, slots, candiates)
         print(result)
         self.assertTrue(len(result) == 1)
-        self.assertTrue(result["dishes"]["value"][0] == "Pizza")
+        self.assertTrue(result["dishes"]["values"][0] == "Pizza")
 
 
     def testInference(self):
