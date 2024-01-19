@@ -29,9 +29,7 @@ async def hello(_: web.Request):  # For heart beat
 
 @routes.post("/v1/predict")
 async def understand(request: web.Request):
-    text = await request.text()
-    print(text)
-    req = json.loads(text)
+    req = await request.json()
     logging.info(req)
 
     utterance = req.get("utterance")
@@ -55,14 +53,16 @@ async def understand(request: web.Request):
 
     if mode == "SLOT":
         slots = req.get("slots")
-        entities = req.get("entities")
+        entities = req.get("candidates")
         results = l_converter.fill_slots(utterance, slots, entities)
+        logging.info(results)
         return web.json_response(results)
 
     if mode == "BINARY":
-        questions = req.get(questions)
+        questions = req.get("questions")
+        dialog_acts = req.get("dialogActs")
         # So that we can use different llm.
-        resp = l_converter.generate(utterance, questions)
+        resp = l_converter.inference(utterance, questions)
         return web.json_response(resp)
 
 
