@@ -604,10 +604,12 @@ def build_skill_factory(skill_modes, factories):
 
 
 def build_extractive_slot_factory(converted_factories):
-    converted_factories.extend([
-        JsonBareDatasetFactory("./dugsets/sgd/", "sgd", "slots-"),
-        JsonBareDatasetFactory("./dugsets/conll03/", "ner"),
-    ])
+    converted_factories.append(
+        concatenate_datasets([
+            JsonBareDatasetFactory("./dugsets/sgd/", "sgd", "slots-"),
+            JsonBareDatasetFactory("./dugsets/conll03/", "ner"),
+        ]).shuffle(seed=42)
+    )
 
 def build_extractive_slot_factory_old(converted_factories):
     factories = [

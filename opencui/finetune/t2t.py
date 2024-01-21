@@ -350,7 +350,8 @@ def merge_created_datasets(creators, split: str) -> Dataset:
         dataset = creator.__getitem__(split)
         if dataset is not None:
             datasets.append(dataset)
-    return concatenate_datasets(datasets).shuffle(seed=42)
+    # Change to interleave so that we can up sample these datasets
+    return interleave_datasets(datasets,  stopping_strategy="all_exhausted")
 
 
 def get_last_checkpoint(checkpoint_dir):
