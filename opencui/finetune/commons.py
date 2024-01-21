@@ -11,7 +11,7 @@ from random import sample, seed
 from typing import Optional
 
 from dataclasses_json import dataclass_json
-from datasets import Dataset, load_dataset
+from datasets import Dataset, load_dataset, concatenate_datasets
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.schema import TextNode
 
@@ -227,6 +227,19 @@ class JsonBareDatasetFactory(DatasetFactory, ABC):
 
     def __getitem__(self, item):
         return self.datasets[item]
+
+
+
+class DatasetFactoryMerger(DatasetFactory, ABC):
+    def __init__(self, factories):
+        self.factories = factories
+
+    def __getitem__(self, split):
+        datasets = []
+        for factory in self.factories:
+            datasets.append(factory[split])
+        return concatenate_datasets(datasets).shuffle(seed=42)
+
 
 
 # This inference is responsible for convert the exemplars in the original dataset into what is needed
@@ -605,10 +618,10 @@ def build_skill_factory(skill_modes, factories):
 
 def build_extractive_slot_factory(converted_factories):
     converted_factories.append(
-        concatenate_datasets([
+        DatasetFactoryMerger([
             JsonBareDatasetFactory("./dugsets/sgd/", "sgd", "slots-"),
             JsonBareDatasetFactory("./dugsets/conll03/", "ner"),
-        ]).shuffle(seed=42)
+        ])
     )
 
 def build_extractive_slot_factory_old(converted_factories):
