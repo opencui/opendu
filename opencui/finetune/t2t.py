@@ -14,7 +14,7 @@ import evaluate
 import numpy as np
 import torch
 import transformers
-from datasets import Dataset, concatenate_datasets
+from datasets import Dataset, concatenate_datasets, interleave_datasets
 from peft import LoraConfig, get_peft_model, TaskType, PrefixTuningConfig
 
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed,
