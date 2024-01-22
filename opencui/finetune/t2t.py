@@ -20,7 +20,7 @@ from peft import LoraConfig, get_peft_model, TaskType, PrefixTuningConfig
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed,
                           DataCollatorForSeq2Seq, AutoModelForSeq2SeqLM)
 
-from opencui import LugConfig
+from opencui.core.config import LugConfig
 from opencui.core.annotation import ModelType
 from opencui.core.special_tokens import SpecialTokens
 from opencui.finetune.commons import (load_training_dataset)
