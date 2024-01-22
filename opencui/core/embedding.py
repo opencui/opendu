@@ -71,8 +71,7 @@ class EmbeddingStore:
         if model_name in EmbeddingStore._models:
             return EmbeddingStore._models[model_name]
         else:
-            model = SentenceTransformer(model_name,
-                                        device=LugConfig.get().embedding_device)
+            model = SentenceTransformer(model_name, device=LugConfig.get().embedding_device)
             EmbeddingStore._models[model_name] = model
             return model
 
