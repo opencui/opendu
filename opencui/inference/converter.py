@@ -32,13 +32,15 @@ YesNoResult = Enum("YesNoResult", ["Affirmative", "Negative", "Indifferent", "Ir
 # Generator is responsible for low level things, we will have two different implementation
 # local/s-lora. Converter is built on top of generator.
 class Generator(ABC):
+    generator = None
 
     @staticmethod
     def build():
-        if GeneratorType[LugConfig.get().generator] == GeneratorType.FftGenerator:
-            return FftGenerator()
-        if GeneratorType[LugConfig.get().generator] == GeneratorType.LoraGenerator:
-            return LoraGenerator()
+        if GeneratorType[LugConfig.get().generator] == GeneratorType.FftGenerator and Generator.generator is None:
+            Generator.generator = FftGenerator()
+        if GeneratorType[LugConfig.get().generator] == GeneratorType.LoraGenerator and Generator.generator is None:
+            Generator.generator = LoraGenerator()
+        return Generator.generator
 
     @staticmethod
     def get_model_type(model_name_or_path):
@@ -157,6 +159,7 @@ class FftGenerator(Generator, ABC):
         self.model.eval()
 
     def generate(self, input_texts: list[str], mode: GenerateMode):
+        print(input_texts)
         encoding = self.tokenizer(
             input_texts, padding=True, truncation=True, return_tensors="pt"
         ).to(LugConfig.get().llm_device)

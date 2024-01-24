@@ -12,7 +12,7 @@ from lru import LRU
 from aiohttp import web
 import shutil
 from opencui import load_converter
-from opencui.inference.converter import load_converter
+from opencui.inference.converter import Generator, load_converter
 from opencui.inference.index import indexing
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -25,7 +25,11 @@ Enum("DugMode", ["SKILL", "SLOT", "BINARY", "SEGMENT"])
 
 # This service is designed to provide the indexing and serving for many agents, so that
 # We can reduce the startup time.
-
+"""
+curl -X POST -d '{"mode":"SKILL","utterance":"I like to order some food","expectations":[],"slotMetas":[],"entityValues":{},"questions":[]}' 127.0.0.1:3001/v1/predict/agent
+curl -X POST -d '{"mode":"BINARY","utterance":"Yes, absolutely.","questions":["Are you sure you want the white one?"]}' 127.0.0.1:3001/v1/predict/agent
+curl -X POST -d '{"mode": "SLOT", "utterance": "order food", "slots": [], "candidates": {}, "dialogActs": []}' http://127.0.0.1:3001/v1/predict/agent
+"""
 
 @routes.get("/hello")
 async def hello(_: web.Request):  # For heart beat
@@ -143,4 +147,6 @@ if __name__ == "__main__":
         elif opt == "-i":
             lru_capacity = int(arg)
 
+    # This load the generator LLM first.
+    Generator.build()
     web.run_app(init_app(root_path, lru_capacity), port=3001)
