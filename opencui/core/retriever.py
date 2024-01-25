@@ -143,6 +143,7 @@ class ContextRetriever:
         self.module = module
         self.desc_retriever = d_retrievers
         self.exemplar_retriever = e_retriever
+        assert(e_retriever is not None)
         self.arity = LugConfig.get().exemplar_retrieve_arity
         self.extended_mode = False
 
@@ -163,9 +164,12 @@ class ContextRetriever:
         else:
             desc_nodes = []
 
-        exemplar_nodes = [
-            item.node for item in self.exemplar_retriever.retrieve(query)
-        ]
+        if self.exemplar_retriever is not None:
+            exemplar_nodes = [
+                item.node for item in self.exemplar_retriever.retrieve(query)
+            ]
+        else:
+            exemplar_nodes = []
 
         exemplar_nodes = dedup_nodes(exemplar_nodes, True, self.arity)
         all_nodes = dedup_nodes(desc_nodes + exemplar_nodes, False, 1)
@@ -176,7 +180,7 @@ class ContextRetriever:
         ]
 
         # Need to remove the bad owner/func/skill/intent.
-        skills = [self.module.get_skill(owner) for owner in owners]
+        skills = [self.module.get_skill(owner) for owner in owners if self.module.is_good_skill(owner) ]
         return skills, exemplar_nodes
 
 
