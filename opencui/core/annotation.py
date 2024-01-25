@@ -104,6 +104,8 @@ class Schema:
     def get_skill(self, frame_id: FrameId):
         return self.skills[frame_id.name]
 
+    def is_good_skill(self, frame_id: FrameId):
+        return frame_id.name in self.skills
 
 OwnerMode = Enum('OwnerMode', ["normal", "extended"])
 
