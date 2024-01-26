@@ -6,17 +6,16 @@ from opencui.inference.converter import load_converter
 
 if __name__ == "__main__":
     argv = sys.argv[1:]
-    opts, args = getopt.getopt(argv, "hi:s:")
+    opts, args = getopt.getopt(argv, "hs:")
     cmd = False
     for opt, arg in opts:
         if opt == "-h":
-            print("cmd.py -s <api_directories> -i <index_directory>")
+            print("cmd.py -s <api_schema_directories>")
             sys.exit()
-        elif opt == "-i":
-            index_path = arg
         elif opt == "-s":
             module_paths = arg
 
+    index_path = f"{module_paths}/index"
     # First load the schema info.
     converter = load_converter(module_paths, index_path)
 

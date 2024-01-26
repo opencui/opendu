@@ -409,25 +409,16 @@ class Converter:
         self.skill_converter = ISkillConverter(retriever, self.generator)
         self.nli_labels = {"entailment": True, "neutral": None, "contradiction": False}
 
+    # Reference implementation for
     def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
         # low level get skill.
-        func_names = self.skill_converter.get_skills(text)
-
-        if len(func_names) == 0:
-            return None
-
-        # For now, just return the first one.
-        func_name = func_names[0]
-
-        if not self.retrieve.module.has_module(func_name):
-            print(f"{func_name} is not recognized.")
-            return None
+        func_name = self.skill_converter.get_skills(text)
 
         if not self.with_arguments:
             return FrameValue(name=func_name, arguments={})
 
         # We assume the function_name is global unique for now. From UI perspective, I think
-        module = self.retrieve.module.get_module(func_name)
+        module = self.retrieve.module
         slot_labels_of_func = module.skills[func_name]["slots"]
 
         # Then we need to create the prompt for the parameters.
@@ -437,7 +428,7 @@ class Converter:
             if self.recognizer is not None:
                 values = self.recognizer.extract_values(slot, text)
             slot_input_dict = {"utterance": text, "values": values}
-            slot_input_dict.update(module.slots[slot].to_dict())
+            slot_input_dict.update(module.slots[slot])
             slot_prompts.append(self.slot_prompt(slot_input_dict))
 
         if LugConfig.get().converter_debug:
