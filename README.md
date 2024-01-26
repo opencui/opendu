@@ -75,7 +75,7 @@ An example in the json format is as follows:
 }
 ```
 
-### Entity recognizer for the slots.
+### Entity recognizer for the slots (Not implemented yet).
 It is common that business have some private entity that is not well represented in the public domain text that is
 used during the training of LLMs, so it can be difficult to LLMs to recognize these entities out of box. DUG allow you
 to specify a recognizer for each slot, which recognizer can be a list of entity instance or some pattern.
