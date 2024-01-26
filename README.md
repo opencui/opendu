@@ -135,26 +135,19 @@ one for each kind of signals defined above.
 
 ```bash
 export PYTHONPATH="$PYTHONPATH:."
-python3 inference/index.py -i <directory_you_read_specs_from> -o <directory_you_write_index_to>
+python3 opencui/inference/index.py -s <directory_you_read_schema_from>
 ```
 By default, the code will not check the format for the function speciation, but it will check the format for the second
 and third input and raise exception when there is issues.
 
 #### 3. Initialize converter and convert.
 
-```python
-from inference.converter import Converter
-
-converter = load_converter(directory_you_read_specs_from, directory_you_write_index_to)
-converter.understand(utterance)
-```
-
 Notice the converter is single thread reference implementation, use some thing like s-lora for high throughput use cases.
 You can also test it in the command line:
 
 ```bash
 export PYTHONPATH="$PYTHONPATH:."
-python3 inference/cmd.py -s <directory_you_read_specs_from> -i <directory_you_write_index_to>
+python3 inference/cmd.py -s <directory_you_read_specs_from>
 ```
 
 ## Acknowledgements

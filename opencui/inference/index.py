@@ -57,22 +57,19 @@ def indexing(module):
 if __name__ == "__main__":
     argv = sys.argv[1:]
     input_paths = ''
-    opts, args = getopt.getopt(argv, "hs:i:")
+    opts, args = getopt.getopt(argv, "hs:")
 
     for opt, arg in opts:
         if opt == '-h':
-            print('index.py -s <services/agent meta directory, separated by ,>')
+            print('index.py -s <services/agent meta directory>')
             sys.exit()
         elif opt == "-s":
-            input_paths = arg
-
-    modules = input_paths.split(",")
+            schema_path = arg
 
     # For now, we only support single module
     try:
         # We assume that there are schema.json, exemplars.json and recognizers.json under the directory
-        for module in modules:
-            indexing(module)
+        indexing(schema_path)
 
     except:
         traceback.print_exc()
