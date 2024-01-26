@@ -109,7 +109,8 @@ reason that you can not use larger model. Since it is llama-index based, you sho
 available via APIs.  
 
 - [] [TinyLlama-1.1B](https://github.com/jzhang38/TinyLlama)
-
+- [] [T5] (https://huggingface.co/docs/transformers/model_doc/t5)
+ 
 ## Caveat
 There are a couple of things that we plan to get to but there are not included in the initial version.
 1. Currently, we only support conversion to functions from single module. The function in the single module are expected to be exclusive
@@ -142,12 +143,12 @@ and third input and raise exception when there is issues.
 
 #### 3. Initialize converter and convert.
 
-Notice the converter is single thread reference implementation, use some thing like s-lora for high throughput use cases.
+Notice the converter is single thread reference implementation, use something like s-lora for high throughput use cases.
 You can also test it in the command line:
 
 ```bash
 export PYTHONPATH="$PYTHONPATH:."
-python3 inference/cmd.py -s <directory_you_read_specs_from>
+python3 inference/cmd.py -s <directory_you_read_schema_from>
 ```
 
 ## Acknowledgements
