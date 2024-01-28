@@ -11,9 +11,11 @@ from lru import LRU
 
 from aiohttp import web
 import shutil
+from opencui.core.config import LugConfig
 from opencui import load_converter
 from opencui.inference.converter import Generator, load_converter
 from opencui.inference.index import indexing
+from sentence_transformers import SentenceTransformer
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
@@ -92,10 +94,7 @@ async def understand(request: web.Request):
     if mode == "SKILL":
         expectations = req.get("expectations")
         results = l_converter.detect_triggerables(utterance, expectations)
-        response = [
-            {"utterance": utterance, "ownerFrame": func} for func in results
-        ]
-        return web.json_response(response)
+        return web.json_response(results)
 
     if mode == "SLOT":
         slots = req.get("slots")
@@ -148,5 +147,6 @@ if __name__ == "__main__":
             lru_capacity = int(arg)
 
     # This load the generator LLM first.
+    embedder = SentenceTransformer(LugConfig.get().embedding_model, device=LugConfig.get().embedding_device)
     Generator.build()
     web.run_app(init_app(root_path, lru_capacity), port=3001)

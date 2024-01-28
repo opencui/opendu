@@ -207,7 +207,7 @@ class SingleOwnerPicker:
         # This we make sure that
         self.modes = [OwnerMode.normal]
 
-    def accumulate(self, flags: list[bool], owners: list[str], weight=2) -> str:
+    def accumulate(self, flags: list[bool], owners: list[str], weight=2):
         assert len(flags) == len(owners)
         for index, flag in enumerate(flags):
             if flag:
@@ -280,28 +280,30 @@ class ISkillConverter(SkillConverter, ABC):
         ]
         return [owners[index] for index, flag in enumerate(flags) if flag]
 
-    def get_skills(self, text):
+    def get_full_skills(self, text, expectations):
         # For now, we only pick one skill
         picker = SingleOwnerPicker()
-        to_snake = CamelToSnake()
-        print(f"get_skills for {text}\n")
-        # nodes owner are always included in the
-        skills, nodes = self.retrieve(text)
+        skills, nodes = self.retrieve(text, expectations)
+        print(f"get_skills for {text} with {len(nodes)} nodes\n")
 
         # for exemplar
         if self.use_exemplar:
-            exemplar_prompts, owners, owner_modes = self.build_prompts_by_examples(text, nodes, to_snake)
+            exemplar_prompts, owners, owner_modes = self.build_prompts_by_examples(text, nodes, CamelToSnake)
             exemplar_outputs = self.generator.generate(exemplar_prompts, GenerateMode.exemplar)
 
             exemplar_preds = [
                 parse_json_from_string(raw_flag, raw_flag)
                 for index, raw_flag in enumerate(exemplar_outputs)
             ]
+            print(exemplar_preds)
             picker.accumulate(exemplar_preds, owners, 2)
+
+        # Now we should use the expectation for improve node score, and filtering
+        # the contextual template that is not match.
 
         # for desc
         if self.use_desc:
-            desc_prompts, owners = self.build_prompts_by_desc(text, skills, to_snake)
+            desc_prompts, owners = self.build_prompts_by_desc(text, skills, CamelToSnake)
 
             desc_outputs = self.generator.generate(desc_prompts, GenerateMode.desc)
             desc_preds = [
@@ -310,7 +312,12 @@ class ISkillConverter(SkillConverter, ABC):
             ]
 
             picker.accumulate(desc_preds, owners, 1)
-        return picker.decide()
+        label = picker.decide()
+        return label, list(map(node_to_exemplar, nodes))
+
+    def get_skills(self, text):
+        label, node = self.get_full_skills(text)
+        return label
 
     @staticmethod
     def update(preds, truth, counts, skill_prompts, skill_outputs, output=True):
@@ -337,12 +344,11 @@ class ISkillConverter(SkillConverter, ABC):
             return
 
         picker = SingleOwnerPicker()
-        to_snake = CamelToSnake()
         # nodes owner are always included in the
         skills, nodes = self.retrieve(text)
 
         # for exemplar
-        exemplar_prompts, owners, owner_modes = self.build_prompts_by_examples(text, nodes, to_snake)
+        exemplar_prompts, owners, owner_modes = self.build_prompts_by_examples(text, nodes, CamelToSnake)
         exemplar_outputs = self.generator.generate(exemplar_prompts, GenerateMode.exemplar)
         exemplar_preds = [
             parse_json_from_string(raw_flag, raw_flag)
@@ -356,7 +362,7 @@ class ISkillConverter(SkillConverter, ABC):
         picker.accumulate(exemplar_preds, owners, 2)
 
         # for desc
-        desc_prompts, owners = self.build_prompts_by_desc(text, skills, to_snake)
+        desc_prompts, owners = self.build_prompts_by_desc(text, skills, CamelToSnake)
         desc_outputs = self.generator.generate(desc_prompts, GenerateMode.desc)
         desc_preds = [
             parse_json_from_string(raw_flag, None)
@@ -387,6 +393,25 @@ class ISkillConverter(SkillConverter, ABC):
         self.update(desc_preds, desc_truth, count_dict["desc"], desc_prompts, desc_outputs, debug_output)
 
 
+
+def node_to_exemplar(node):
+    meta = node.metadata
+    result = {
+        "template": node.text,
+        "owner": CamelToSnake.decode(meta["owner"])
+    }
+
+    # The optional information.
+    if meta["owner_mode"] != "normal":
+        result["owner_mode"] = meta["owner_mode"]
+    if meta["context_frame"] != "":
+        result["context_frame"] = meta["context_frame"]
+    if meta["context_slot"] != "":
+        result["context_slot"] = meta["context_slot"]
+
+    return result
+
+
 class Converter:
     def __init__(
             self,
@@ -409,8 +434,8 @@ class Converter:
         self.skill_converter = ISkillConverter(retriever, self.generator)
         self.nli_labels = {"entailment": True, "neutral": None, "contradiction": False}
 
-    # Reference implementation for
-    def understand(self, text: str, expectation: DialogExpectation = None) -> FrameValue:
+    # Reference implementation for function calling.
+    def understand(self, text: str) -> FrameValue:
         # low level get skill.
         func_name = self.skill_converter.get_skills(text)
 
@@ -450,12 +475,23 @@ class Converter:
 
         return FrameValue(name=final_name, arguments=slot_values)
 
-    def detect_triggerables(self, utterance, expectations)-> list[str]:
-        func_name = self.skill_converter.get_skills(utterance)
-        if func_name is None:
-            return []
+
+    def detect_triggerables(self, utterance, expectations):
+        func_name, evidence = self.skill_converter.get_full_skills(utterance, expectations)
+
+        # For now, we assume single intent.
+        result = {
+            "utterance": utterance,
+        }
+
+        if func_name is not None:
+            result["owner"] = func_name
         else:
-            return [self.retrieve.module.normalize(func_name)]
+            result["evidence"] = evidence
+
+        # TODO: figure out how to handle the multi intention utterance.
+        return [result]
+
 
     def fill_slots(self, text, slots:list[dict[str, str]], candidates:dict[str, list[str]])-> dict[str, str]:
         slot_prompts = []

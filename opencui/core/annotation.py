@@ -40,8 +40,8 @@ class SlotSchema:
             case _:
                 raise RuntimeError("wrong property.")
 
-    def to_snake(self, to_snake):
-        new_name = to_snake.encode(self.name)
+    def to_snake(self):
+        new_name = CamelToSnake.encode(self.name)
         return SlotSchema(name=new_name, description=self.description, type=self.type)
 
 
@@ -70,8 +70,8 @@ class FrameSchema:
             raise RuntimeError("wrong property.")
 
 
-    def to_snake(self, to_snake):
-        new_name = to_snake.encode(self.name)
+    def to_snake(self):
+        new_name = CamelToSnake.encode(self.name)
         return FrameSchema(name=new_name, description=self.description, slots=self.slots)
 
 
@@ -205,9 +205,17 @@ class Exemplar(BaseModel):
     template: str = Field(
         description="the example utterance that should trigger the given skill"
     )
-    owner_mode: str = Field(description="the matching mode between template and owner")
-    context: Optional[str] = Field(
-        description="the context under which this exemplar works.", default=None
+    owner_mode: Optional[str] = Field(
+        description="the matching mode between template and owner",
+        default=None
+    )
+    context_frame: Optional[str] = Field(
+        description="the context slot under which this exemplar works.",
+        default=None
+    )
+    context_slot: Optional[str] = Field(
+        description="the context slot under which this exemplar works.",
+        default=None
     )
 
 
@@ -231,41 +239,42 @@ def get_value(item, key, value=None):
 #
 class CamelToSnake:
     pattern = re.compile(r"(?<!^)(?=[A-Z])")
+    backward = {}
 
     @classmethod
     def convert(cls, text):
         return CamelToSnake.pattern.sub("_", text).lower()
 
-    def __init__(self):
-        self.backward = {}
-        self.forward = {}
-
-    def encode(self, text):
+    @staticmethod
+    def encode(text):
         snake = CamelToSnake.pattern.sub("_", text).lower()
-        self.backward[snake] = text
-        self.forward[text] = snake
+        if snake != text:
+            CamelToSnake.backward[snake] = text
+
         return snake
 
-    def decode(self, snake):
-        return self.backward[snake]
+    @staticmethod
+    def decode(snake):
+        return CamelToSnake.backward[snake]
+
 
 
 def build_nodes_from_exemplar_store(module: str, store: ExemplarStore, nodes: List[TextNode]):
-    to_snake = CamelToSnake()
     for label, exemplars in store.items():
         for exemplar in exemplars:
-            label = to_snake.encode(label)
+            label = CamelToSnake.encode(label)
             nodes.append(
                 TextNode(
                     text=exemplar["template"],
                     id_=str(hash(exemplar["template"]))[1:13],
                     metadata={
                         "owner": label,
-                        "context": get_value(exemplar, "context", ""),
+                        "context_frame": get_value(exemplar, "context_frame", ""),
+                        "context_slot": get_value(exemplar, "context_slot", ""),
                         "owner_mode": get_value(exemplar, "owner_mode", "normal"),
-                        "module": module,
+                        "module": module
                     },
-                    excluded_embed_metadata_keys=["owner", "context", "module", "owner_mode"],
+                    excluded_embed_metadata_keys=["owner", "context_frame", "context_slot", "owner_mode", "module"],
                 )
             )
 
