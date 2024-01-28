@@ -15,10 +15,9 @@ from opencui.core.annotation import (CamelToSnake, EntityMetas,
 def from_openai(functions) -> Schema:
     skill_infos = {}
     slot_infos = {}
-    to_snake = CamelToSnake()
     for func in functions:
         o_name = func["name"]
-        f_name = to_snake.encode(o_name)
+        f_name = CamelToSnake.encode(o_name)
         f_description = func["description"]
         f_slots = []
         parameters = func["parameters"]
@@ -36,18 +35,17 @@ def from_openai(functions) -> Schema:
                     slot_name, slot_description
                 ).to_dict()
         skill_infos[f_name] = FrameSchema(f_name, f_description, f_slots).to_dict()
-    return Schema(skill_infos, slot_infos, to_snake.backward)
+    return Schema(skill_infos, slot_infos, CamelToSnake.backward)
 
 
 def from_openapi(specs) -> Schema:
     skills = {}
     slots = {}
-    to_snake = CamelToSnake()
     print(specs)
     for path, v in specs["paths"].items():
         for op, _v in v.items():
             orig_name = _v["operationId"]
-            name = to_snake.encode(orig_name)
+            name = CamelToSnake.encode(orig_name)
             description = get_value(_v, "description")
             if description is None:
                 description = get_value(_v, "summary")
@@ -61,7 +59,7 @@ def from_openapi(specs) -> Schema:
                     slots[slot_name] = SlotSchema(slot_name, slot_description).to_dict()
                 parameters.append(slot_name)
             skills[name] = FrameSchema(name, description, parameters).to_dict()
-    return Schema(skills, slots, to_snake.backward)
+    return Schema(skills, slots, CamelToSnake.backward)
 
 
 # This assumes that in a directory we have schemas.json in openai/openapi format, and then exemplars
@@ -80,15 +78,14 @@ def load_schema_from_directory(path):
 def to_snake(schema):
     skills = {}
     slots = {}
-    to_snake = CamelToSnake()
 
     for key, skill in schema.skills.items():
-        skills[to_snake.encode(key)] = skill.to_snake(to_snake)
+        skills[CamelToSnake.encode(key)] = skill.to_snake()
 
     for key, slot in schema.slots.items():
-        slots[key] = slot.to_snake(to_snake)
+        slots[key] = slot.to_snake()
 
-    return Schema(skills=skills, slots=slots, backward=to_snake.backward)
+    return Schema(skills=skills, slots=slots, backward=CamelToSnake.backward)
 
 
 def load_all_from_directory(input_path):

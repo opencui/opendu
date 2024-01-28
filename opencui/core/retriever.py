@@ -154,9 +154,9 @@ class ContextRetriever:
     def retrieve_by_exemplar(self, query):
         return self.exemplar_retriever.retrieve(query)
 
-    def __call__(self, query):
+    def __call__(self, query, expectations=[]):
         # The goal here is to find the combined descriptions and exemplars.
-
+        # TODO: Figure out how to use expectations to refine the result set.
         if self.desc_retriever is not None:
             desc_nodes = [
                 item.node for item in self.desc_retriever.retrieve(query)
@@ -171,6 +171,7 @@ class ContextRetriever:
         else:
             exemplar_nodes = []
 
+        # So we do not have too many exemplars from the same skill
         exemplar_nodes = dedup_nodes(exemplar_nodes, True, self.arity)
         all_nodes = dedup_nodes(desc_nodes + exemplar_nodes, False, 1)
 

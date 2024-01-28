@@ -13,6 +13,7 @@ from opencui.core.config import LugConfig
 # We reuse the underlying embedding when we can.
 class EmbeddingStore:
     _models: dict[str, SentenceTransformer] = {}
+
     # We need different instruction pairs for different use cases.
     INSTRUCTIONS = {
         "qa": {

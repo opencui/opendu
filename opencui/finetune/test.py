@@ -44,7 +44,6 @@ if __name__ == "__main__":
         f"{output}/index", "desc", desc_nodes, EmbeddingStore.for_description()
     )
 
-    to_snake = CamelToSnake()
     context_retriever = load_context_retrievers(factory.schema, f"{output}/index")
 
     converter = Converter(context_retriever)
@@ -62,7 +61,7 @@ if __name__ == "__main__":
         dataset = factory[tag]
         for item in dataset:
             # We only support snake function name.
-            owner = to_snake.encode(item["owner"])
+            owner = CamelToSnake.encode(item["owner"])
             arguments = item["arguments"]
             owner_mode = item["owner_mode"]
             if ExactMatcher.is_good_mode(owner_mode):
