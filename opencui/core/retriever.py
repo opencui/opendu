@@ -11,7 +11,7 @@ from llama_index.retrievers import (BaseRetriever, BM25Retriever, VectorIndexRet
 
 from llama_index.schema import NodeWithScore, TextNode
 
-from opencui.core.annotation import (FrameId, FrameSchema, Schema)
+from opencui.core.annotation import (FrameId, FrameSchema, Schema, CamelToSnake, get_value)
 from opencui.core.config import LugConfig
 from opencui.core.embedding import EmbeddingStore
 
@@ -73,11 +73,11 @@ def merge_nodes(nodes0: list[NodeWithScore], nodes1: list[NodeWithScore])-> list
     nodes = {}
     scores = {}
     for ns in nodes0 + nodes1:
-        if ns.node.text in nodes:
-            scores[ns.node.text] += ns.score
+        if ns.node.id_ in nodes:
+            scores[ns.node.id_] += ns.score
         else:
-            nodes[ns.node.text] = ns.node
-            scores[ns.node.text] = ns.score
+            nodes[ns.node.id_] = ns.node
+            scores[ns.node.id_] = ns.score
 
     res = [NodeWithScore(node=nodes[nid], score=scores[nid]) for nid in nodes.keys()]
     return sorted(res, key=lambda x: x.score, reverse=True)
@@ -120,9 +120,14 @@ class HybridRetriever(BaseRetriever):
 
     def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
         """Retrieve nodes given query."""
-        vector_nodes = self._vector_retriever.retrieve(query_bundle)
-        keyword_nodes = self._keyword_retriever.retrieve(query_bundle)
-        return merge_nodes(vector_nodes, keyword_nodes)
+        if not query_bundle.query_str.startswith("<") or not query_bundle.query_str.endswith(">"):
+            print("hybrid search")
+            vector_nodes = self._vector_retriever.retrieve(query_bundle)
+            keyword_nodes = self._keyword_retriever.retrieve(query_bundle)
+            return merge_nodes(vector_nodes, keyword_nodes)
+        else:
+            print("key word only search")
+            return self._keyword_retriever.retrieve(query_bundle)
 
 
 def dedup_nodes(old_results: list[TextNode], with_mode, arity=1):
@@ -134,6 +139,24 @@ def dedup_nodes(old_results: list[TextNode], with_mode, arity=1):
             intents[intent] += 1
             new_results.append(item)
     return new_results
+
+
+class ContextMatcher:
+    def __init__(self, frame):
+        self.frame = frame["frame"]
+        self.slot = frame["slot"]
+
+    def __call__(self, node: NodeWithScore):
+        meta = node.node.metadata
+        context_frame = get_value(meta, "context_frame")
+        # make sure we have the slot, current assume the template use no space between slot and <>
+        if node.node.text.find(f"<{self.slot}>") == -1:
+            return False
+
+        if context_frame is None or context_frame == "":
+            return True
+        else:
+            return self.frame == context_frame
 
 
 # This allows us to use the same logic on both the inference and fine-tuning side.
@@ -154,9 +177,8 @@ class ContextRetriever:
     def retrieve_by_exemplar(self, query):
         return self.exemplar_retriever.retrieve(query)
 
-    def __call__(self, query, expectations=[]):
+    def __call__(self, query, expectations):
         # The goal here is to find the combined descriptions and exemplars.
-        # TODO: Figure out how to use expectations to refine the result set.
         if self.desc_retriever is not None:
             desc_nodes = [
                 item.node for item in self.desc_retriever.retrieve(query)
@@ -165,11 +187,29 @@ class ContextRetriever:
             desc_nodes = []
 
         if self.exemplar_retriever is not None:
+            exemplar_nodes = self.exemplar_retriever.retrieve(query)
+
+            original_size = len(exemplar_nodes)
+            # Now we search slot
+            slot_nodes = []
+            for frame in expectations:
+                slot = get_value(frame, 'slot')
+                if slot is None or slot == "":
+                    continue
+
+                query = f"< {slot} >"
+                match = ContextMatcher(frame)
+                nodes = self.exemplar_retriever.retrieve(query)
+                # make sure the frame also match
+                slot_nodes.extend(filter(match, nodes))
+
             exemplar_nodes = [
-                item.node for item in self.exemplar_retriever.retrieve(query)
-            ]
+                item.node for item in merge_nodes(exemplar_nodes, slot_nodes)
+            ][0:original_size]
         else:
             exemplar_nodes = []
+
+        # TODO: Figure out how to better use expectations filter the result set.
 
         # So we do not have too many exemplars from the same skill
         exemplar_nodes = dedup_nodes(exemplar_nodes, True, self.arity)

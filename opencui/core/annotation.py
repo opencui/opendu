@@ -263,14 +263,16 @@ def build_nodes_from_exemplar_store(module: str, store: ExemplarStore, nodes: Li
     for label, exemplars in store.items():
         for exemplar in exemplars:
             label = CamelToSnake.encode(label)
+            text = exemplar["template"]
+            context_frame = get_value(exemplar, "context_frame", ""),
             nodes.append(
                 TextNode(
-                    text=exemplar["template"],
-                    id_=str(hash(exemplar["template"]))[1:13],
+                    text=text,
+                    id_=str(hash(text + context_frame)),
                     metadata={
                         "owner": label,
                         "context_frame": get_value(exemplar, "context_frame", ""),
-                        "context_slot": get_value(exemplar, "context_slot", ""),
+                        "context_slot": context_frame,
                         "owner_mode": get_value(exemplar, "owner_mode", "normal"),
                         "module": module
                     },
