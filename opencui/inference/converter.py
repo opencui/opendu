@@ -398,16 +398,16 @@ def node_to_exemplar(node):
     meta = node.metadata
     result = {
         "template": node.text,
-        "owner": CamelToSnake.decode(meta["owner"])
+        "ownerFrame": CamelToSnake.decode(meta["owner"])
     }
 
     # The optional information. Kotlin side use label instead of owner_mode.
     if meta["owner_mode"] != "normal":
         result["label"] = meta["owner_mode"]
     if meta["context_frame"] != "":
-        result["context_frame"] = meta["context_frame"]
+        result["contextFrame"] = meta["context_frame"]
     if meta["context_slot"] != "":
-        result["context_slot"] = meta["context_slot"]
+        result["contextSlot"] = meta["context_slot"]
 
     return result
 
