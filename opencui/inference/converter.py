@@ -482,7 +482,7 @@ class Converter:
         # For now, we assume single intent.
         result = {
             "utterance": utterance,
-            result["evidence"]: evidence
+            "evidence": evidence
         }
 
         if func_name is not None:
