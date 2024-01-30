@@ -90,16 +90,14 @@ class FrameId:
 class Schema:
     skills: Dict[str, FrameSchema]
     slots: Dict[str, SlotSchema]
-    # We use snake case inside, so we need this to get back the original name.
-    backward: Dict[str, str]
 
-    def __init__(self, skills, slots, backward=None):
+    def __init__(self, skills, slots):
         self.skills = skills
         self.slots = slots
-        self.backward = backward
 
-    def normalize(self, label):
-        return self.backward[label]
+    @staticmethod
+    def normalize(label):
+        return CamelToSnake.decode(label)
 
     def get_skill(self, frame_id: FrameId):
         return self.skills[frame_id.name]
@@ -239,23 +237,15 @@ def get_value(item, key, value=None):
 #
 class CamelToSnake:
     pattern = re.compile(r"(?<!^)(?=[A-Z])")
-    backward = {}
-
-    @classmethod
-    def convert(cls, text):
-        return CamelToSnake.pattern.sub("_", text).lower()
 
     @staticmethod
     def encode(text):
-        snake = CamelToSnake.pattern.sub("_", text).lower()
-        if snake != text:
-            CamelToSnake.backward[snake] = text
-
-        return snake
+        return CamelToSnake.pattern.sub("_", text).lower()
 
     @staticmethod
-    def decode(snake):
-        return CamelToSnake.backward[snake]
+    def decode(word):
+        tkns = word.split('_')
+        return tkns[0] + ''.join(x.capitalize() or '_' for x in tkns[1:])
 
 
 
@@ -264,7 +254,7 @@ def build_nodes_from_exemplar_store(module: str, store: ExemplarStore, nodes: Li
         for exemplar in exemplars:
             label = CamelToSnake.encode(label)
             text = exemplar["template"]
-            context_frame = get_value(exemplar, "context_frame", ""),
+            context_frame = get_value(exemplar, "context_frame", "")
             nodes.append(
                 TextNode(
                     text=text,
