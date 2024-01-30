@@ -482,11 +482,11 @@ class Converter:
         # For now, we assume single intent.
         result = {
             "utterance": utterance,
-            result["evidence"]: evidence
+            "evidence": evidence
         }
 
         if func_name is not None:
-            result["owner"] = func_name
+            result["owner"] = CamelToSnake.decode(func_name)
 
         # TODO: figure out how to handle the multi intention utterance.
         return [result]

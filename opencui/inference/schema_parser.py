@@ -85,7 +85,7 @@ def to_snake(schema):
     for key, slot in schema.slots.items():
         slots[key] = slot.to_snake()
 
-    return Schema(skills=skills, slots=slots, backward=CamelToSnake.backward)
+    return Schema(skills=skills, slots=slots)
 
 
 def load_all_from_directory(input_path):
