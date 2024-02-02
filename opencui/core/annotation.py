@@ -262,7 +262,7 @@ def build_nodes_from_exemplar_store(module: str, store: ExemplarStore, nodes: Li
                     metadata={
                         "owner": label,
                         "context_frame": context_frame,
-                        "context_slot": get_value(exemplar, "context_slot", ""),
+                        "context_slot": get_value(exemplar, "context_slot", None),
                         "owner_mode": get_value(exemplar, "owner_mode", "normal"),
                         "module": module
                     },
