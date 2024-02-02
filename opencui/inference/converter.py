@@ -432,7 +432,8 @@ class Converter:
         self.skill_converter = None
 
         self.skill_converter = ISkillConverter(retriever, self.generator)
-        self.nli_labels = {"entailment": True, "neutral": None, "contradiction": False}
+        self.yni_results = {"Affirmative", "Negative", "Indifferent", "Irrelevant" }
+
 
     # Reference implementation for function calling.
     def understand(self, text: str) -> FrameValue:
@@ -523,6 +524,7 @@ class Converter:
             input_prompts.append(self.yni_prompt(input_dict))
 
         outputs = self.generator.generate(input_prompts, GenerateMode.nli)
+        outputs = list(map(lambda x: x if (x in self.yni_results) else "Irrelevant", outputs))
 
         if LugConfig.get().converter_debug:
             print(f"{input_prompts} {outputs}")
