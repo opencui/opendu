@@ -8,4 +8,4 @@ ENV  PATH=/root/miniconda3/bin:$PATH
 
 WORKDIR /data
 COPY . .
-RUN pip install -r requirements.txt && python -m opencui && python -m opencui.inference.cache_model
+RUN pip install -r requirements.txt && python -m opencui.inference.cache_model
