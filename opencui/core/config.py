@@ -30,7 +30,7 @@ class InferenceConfig(BaseModel):
     exemplar_retrieve_arity: int = 8
 
     skill_arity: int = 1
-    llm_device: str = "cpu"
+    llm_device: str = "cuda:0"
 
     skill_prompt: str = "structural"
     slot_prompt: str = "structural"
