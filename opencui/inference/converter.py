@@ -216,6 +216,7 @@ class SingleOwnerPicker:
     def decide(self):
         pairs = list(self.counts.items())
         pairs.sort(key=lambda x: -x[1])
+        pairs = list(filter(lambda x: x[1] > 1, pairs))
         return None if len(pairs) == 0 else pairs[0][0]
 
 
@@ -296,7 +297,7 @@ class ISkillConverter(SkillConverter, ABC):
                 for index, raw_flag in enumerate(exemplar_outputs)
             ]
             print(exemplar_preds)
-            picker.accumulate(exemplar_preds, owners, 2)
+            picker.accumulate(exemplar_preds, owners, 1)
 
         # Now we should use the expectation for improve node score, and filtering
         # the contextual template that is not match.
@@ -310,8 +311,9 @@ class ISkillConverter(SkillConverter, ABC):
                 parse_json_from_string(raw_flag, None)
                 for index, raw_flag in enumerate(desc_outputs)
             ]
-
+            print(desc_preds)
             picker.accumulate(desc_preds, owners, 1)
+
         label = picker.decide()
         return label, list(map(node_to_exemplar, nodes))
 

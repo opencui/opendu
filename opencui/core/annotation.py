@@ -261,8 +261,8 @@ def build_nodes_from_exemplar_store(module: str, store: ExemplarStore, nodes: Li
                     id_=str(hash(text + context_frame)),
                     metadata={
                         "owner": label,
-                        "context_frame": get_value(exemplar, "context_frame", ""),
-                        "context_slot": context_frame,
+                        "context_frame": context_frame,
+                        "context_slot": get_value(exemplar, "context_slot", None),
                         "owner_mode": get_value(exemplar, "owner_mode", "normal"),
                         "module": module
                     },
