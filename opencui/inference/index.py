@@ -37,7 +37,7 @@ def indexing(module):
     module_schema, examplers, recognizers = load_all_from_directory(module)
     print(module_schema)
     build_nodes_from_skills(module, module_schema.skills, desc_nodes)
-    build_nodes_from_exemplar_store(module, examplers, exemplar_nodes)
+    build_nodes_from_exemplar_store(module_schema, examplers, exemplar_nodes)
     schemas[module] = module_schema
 
 
