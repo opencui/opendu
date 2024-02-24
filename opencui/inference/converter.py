@@ -281,11 +281,40 @@ class ISkillConverter(SkillConverter, ABC):
         ]
         return [owners[index] for index, flag in enumerate(flags) if flag]
 
-    def get_full_skills(self, text, expectations):
+
+    @staticmethod
+    def accumulate_debug_for_exemplars(preds, nodes, infos):
+        assert len(preds) == len(nodes)
+        for index in range(len(preds)):
+            item = {
+                "type": "exemplar",
+                "owner": nodes[index].metadata["owner"],
+                "text": nodes[index].metadata["template"],
+                "result": preds[index]
+            }
+            infos.append(item)
+
+    @staticmethod
+    def accumulate_debug_for_skills(preds, skills, infos):
+        assert len(preds) == len(skills)
+        for index in range(len(preds)):
+            item = {
+                "type": "desc",
+                "owner": skills[index].name,
+                "text": skills[index].description,
+                "result": preds[index]
+            }
+            infos.append(item)
+
+
+
+    def get_full_skills(self, text, expectations, debug=False):
         # For now, we only pick one skill
         picker = SingleOwnerPicker()
         skills, nodes = self.retrieve(text, expectations)
         print(f"get_skills for {text} with {len(nodes)} nodes\n")
+
+        debug_infos = []
 
         # for exemplar
         if self.use_exemplar:
@@ -297,6 +326,9 @@ class ISkillConverter(SkillConverter, ABC):
                 for index, raw_flag in enumerate(exemplar_outputs)
             ]
             print(exemplar_preds)
+            if debug:
+                self.accumulate_debug_for_exemplars(exemplar_preds, nodes, debug_infos)
+
             picker.accumulate(exemplar_preds, owners, 1)
 
         # Now we should use the expectation for improve node score, and filtering
@@ -312,10 +344,13 @@ class ISkillConverter(SkillConverter, ABC):
                 for index, raw_flag in enumerate(desc_outputs)
             ]
             print(desc_preds)
+            if debug:
+                self.accumulate_debug_for_skills(desc_preds, skills, debug_infos)
+
             picker.accumulate(desc_preds, owners, 1)
 
         label = picker.decide()
-        return label, list(map(node_to_exemplar, nodes))
+        return label, list(map(node_to_exemplar, nodes)), debug_infos
 
     def get_skills(self, text):
         label, node = self.get_full_skills(text)
@@ -399,6 +434,7 @@ class ISkillConverter(SkillConverter, ABC):
 def node_to_exemplar(node):
     meta = node.metadata
     result = {
+        "type": "exemplar",
         "template": node.text,
         "ownerFrame": CamelToSnake.decode(meta["owner"])
     }
@@ -479,9 +515,16 @@ class Converter:
         return FrameValue(name=final_name, arguments=slot_values)
 
 
-    def detect_triggerables(self, utterance, expectations):
-        func_name, evidence = self.skill_converter.get_full_skills(utterance, expectations)
+    def debug(self, utterance, expectations):
+        _, _, debugs = self.skill_converter.get_full_skills(utterance, expectations, True)
+        # For now, we assume single intent.
 
+        # TODO: figure out how to handle the multi intention utterance.
+        return debugs
+
+
+    def detect_triggerables(self, utterance, expectations, debug=False):
+        func_name, evidence, _ = self.skill_converter.get_full_skills(utterance, expectations, debug)
         # For now, we assume single intent.
         result = {
             "utterance": utterance,

@@ -2,9 +2,8 @@ import math
 from typing import Any, List
 
 import numpy as np
-from llama_index.bridge.pydantic import PrivateAttr
-from llama_index.embeddings import HuggingFaceEmbedding
-from llama_index.embeddings.base import BaseEmbedding
+from llama_index.core.bridge.pydantic import PrivateAttr
+from llama_index.core.base.embeddings.base import BaseEmbedding
 from sentence_transformers import SentenceTransformer
 
 from opencui.core.config import LugConfig
@@ -28,13 +27,13 @@ class EmbeddingStore:
         },
         "desc": {
             "query":
-            "Convert this example into vector to look for useful function: ",
+            "Convert this text into vector to look for useful function: ",
             "key":
             "Convert this function description into vector for retrieval: ",
         },
         "exemplar": {
             "query":
-            "Convert this example into vector to look for useful examples: ",
+            "Convert this text into vector to look for useful examples: ",
             "key": "Convert this example into vector for retrieval: ",
         },
         "chat": {
@@ -127,86 +126,26 @@ class InstructedEmbeddings(BaseEmbedding):
         return self._get_text_embedding(text)
 
     def _get_query_embedding(self, query: str) -> List[float]:
-        return self._model.encode(self.expand_for_query(query),
-                                  normalize_embeddings=True)
+        return self._model.encode(self.expand_for_query(query), normalize_embeddings=True)
 
     def _get_text_embedding(self, text: str) -> List[float]:
-        return self._model.encode(self.expand_for_content(text),
-                                  normalize_embeddings=True)
+        return self._model.encode(self.expand_for_content(text), normalize_embeddings=True)
 
     def _get_text_embeddings(self, texts: List[str]) -> List[List[float]]:
         texts = [self._instructions["key"] + key for key in texts]
-        embeddings = self._model.encode(texts)
+        embeddings = self._model.encode(texts, normalize_embeddings=True)
         return embeddings.tolist()
-
-
-class HFEmbeddingStore:
-    query_encoder = HuggingFaceEmbedding(
-        model_name="facebook/dragon-plus-query-encoder",
-        device=LugConfig.get().embedding_device)
-    context_encoder = HuggingFaceEmbedding(
-        model_name="facebook/dragon-plus-context-encoder",
-        device=LugConfig.get().embedding_device)
-
-    @classmethod
-    def get_embedding_by_task(cls, kind):
-        return EmbeddingStore.for_exemplar(
-        ) if kind != "desc" else EmbeddingStore.for_description()
-
-    @classmethod
-    def for_description(cls) -> BaseEmbedding:
-        return DualHFEmbedding(EmbeddingStore.query_encoder,
-                               EmbeddingStore.context_encoder)
-
-    @classmethod
-    def for_exemplar(cls) -> BaseEmbedding:
-        return DualHFEmbedding(EmbeddingStore.query_encoder,
-                               EmbeddingStore.query_encoder)
-
-
-class DualHFEmbedding(BaseEmbedding):
-    _query_encoder: HuggingFaceEmbedding = PrivateAttr()
-    _context_encoder: HuggingFaceEmbedding = PrivateAttr()
-
-    def __init__(self, query, context, **kwargs: Any):
-        self._query_encoder = query
-        self._context_encoder = context
-        super().__init__(**kwargs)
-
-    @classmethod
-    def class_name(cls) -> str:
-        return "DualHFEmbedding"
-
-    async def _aget_query_embedding(self, query: str) -> List[float]:
-        return self._get_query_embedding(query)
-
-    async def _aget_text_embedding(self, text: str) -> List[float]:
-        return self._get_text_embedding(text)
-
-    def _get_query_embedding(self, query: str) -> List[float]:
-        return self._query_encoder.get_query_embedding(query)
-
-    def _get_text_embedding(self, text: str) -> List[float]:
-        return self._context_encoder.get_query_embedding(text)
-
-    def _get_text_embeddings(self, texts: List[str]) -> List[List[float]]:
-        return self._context_encoder.get_text_embedding_batch(texts)
-
 
 def similarity(u0, u1, encoder):
     em0 = encoder.get_query_embedding(u0)
-    em1 = encoder.get_query_embedding(u1)
+    em1 = encoder.get_text_embedding(u1)
     return np.dot(em0, em1) / math.sqrt(np.dot(em0, em0) * np.dot(em1, em1))
 
 
 class Comparer:
-    def __init__(self):
-        self.encoder0 = HuggingFaceEmbedding(
-            model_name="facebook/dragon-plus-query-encoder",
-            device=LugConfig.get().embedding_device)
-        self.encoder1 = HuggingFaceEmbedding(
-            model_name='BAAI/bge-large-en-v1.5',
-            device=LugConfig.get().embedding_device)
+    def __init__(self, encoder0, encoder1):
+        self.encoder0 = encoder0
+        self.encoder1 = encoder1
 
     def __call__(self, u0, t0):
         print(similarity(u0, t0, self.encoder0))
@@ -215,7 +154,10 @@ class Comparer:
 
 if __name__ == "__main__":
 
-    compare = Comparer()
+    compare = Comparer(
+        EmbeddingStore.get_embedding_by_task("desc"),
+        EmbeddingStore.get_embedding_by_task("exemplar")
+    )
 
     u0 = "okay, i'd like to make a transfer of 370 dollars from checking to khadija"
     t0 = "okay, i'd like to make a transfer of  < transfer_amount >  from checking to  < recipient_name > ."
@@ -232,4 +174,9 @@ if __name__ == "__main__":
 
     u0 = "okay, i'd like to make a transfer of 370 dollars from checking to khadija."
     t0 = 'that one works. i would like to buy a bus ticket.'
+    compare(u0, t0)
+
+
+    u0 = "okay, i'd like to make a transfer of 370 dollars from checking to khadija."
+    t0 = 'transfer money.'
     compare(u0, t0)

@@ -4,10 +4,9 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Optional, TypedDict, Union
 
 from dataclasses_json import dataclass_json
-from llama_index.schema import TextNode
 from pydantic import BaseModel, Field
 from enum import Enum
-
+from llama_index.core.schema import TextNode
 
 class ModelType(Enum):
     t5 = 1
@@ -25,6 +24,7 @@ class ModelType(Enum):
 @dataclass_json
 @dataclass
 class SlotSchema:
+    label: str = field(metadata={"required": True})
     name: str = field(metadata={"required": True})
     description: str = field(metadata={"required": True})
     type: str = field(metadata={"required": False}, default=None)
@@ -37,23 +37,29 @@ class SlotSchema:
                 return self.name
             case "type":
                 return self.type
+            case "label":
+                return self.label
             case _:
                 raise RuntimeError("wrong property.")
 
     def to_snake(self):
-        new_name = CamelToSnake.encode(self.name)
-        return SlotSchema(name=new_name, description=self.description, type=self.type)
+        new_label = CamelToSnake.encode(self.label)
+        return SlotSchema(label=new_label, name=self.name, description=self.description, type=self.type)
 
 
 @dataclass_json
 @dataclass
 class FrameSchema:
+    type: str = field(metadata={"required": True})
     name: str = field(metadata={"required": True})
     description: str = field(metadata={"required": True})
     slots: list[str] = field(default_factory=list)
+    headSlot: str = field(metadata={"required": False}, default=None)
 
     def __getitem__(self, item):
         match item:
+            case "type":
+                self.type
             case "description":
                 return self.description
             case "name":
@@ -71,14 +77,15 @@ class FrameSchema:
 
 
     def to_snake(self):
-        new_name = CamelToSnake.encode(self.name)
-        return FrameSchema(name=new_name, description=self.description, slots=self.slots)
+        new_name = self.name
+        if new_name == "":
+            new_name = CamelToSnake.encode(self.type)
+        return FrameSchema(type=self.type, name=new_name, description=self.description, slots=self.slots)
 
 
 @dataclass_json
 @dataclass
 class FrameId:
-    module: str
     name: str
 
 
@@ -248,12 +255,29 @@ class CamelToSnake:
         return tkns[0] + ''.join(x.capitalize() or '_' for x in tkns[1:])
 
 
+# This try to replace label with name so that it is easy to change DU behavior without touch label.
+class Replace:
+    def __init__(self, module:Schema, owner:str):
+        self.module = module
+        self.owner = owner
 
-def build_nodes_from_exemplar_store(module: str, store: ExemplarStore, nodes: List[TextNode]):
+    def __call__(self, match):
+        label = match.group(1)
+        full_label = f"{CamelToSnake.decode(self.owner)}.{label}"
+        slot_meta = self.module.slots[full_label]
+        slot_name = slot_meta.name
+        if slot_name == "":
+            slot_name = CamelToSnake.encode(label)
+        return slot_name
+
+
+def build_nodes_from_exemplar_store(module_schema: Schema, store: ExemplarStore, nodes: List[TextNode]):
+    pattern = r"<(.+?)>"
     for label, exemplars in store.items():
         for exemplar in exemplars:
+            process = Replace(module_schema, label)
             label = CamelToSnake.encode(label)
-            text = exemplar["template"]
+            text = re.sub(pattern, process, exemplar["template"])
             context_frame = get_value(exemplar, "context_frame", "")
             nodes.append(
                 TextNode(
@@ -261,12 +285,12 @@ def build_nodes_from_exemplar_store(module: str, store: ExemplarStore, nodes: Li
                     id_=str(hash(text + context_frame)),
                     metadata={
                         "owner": label,
+                        "template": exemplar["template"],  # This is the original template
                         "context_frame": context_frame,
                         "context_slot": get_value(exemplar, "context_slot", None),
                         "owner_mode": get_value(exemplar, "owner_mode", "normal"),
-                        "module": module
                     },
-                    excluded_embed_metadata_keys=["owner", "context_frame", "context_slot", "owner_mode", "module"],
+                    excluded_embed_metadata_keys=["owner", "context_frame", "context_slot", "owner_mode", "template"],
                 )
             )
 

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from datasets import Dataset
 from langchain.schema import BaseRetriever
-from llama_index.schema import TextNode
+from llama_index.core.schema import TextNode
 from sentence_transformers import SentenceTransformer, losses
 from sentence_transformers.readers import InputExample
 from torch.utils.data import DataLoader
