@@ -12,8 +12,8 @@ from typing import Optional
 
 from dataclasses_json import dataclass_json
 from datasets import Dataset, load_dataset, concatenate_datasets
-from llama_index.embeddings.base import BaseEmbedding
-from llama_index.schema import TextNode
+from llama_index.core.embeddings import BaseEmbedding
+from llama_index.core.schema import TextNode
 
 from opencui.core.prompt import (Prompt, MulticlassSkillPrompts, BinarySkillPrompts,
                                  ExemplarPrompts, DescriptionPrompts, BoolPrompts, YniPrompts, ExtractiveSlotPrompts)

@@ -2,9 +2,8 @@ import math
 from typing import Any, List
 
 import numpy as np
-from llama_index.bridge.pydantic import PrivateAttr
-from llama_index.embeddings import HuggingFaceEmbedding
-from llama_index.embeddings.base import BaseEmbedding
+from llama_index.core.bridge.pydantic import PrivateAttr
+from llama_index.core.base.embeddings.base import BaseEmbedding
 from sentence_transformers import SentenceTransformer
 
 from opencui.core.config import LugConfig

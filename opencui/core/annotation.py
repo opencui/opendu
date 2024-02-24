@@ -4,10 +4,9 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Optional, TypedDict, Union
 
 from dataclasses_json import dataclass_json
-from llama_index.schema import TextNode
 from pydantic import BaseModel, Field
 from enum import Enum
-
+from llama_index.core.schema import TextNode
 
 class ModelType(Enum):
     t5 = 1

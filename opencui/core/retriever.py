@@ -4,12 +4,16 @@ import logging
 import shutil
 from collections import defaultdict
 
-from llama_index import (QueryBundle, ServiceContext, StorageContext, VectorStoreIndex, load_index_from_storage)
-from llama_index.embeddings.base import BaseEmbedding
-# Retrievers
-from llama_index.retrievers import (BaseRetriever, BM25Retriever, VectorIndexRetriever)
 
-from llama_index.schema import NodeWithScore, TextNode
+from llama_index.core import Settings
+from llama_index.core.schema import QueryBundle
+from llama_index.core import VectorStoreIndex
+from llama_index.core import StorageContext, load_index_from_storage
+from llama_index.core.embeddings import BaseEmbedding
+# Retrievers
+from llama_index.core.retrievers import (BaseRetriever, VectorIndexRetriever)
+from llama_index.retrievers.bm25 import BM25Retriever
+from llama_index.core.schema import NodeWithScore, TextNode
 
 from opencui.core.annotation import (FrameId, FrameSchema, Schema, CamelToSnake, get_value)
 from opencui.core.config import LugConfig
@@ -40,11 +44,10 @@ def create_index(base: str, tag: str, nodes: list[TextNode],
                  embedding: BaseEmbedding):
     path = f"{base}/{tag}/"
     # Init download hugging fact model
-    service_context = ServiceContext.from_defaults(
-        llm=None,
-        llm_predictor=None,
-        embed_model=embedding,
-    )
+    Settings.llm = None
+    Settings.llm_predictor = None
+    Settings.embed_model = embedding
+
 
     storage_context = StorageContext.from_defaults()
     storage_context.docstore.add_documents(nodes)
@@ -52,8 +55,7 @@ def create_index(base: str, tag: str, nodes: list[TextNode],
     try:
         embedding_index = VectorStoreIndex(
             nodes,
-            storage_context=storage_context,
-            service_context=service_context)
+            storage_context=storage_context)
         embedding_index.set_index_id("embedding")
         embedding_index.storage_context.persist(persist_dir=path)
     except Exception as e:
@@ -89,10 +91,9 @@ class HybridRetriever(BaseRetriever):
     @staticmethod
     def load_hybrid_retriever(path: str, tag: str, topk: int = 8) -> None:
         embedding = EmbeddingStore.get_embedding_by_task(tag)
-        service_context = ServiceContext.from_defaults(
-            llm=None,
-            llm_predictor=None,
-            embed_model=embedding)
+        Settings.llm = None
+        Settings.llm_predictor = None
+        Settings.embed_model=embedding
 
         try:
             storage_context = StorageContext.from_defaults(
@@ -100,8 +101,7 @@ class HybridRetriever(BaseRetriever):
 
             embedding_index = load_index_from_storage(
                 storage_context,
-                index_id="embedding",
-                service_context=service_context)
+                index_id="embedding")
 
             vector_retriever = VectorIndexRetriever(
                 index=embedding_index,
