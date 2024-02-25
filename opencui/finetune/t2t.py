@@ -172,7 +172,10 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
         },
     )
     fp16: bool = field(
-        default=True, metadata={"help": "Whether or not use fp16 during training."}
+        default=False, metadata={"help": "Whether or not use fp16 during training."}
+    ),
+    bf16: bool = field(
+        default=True, metadata={"help": "Whether or not use bf16 during training."}
     ),
     debug_dataset: bool = field(
         default=False, metadata={"help": "print out dataset instead"}
