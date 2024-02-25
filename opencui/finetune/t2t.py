@@ -267,9 +267,10 @@ def get_model(args, peft_config=None):
     if ModelType[args.model_type] == ModelType.gpt:
         special_tokens_dict['additional_special_tokens'] = SpecialTokens.list()
 
-    smart_tokenizer_and_embedding_resize(
-        special_tokens_dict=special_tokens_dict, tokenizer=tokenizer, model=model
-    )
+    # For now, regardless, we always train in multitasks, so no need to add special token.
+    #smart_tokenizer_and_embedding_resize(
+    #    special_tokens_dict=special_tokens_dict, tokenizer=tokenizer, model=model
+    #)
 
     return model, tokenizer
 
