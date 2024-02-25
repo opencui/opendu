@@ -2,7 +2,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Optional, TypedDict, Union
-
+from typing import Optional
 from dataclasses_json import dataclass_json
 from pydantic import BaseModel, Field
 from enum import Enum
@@ -24,10 +24,10 @@ class ModelType(Enum):
 @dataclass_json
 @dataclass
 class SlotSchema:
-    label: str = field(metadata={"required": True})
     name: str = field(metadata={"required": True})
     description: str = field(metadata={"required": True})
     type: str = field(metadata={"required": False}, default=None)
+    label: Optional[str] = None
 
     def __getitem__(self, item):
         match item:
@@ -50,11 +50,11 @@ class SlotSchema:
 @dataclass_json
 @dataclass
 class FrameSchema:
-    type: str = field(metadata={"required": True})
     name: str = field(metadata={"required": True})
     description: str = field(metadata={"required": True})
     slots: list[str] = field(default_factory=list)
     headSlot: str = field(metadata={"required": False}, default=None)
+    type: Optional[str] = None
 
     def __getitem__(self, item):
         match item:
