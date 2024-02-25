@@ -171,6 +171,9 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
             "help": "How many checkpoints to save before the oldest is overwritten"
         },
     )
+    fp16: bool = field(
+        default=True, metadata={"help": "Whether or not use fp16 during training."}
+    ),
     debug_dataset: bool = field(
         default=False, metadata={"help": "print out dataset instead"}
     )
@@ -264,9 +267,10 @@ def get_model(args, peft_config=None):
     if ModelType[args.model_type] == ModelType.gpt:
         special_tokens_dict['additional_special_tokens'] = SpecialTokens.list()
 
-    smart_tokenizer_and_embedding_resize(
-        special_tokens_dict=special_tokens_dict, tokenizer=tokenizer, model=model
-    )
+    # For now, regardless, we always train in multitasks, so no need to add special token.
+    #smart_tokenizer_and_embedding_resize(
+    #    special_tokens_dict=special_tokens_dict, tokenizer=tokenizer, model=model
+    #)
 
     return model, tokenizer
 
@@ -594,6 +598,7 @@ def get_lora_config():
     # There difference choices, and not much explanation.
     # https://www.anyscale.com/blog/fine-tuning-llms-lora-or-full-parameter-an-in-depth-analysis-with-llama-2
     anyscale_blog = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "down_proj", "up_proj", "lm_head"]
+    # target_modules=["q_proj", "o_proj", "k_proj", "v_proj", "gate_proj", "up_proj", "down_proj"],
     # https://github.com/huggingface/peft/pull/337/files
     hf_flavor = ["q_proj", "k_proj", "v_proj", "out_proj", "fc_in", "fc_out", "wte"]
     #
@@ -606,15 +611,7 @@ def get_lora_config():
         r=lora_rank,
         bias="none",
         task_type=TaskType.CAUSAL_LM,
-        target_modules=anyscale_blog) \
-        if ModelType[LoraConfig.model_type] == ModelType.gpt else LoraConfig(
-        r=lora_rank,  # Rank
-        lora_alpha=lora_alpha,
-        target_modules=["q", "v"],
-        lora_dropout=lora_dropout,
-        bias="none",
-        task_type=TaskType.SEQ_2_SEQ_LM # FLAN-T5
-    )
+        target_modules=anyscale_blog)
 
 
 if __name__ == "__main__":
