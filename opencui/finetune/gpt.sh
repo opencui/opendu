@@ -5,8 +5,8 @@
 export PYTHONPATH="$PYTHONPATH:."
 
 python3 opencui/finetune/t2t.py \
-    --model_name_or_path TinyLlama/TinyLlama-1.1B-intermediate-step-1195k-token-2.5T\
-    --output_dir ./output/tinyllama2.5t-st \
+    --model_name_or_path google/gemma-2b \
+    --output_dir  ./output/gemma2b \
     --logging_steps 50 \
     --save_strategy epoch \
     --data_seed 42 \
@@ -35,7 +35,7 @@ python3 opencui/finetune/t2t.py \
     --weight_decay 0.0 \
     --seed 0 \
     --debug_dataset False \
-    --training_mode desc-exemplar-extractive-slot \
+    --training_mode desc-exemplar-extractive_slot-nli  \
     --peft_mode null \
     --model_type gpt \
     --trust_remote_code \
