@@ -4,7 +4,7 @@
 #
 export PYTHONPATH="$PYTHONPATH:."
 
-python3 opencui/finetune/t2t.py \
+accelerate launch opencui/finetune/t2t.py \
     --model_name_or_path google/gemma-2b \
     --output_dir  ./output/gemma2b \
     --logging_steps 50 \
