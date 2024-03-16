@@ -159,7 +159,10 @@ class FftGenerator(Generator, ABC):
         self.model.eval()
 
     def generate(self, input_texts: list[str], mode: GenerateMode):
-        print(input_texts)
+        # The tokenizer can not handle empty list, so we safeguard that.
+        if len(input_texts) == 0:
+            return []
+
         encoding = self.tokenizer(
             input_texts, padding=True, truncation=True, return_tensors="pt"
         ).to(LugConfig.get().llm_device)
