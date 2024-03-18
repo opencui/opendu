@@ -1,6 +1,6 @@
 # This is used for configure the project during the index and training.
 
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 
 class LugConfig:

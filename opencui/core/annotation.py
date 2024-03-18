@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Optional, TypedDict, Union
 from typing import Optional
 from dataclasses_json import dataclass_json
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 from enum import Enum
 from llama_index.core.schema import TextNode
 
