@@ -28,9 +28,9 @@ Enum("DugMode", ["SKILL", "SLOT", "BINARY", "SEGMENT"])
 # This service is designed to provide the indexing and serving for many agents, so that
 # We can reduce the startup time.
 """
-curl -X POST -d '{"mode":"SKILL","utterance":"I like to order some food","expectations":[],"slotMetas":[],"entityValues":{},"questions":[]}' 127.0.0.1:3001/v1/predict/agent
+curl -X POST -d '{"mode":"SKILL","utterance":"make a reservation","expectations":[],"slotMetas":[],"entityValues":{},"questions":[]}' 127.0.0.1:3001/v1/predict/tableReservation
 curl -X POST -d '{"mode":"BINARY","utterance":"Yes, absolutely.","questions":["Are you sure you want the white one?"]}' 127.0.0.1:3001/v1/predict/agent
-curl -X POST -d '{"mode": "SLOT", "utterance": "order food", "slots": [], "candidates": {}, "dialogActs": []}' http://127.0.0.1:3001/v1/predict/agent
+curl -X POST -d '{"mode": "SLOT", "utterance": "order food", "slots": [], "candidates": {}, "dialogActs": []}' http://127.0.0.1:3001/v1/predict/tableReservation
 """
 
 @routes.get("/hello")
