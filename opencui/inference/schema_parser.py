@@ -35,7 +35,7 @@ def from_openai(functions) -> Schema:
                     slot_name, slot_description
                 ).to_dict()
         skill_infos[f_name] = FrameSchema(f_name, f_description, f_slots).to_dict()
-    return Schema(skill_infos, slot_infos, CamelToSnake.backward)
+    return Schema(skill_infos, slot_infos)
 
 
 def from_openapi(specs) -> Schema:
@@ -59,7 +59,7 @@ def from_openapi(specs) -> Schema:
                     slots[slot_name] = SlotSchema(slot_name, slot_description).to_dict()
                 parameters.append(slot_name)
             skills[name] = FrameSchema(name, description, parameters).to_dict()
-    return Schema(skills, slots, CamelToSnake.backward)
+    return Schema(skills, slots)
 
 
 # This assumes that in a directory we have schemas.json in openai/openapi format, and then exemplars
@@ -69,23 +69,10 @@ def load_schema_from_directory(path):
     if isinstance(schema_object, list):
         l_schema = from_openai(schema_object)
     elif "slots" in schema_object and "skills" in schema_object:
-        l_schema = to_snake(Schema.from_dict(schema_object))
+        l_schema = Schema.from_dict(schema_object)
     else:
         l_schema = from_openapi(schema_object)
     return l_schema
-
-
-def to_snake(schema):
-    skills = {}
-    slots = {}
-
-    for key, skill in schema.skills.items():
-        skills[CamelToSnake.encode(key)] = skill.to_snake()
-
-    for key, slot in schema.slots.items():
-        slots[key] = slot.to_snake()
-
-    return Schema(skills=skills, slots=slots)
 
 
 def load_all_from_directory(input_path):

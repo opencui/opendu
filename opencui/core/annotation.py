@@ -42,10 +42,6 @@ class SlotSchema:
             case _:
                 raise RuntimeError("wrong property.")
 
-    def to_snake(self):
-        new_label = CamelToSnake.encode(self.label)
-        return SlotSchema(label=new_label, name=self.name, description=self.description, type=self.type)
-
 
 @dataclass_json
 @dataclass
@@ -76,13 +72,6 @@ class FrameSchema:
             raise RuntimeError("wrong property.")
 
 
-    def to_snake(self):
-        new_name = self.name
-        if new_name == "":
-            new_name = CamelToSnake.encode(self.type)
-        return FrameSchema(type=self.type, name=new_name, description=self.description, slots=self.slots)
-
-
 @dataclass_json
 @dataclass
 class FrameId:
@@ -101,10 +90,6 @@ class Schema:
     def __init__(self, skills, slots):
         self.skills = skills
         self.slots = slots
-
-    @staticmethod
-    def normalize(label):
-        return CamelToSnake.decode(label)
 
     def get_skill(self, frame_id: FrameId):
         return self.skills[frame_id.name]
