@@ -265,7 +265,7 @@ def build_nodes_from_exemplar_store(module_schema: Schema, store: ExemplarStore,
             nodes.append(
                 TextNode(
                     text=text,
-                    id_=str(hash(text + context_frame)),
+                    id_=str(hash(text + context_frame if context_frame is not None else "")),
                     metadata={
                         "owner": label,
                         "template": exemplar["template"],  # This is the original template
