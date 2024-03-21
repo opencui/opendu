@@ -251,8 +251,7 @@ class Replace:
         full_label = f"{CamelToSnake.decode(self.owner)}.{label}"
         slot_meta = self.module.slots[full_label]
         slot_name = slot_meta.name
-        if slot_name == "":
-            slot_name = CamelToSnake.encode(label)
+
         return slot_name
 
 
@@ -261,13 +260,12 @@ def build_nodes_from_exemplar_store(module_schema: Schema, store: ExemplarStore,
     for label, exemplars in store.items():
         for exemplar in exemplars:
             process = Replace(module_schema, label)
-            label = label
             text = re.sub(pattern, process, exemplar["template"])
-            context_frame = get_value(exemplar, "context_frame", "")
+            context_frame = get_value(exemplar, "context_frame", None)
             nodes.append(
                 TextNode(
                     text=text,
-                    id_=str(hash(text + context_frame)),
+                    id_=str(hash(text + context_frame if context_frame is not None else "")),
                     metadata={
                         "owner": label,
                         "template": exemplar["template"],  # This is the original template

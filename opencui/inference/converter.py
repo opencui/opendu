@@ -205,19 +205,11 @@ def parse_json_from_string(text, default=None):
 # This is used to pick the owner by first accumulate on the exemplars by weight 2
 # then accumulate on desc by weight 1.
 class SingleOwnerPicker:
-    specialValues = {
-        'io.opencui.core.booleanGate.Yes',
-        'io.opencui.core.booleanGate.No',
-        'io.opencui.core.hasMore.Yes',
-        'io.opencui.core.hasMore.No',
-        'io.opencui.core.confirmation.Yes',
-        'io.opencui.core.confirmation.No'}
-
     def __init__(self, expected):
         self.counts = defaultdict(int)
         # This we make sure that
         self.modes = [OwnerMode.normal]
-        self.expectedTypes = SingleOwnerPicker.getTypes(expected)
+        self.expectedTypes = SingleOwnerPicker.get_types(expected)
         self.weightForExpected = 0.0
         
     def accumulate(self, flags: list[bool], owners: list[str], weight=2):
@@ -227,7 +219,7 @@ class SingleOwnerPicker:
                 self.counts[owners[index]] += weight
 
     @staticmethod
-    def getTypes(expected: list[DialogExpectation]):
+    def get_types(expected: list[DialogExpectation]):
         types = set()
         for expectation in expected:
             type = expectation["frame"]
@@ -235,8 +227,8 @@ class SingleOwnerPicker:
                 types.add(type)
         return types
 
-    def pickExpected(self, pairs):
-        # Currently not used yet
+    def boost_expected(self, pairs):
+        # Currently not used.
         for pair in pairs:
             if pair[0] in self.expectedTypes:
                 pair[1] += self.weightForExpected
@@ -245,11 +237,8 @@ class SingleOwnerPicker:
         pairs = list(self.counts.items())
         pairs.sort(key=lambda x: -x[1])
 
-        pairs = list(filter(lambda x: x[0] not in SingleOwnerPicker.specialValues, pairs))
         pairs = list(filter(lambda x: x[1] > 1, pairs))
-
         return None if len(pairs) == 0 else pairs[0][0]
-
 
 
 class ISkillConverter(SkillConverter, ABC):
@@ -289,9 +278,6 @@ class ISkillConverter(SkillConverter, ABC):
     def build_prompts_by_desc(self, text, skills):
         skill_prompts = []
         owners = []
-
-        for skill in skills:
-            skill["name"] = skill["name"]
 
         # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
         # for now, we process it once.
