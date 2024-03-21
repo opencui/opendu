@@ -205,22 +205,51 @@ def parse_json_from_string(text, default=None):
 # This is used to pick the owner by first accumulate on the exemplars by weight 2
 # then accumulate on desc by weight 1.
 class SingleOwnerPicker:
-    def __init__(self):
+    specialValues = {
+        'io.opencui.core.booleanGate.Yes',
+        'io.opencui.core.booleanGate.No',
+        'io.opencui.core.hasMore.Yes',
+        'io.opencui.core.hasMore.No',
+        'io.opencui.core.confirmation.Yes',
+        'io.opencui.core.confirmation.No'}
+
+    def __init__(self, expected):
         self.counts = defaultdict(int)
         # This we make sure that
         self.modes = [OwnerMode.normal]
-
+        self.expectedTypes = SingleOwnerPicker.getTypes(expected)
+        self.weightForExpected = 0.0
+        
     def accumulate(self, flags: list[bool], owners: list[str], weight=2):
         assert len(flags) == len(owners)
         for index, flag in enumerate(flags):
             if flag:
                 self.counts[owners[index]] += weight
 
+    @staticmethod
+    def getTypes(expected: list[DialogExpectation]):
+        types = set()
+        for expectation in expected:
+            type = expectation["frame"]
+            if type is not None or type != "":
+                types.add(type)
+        return types
+
+    def pickExpected(self, pairs):
+        # Currently not used yet
+        for pair in pairs:
+            if pair[0] in self.expectedTypes:
+                pair[1] += self.weightForExpected
+
     def decide(self):
         pairs = list(self.counts.items())
         pairs.sort(key=lambda x: -x[1])
+
+        pairs = list(filter(lambda x: x[0] not in SingleOwnerPicker.specialValues, pairs))
         pairs = list(filter(lambda x: x[1] > 1, pairs))
+
         return None if len(pairs) == 0 else pairs[0][0]
+
 
 
 class ISkillConverter(SkillConverter, ABC):
@@ -234,7 +263,7 @@ class ISkillConverter(SkillConverter, ABC):
         assert self.use_desc or self.use_exemplar
         self.matcher = ExactMatcher
 
-    def build_prompts_by_examples(self, text, nodes, to_snake):
+    def build_prompts_by_examples(self, text, nodes):
         skill_prompts = []
         owners = []
         owner_modes = []
@@ -242,7 +271,7 @@ class ISkillConverter(SkillConverter, ABC):
         # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
         exemplars = [
             Exemplar(
-                owner=to_snake.encode(node.metadata["owner"]),
+                owner=node.metadata["owner"],
                 template=node.text,
                 owner_mode=node.metadata["owner_mode"]
             )
@@ -257,12 +286,12 @@ class ISkillConverter(SkillConverter, ABC):
 
         return skill_prompts, owners, owner_modes
 
-    def build_prompts_by_desc(self, text, skills, to_snake):
+    def build_prompts_by_desc(self, text, skills):
         skill_prompts = []
         owners = []
 
         for skill in skills:
-            skill["name"] = to_snake.encode(skill["name"])
+            skill["name"] = skill["name"]
 
         # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
         # for now, we process it once.
@@ -309,11 +338,10 @@ class ISkillConverter(SkillConverter, ABC):
             }
             infos.append(item)
 
-
-
     def get_full_skills(self, text, expectations, debug=False):
+        print(f"parse for skill: {text} with {expectations}")
         # For now, we only pick one skill
-        picker = SingleOwnerPicker()
+        picker = SingleOwnerPicker(expectations)
         skills, nodes = self.retrieve(text, expectations)
         print(f"get_skills for {text} with {len(nodes)} nodes\n")
 
@@ -321,7 +349,7 @@ class ISkillConverter(SkillConverter, ABC):
 
         # for exemplar
         if self.use_exemplar:
-            exemplar_prompts, owners, owner_modes = self.build_prompts_by_examples(text, nodes, CamelToSnake)
+            exemplar_prompts, owners, owner_modes = self.build_prompts_by_examples(text, nodes)
             exemplar_outputs = self.generator.generate(exemplar_prompts, GenerateMode.exemplar)
 
             exemplar_preds = [
@@ -339,7 +367,7 @@ class ISkillConverter(SkillConverter, ABC):
 
         # for desc
         if self.use_desc:
-            desc_prompts, owners = self.build_prompts_by_desc(text, skills, CamelToSnake)
+            desc_prompts, owners = self.build_prompts_by_desc(text, skills)
 
             desc_outputs = self.generator.generate(desc_prompts, GenerateMode.desc)
             desc_preds = [
