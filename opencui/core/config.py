@@ -43,7 +43,8 @@ class InferenceConfig(BaseModel):
     generator: str = "FftGenerator"
     model: str = "OpenCUI/multitask-t5base-0.1"
 
-    skill_model: str = "OpenCUI/skill-tinyllama-0.1"
-    extractive_slot_model: str = "OpenCUI/extractive-tinyllama2.5t-1.0"
+    # When we use one lora for each task, which we should not.
+    skill_model: str = ""
+    extractive_slot_model: str = ""
     nli_model: str = ""
     converter_debug: str = True
