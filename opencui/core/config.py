@@ -18,7 +18,7 @@ class LugConfig:
 
 
 class InferenceConfig(BaseModel):
-    embedding_device: str = "cuda:0"
+    embedding_device: str = "cpu"
     embedding_model: str = "BAAI/bge-base-en-v1.5"
     embedding_desc_model: str = ""
     embedding_desc_prompt: str = "baai_desc"
@@ -30,7 +30,7 @@ class InferenceConfig(BaseModel):
     exemplar_retrieve_arity: int = 8
 
     skill_arity: int = 1
-    llm_device: str = "cuda:0"
+    llm_device: str = "cpu"
 
     skill_prompt: str = "structural"
     slot_prompt: str = "structural"
