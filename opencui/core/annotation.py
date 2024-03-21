@@ -134,9 +134,9 @@ class FrameValue:
 @dataclass_json()
 @dataclass
 class FrameState:
-    module: Schema
-    frame: FrameSchema
-    activated: list[str]
+    frame: str
+    slot: str
+    slotType: str
 
 
 # How to present context is strictly state tracking implementation dependent.
@@ -261,7 +261,7 @@ def build_nodes_from_exemplar_store(module_schema: Schema, store: ExemplarStore,
     for label, exemplars in store.items():
         for exemplar in exemplars:
             process = Replace(module_schema, label)
-            label = CamelToSnake.encode(label)
+            label = label
             text = re.sub(pattern, process, exemplar["template"])
             context_frame = get_value(exemplar, "context_frame", "")
             nodes.append(
