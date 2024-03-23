@@ -41,7 +41,7 @@ class InferenceConfig(BaseModel):
 
     # We will append instance.desc/instance.exemplar to this.
     generator: str = "FftGenerator"
-    model: str = "OpenCUI/multitask-t5base-0.1"
+    model: str = "OpenCUI/dug-t5large-0.1"
 
     # When we use one lora for each task, which we should not.
     skill_model: str = ""
