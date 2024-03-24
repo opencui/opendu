@@ -342,6 +342,7 @@ class ISkillConverter(SkillConverter, ABC):
                 parse_json_from_string(raw_flag, raw_flag)
                 for index, raw_flag in enumerate(exemplar_outputs)
             ]
+            print(exemplar_prompts)
             print(exemplar_preds)
             if debug:
                 self.accumulate_debug_for_exemplars(exemplar_preds, exemplar_nodes, debug_infos)
@@ -360,6 +361,7 @@ class ISkillConverter(SkillConverter, ABC):
                 parse_json_from_string(raw_flag, None)
                 for index, raw_flag in enumerate(desc_outputs)
             ]
+            print(desc_prompts)
             print(desc_preds)
             if debug:
                 self.accumulate_debug_for_skills(desc_preds, skills, debug_infos)
@@ -544,12 +546,10 @@ class Converter:
         func_name, evidence, _ = self.skill_converter.get_full_skills(utterance, expectations, debug)
         # For now, we assume single intent.
         result = {
+            "owner": func_name,
             "utterance": utterance,
             "evidence": evidence
         }
-
-        if func_name is not None:
-            result["owner"] = CamelToSnake.decode(func_name)
 
         # TODO: figure out how to handle the multi intention utterance.
         return [result]
