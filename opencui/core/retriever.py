@@ -3,7 +3,7 @@
 import logging
 import shutil
 from collections import defaultdict
-
+from typing import Callable, List, Optional, cast
 
 from llama_index.core import Settings
 from llama_index.core.schema import QueryBundle
@@ -13,7 +13,7 @@ from llama_index.core.embeddings import BaseEmbedding
 # Retrievers
 from llama_index.core.retrievers import (BaseRetriever, VectorIndexRetriever)
 from llama_index.retrievers.bm25 import BM25Retriever
-from llama_index.core.schema import NodeWithScore, TextNode
+from llama_index.core.schema import NodeWithScore, TextNode, BaseNode
 
 from opencui.core.annotation import (FrameId, FrameSchema, Schema, CamelToSnake, get_value)
 from opencui.core.config import LugConfig
@@ -50,6 +50,7 @@ def create_index(base: str, tag: str, nodes: list[TextNode],
 
 
     storage_context = StorageContext.from_defaults()
+    print(f"Add {len(nodes)} nodes to {tag}")
     storage_context.docstore.add_documents(nodes)
 
     try:
@@ -85,11 +86,11 @@ def merge_nodes(nodes0: list[NodeWithScore], nodes1: list[NodeWithScore])-> list
     return sorted(res, key=lambda x: x.score, reverse=True)
 
 
-#
-class HybridRetriever(BaseRetriever):
-    """Custom retriever that performs both semantic search and hybrid search."""
+
+class EmbeddingRetriever(BaseRetriever):
+    """Custom retriever that performs both semantic search."""
     @staticmethod
-    def load_hybrid_retriever(path: str, tag: str, topk: int = 8) -> None:
+    def load_retriever(path: str, tag: str, topk: int = 8) -> None:
         embedding = EmbeddingStore.get_embedding_by_task(tag)
         Settings.llm = None
         Settings.llm_predictor = None
@@ -106,9 +107,57 @@ class HybridRetriever(BaseRetriever):
             vector_retriever = VectorIndexRetriever(
                 index=embedding_index,
                 similarity_top_k=topk)
-        # For now, we do index everytime we restart the inference.
+
+            return EmbeddingRetriever(vector_retriever)
+        except (ZeroDivisionError, FileNotFoundError) as error:
+            print(error)
+            return None
+
+    def __init__(self, vec_retriever):
+        self._vector_retriever = vec_retriever
+
+    def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
+        """Retrieve nodes given query."""
+        return self._vector_retriever.retrieve(query_bundle)
+
+#
+class HybridRetriever(BaseRetriever):
+    """Custom retriever that performs both semantic search and hybrid search."""
+    @staticmethod
+    def load_retriever(path: str, tag: str, topk: int = 8) -> None:
+        embedding = EmbeddingStore.get_embedding_by_task(tag)
+        Settings.llm = None
+        Settings.llm_predictor = None
+        Settings.embed_model=embedding
+
+        try:
+            storage_context = StorageContext.from_defaults(
+                persist_dir=f"{path}/{tag}/")
+
+            embedding_index = load_index_from_storage(
+                storage_context,
+                index_id="embedding")
+
+            vector_retriever = VectorIndexRetriever(
+                index=embedding_index,
+                similarity_top_k=topk)
+
+            # For exemplar, the embedding and keyword need to use different text
+            keywords_nodes = []
+            raw_nodes = list(embedding_index.docstore.docs.values())
+            for node in raw_nodes:
+                keywords_nodes.append(
+                    TextNode(
+                        text=node.metadata["template"],
+                        id_=node.id_,
+                        metadata=node.metadata,
+                        excluded_embed_metadata_keys=["owner", "template_without_slot", "context_frame", "context_slot", "owner_mode", "template"],
+                    )
+                )
+
+            # For now, we do index everytime we restart the inference.
             keyword_retriever = BM25Retriever.from_defaults(
-                docstore=embedding_index.docstore, similarity_top_k=topk)
+                nodes=keywords_nodes, similarity_top_k=topk)
             return HybridRetriever(vector_retriever, keyword_retriever)
         except (ZeroDivisionError, FileNotFoundError) as error:
             print(error)
@@ -177,6 +226,23 @@ class ContextRetriever:
     def retrieve_by_exemplar(self, query):
         return self.exemplar_retriever.retrieve(query)
 
+    def retrieve_by_expectation(self, expectations):
+        # What if the query is too short, we use slot from expectation to help.
+        # Note, this only works if text in node contains <label> not just slot name.
+        # For now, this does not have an effect, because there is no <label> in the exemplar.
+        slot_nodes = []
+        for frame in expectations:
+            slot = get_value(frame, 'slot')
+            if slot is None or slot == "":
+                continue
+
+            query = f"<{slot}>"
+            match = ContextMatcher(frame)
+            nodes = self.exemplar_retriever.retrieve(query)
+            # make sure the frame also match
+            slot_nodes.extend(filter(match, nodes))
+        return slot_nodes
+
     def __call__(self, query, expectations):
         # The goal here is to find the combined descriptions and exemplars.
         if self.desc_retriever is not None:
@@ -188,21 +254,9 @@ class ContextRetriever:
 
         if self.exemplar_retriever is not None:
             exemplar_nodes = self.exemplar_retriever.retrieve(query)
-
             original_size = len(exemplar_nodes)
-            # Now we search slot
+
             slot_nodes = []
-            for frame in expectations:
-                slot = get_value(frame, 'slot')
-                if slot is None or slot == "":
-                    continue
-
-                query = f"< {slot} >"
-                match = ContextMatcher(frame)
-                nodes = self.exemplar_retriever.retrieve(query)
-                # make sure the frame also match
-                slot_nodes.extend(filter(match, nodes))
-
             exemplar_nodes = [
                 item.node for item in merge_nodes(exemplar_nodes, slot_nodes)
             ][0:original_size]
@@ -213,6 +267,7 @@ class ContextRetriever:
 
         # So we do not have too many exemplars from the same skill
         exemplar_nodes = dedup_nodes(exemplar_nodes, True, self.arity)
+
         all_nodes = dedup_nodes(desc_nodes + exemplar_nodes, False, 1)
 
         owners = [
@@ -229,6 +284,6 @@ def load_context_retrievers(module: Schema, path: str):
 
     return ContextRetriever(
         module,
-        HybridRetriever.load_hybrid_retriever(path, "desc", LugConfig.get().desc_retrieve_topk),
-        HybridRetriever.load_hybrid_retriever(path,"exemplar", LugConfig.get().exemplar_retrieve_topk),
+        EmbeddingRetriever.load_retriever(path, "desc", LugConfig.get().desc_retrieve_topk),
+        HybridRetriever.load_retriever(path, "exemplar", LugConfig.get().exemplar_retrieve_topk),
     )

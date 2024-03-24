@@ -248,27 +248,35 @@ class Replace:
 
     def __call__(self, match):
         label = match.group(1)
-        full_label = f"{CamelToSnake.decode(self.owner)}.{label}"
+        full_label = f"{self.owner}.{label}"
         slot_meta = self.module.slots[full_label]
         slot_name = slot_meta.name
-
-        return slot_name
+        # TODO(sean): Should we keep label? f"{slot_name} <{label}>"
+        # We use < slot_name > for markers needed when we fine tune embedding
+        return f"< {slot_name} >"
 
 
 def build_nodes_from_exemplar_store(module_schema: Schema, store: ExemplarStore, nodes: List[TextNode]):
-    pattern = r"<(.+?)>"
+    pattern = re.compile(r"<(.+?)>")
     for label, exemplars in store.items():
+        label_to_name = Replace(module_schema, label)
         for exemplar in exemplars:
-            process = Replace(module_schema, label)
-            text = re.sub(pattern, process, exemplar["template"])
+            template = exemplar["template"]
+            text = pattern.sub(label_to_name, template)
+
+            if text.strip() == "":
+                continue
+
             context_frame = get_value(exemplar, "context_frame", None)
+            full_text = f'{text} : {label}'
+            hashed_id = str(hash(full_text))
             nodes.append(
                 TextNode(
                     text=text,
-                    id_=str(hash(text + context_frame if context_frame is not None else "")),
+                    id_=hashed_id,
                     metadata={
                         "owner": label,
-                        "template": exemplar["template"],  # This is the original template
+                        "template": template,  # This is the original template
                         "context_frame": context_frame,
                         "context_slot": get_value(exemplar, "context_slot", None),
                         "owner_mode": get_value(exemplar, "owner_mode", "normal"),
@@ -277,6 +285,7 @@ def build_nodes_from_exemplar_store(module_schema: Schema, store: ExemplarStore,
                 )
             )
 
-
 if __name__ == "__main__":
     print(json.dumps(ExemplarStore.model_json_schema(), indent=2))
+
+

@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from opencui.core.annotation import FrameSchema
 from opencui.core.config import LugConfig
 from opencui.core.embedding import EmbeddingStore
-from opencui.core.retriever import HybridRetriever
+from opencui.core.retriever import EmbeddingRetriever, HybridRetriever
 from opencui.finetune.commons import DatasetFactory
 
 
@@ -25,14 +25,14 @@ from opencui.finetune.commons import DatasetFactory
 @dataclass
 class DatasetCreatorWithIndex:
     creator: DatasetFactory
-    desc_retriever: HybridRetriever
+    desc_retriever: EmbeddingRetriever
     exemplar_retriever: HybridRetriever
 
     @classmethod
     def build(cls, creator: DatasetFactory, path: str):
         return DatasetCreatorWithIndex(
             creator=creator,
-            desc_retriever=HybridRetriever(path, "desc", LugConfig.get().desc_retrieve_topk),
+            desc_retriever=EmbeddingRetriever(path, "desc", LugConfig.get().desc_retrieve_topk),
             exemplar_retriever=HybridRetriever(
                 path, "exemplar", LugConfig.get().exemplar_retrieve_topk
             ),

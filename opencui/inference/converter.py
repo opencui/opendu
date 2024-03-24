@@ -328,23 +328,24 @@ class ISkillConverter(SkillConverter, ABC):
         print(f"parse for skill: {text} with {expectations}")
         # For now, we only pick one skill
         picker = SingleOwnerPicker(expectations)
-        skills, nodes = self.retrieve(text, expectations)
-        print(f"get_skills for {text} with {len(nodes)} nodes\n")
+        skills, exemplar_nodes = self.retrieve(text, expectations)
+        print(f"get_skills for {text} with {len(exemplar_nodes)} nodes\n")
 
         debug_infos = []
 
         # for exemplar
         if self.use_exemplar:
-            exemplar_prompts, owners, owner_modes = self.build_prompts_by_examples(text, nodes)
+            exemplar_prompts, owners, owner_modes = self.build_prompts_by_examples(text, exemplar_nodes)
             exemplar_outputs = self.generator.generate(exemplar_prompts, GenerateMode.exemplar)
 
             exemplar_preds = [
                 parse_json_from_string(raw_flag, raw_flag)
                 for index, raw_flag in enumerate(exemplar_outputs)
             ]
+            print(exemplar_prompts)
             print(exemplar_preds)
             if debug:
-                self.accumulate_debug_for_exemplars(exemplar_preds, nodes, debug_infos)
+                self.accumulate_debug_for_exemplars(exemplar_preds, exemplar_nodes, debug_infos)
 
             picker.accumulate(exemplar_preds, owners, 1)
 
@@ -360,6 +361,7 @@ class ISkillConverter(SkillConverter, ABC):
                 parse_json_from_string(raw_flag, None)
                 for index, raw_flag in enumerate(desc_outputs)
             ]
+            print(desc_prompts)
             print(desc_preds)
             if debug:
                 self.accumulate_debug_for_skills(desc_preds, skills, debug_infos)
@@ -367,7 +369,7 @@ class ISkillConverter(SkillConverter, ABC):
             picker.accumulate(desc_preds, owners, 1)
 
         label = picker.decide()
-        return label, list(map(node_to_exemplar, nodes)), debug_infos
+        return label, list(map(node_to_exemplar, exemplar_nodes)), debug_infos
 
     def get_skills(self, text):
         label, node = self.get_full_skills(text)
@@ -397,9 +399,9 @@ class ISkillConverter(SkillConverter, ABC):
         if not self.matcher.is_good_mode(owner_mode):
             return
 
-        picker = SingleOwnerPicker()
+        picker = SingleOwnerPicker([])
         # nodes owner are always included in the
-        skills, nodes = self.retrieve(text)
+        skills, nodes = self.retrieve(text, [])
 
         # for exemplar
         exemplar_prompts, owners, owner_modes = self.build_prompts_by_examples(text, nodes, CamelToSnake)
@@ -452,8 +454,8 @@ def node_to_exemplar(node):
     meta = node.metadata
     result = {
         "type": "exemplar",
-        "template": node.text,
-        "ownerFrame": CamelToSnake.decode(meta["owner"])
+        "template": meta["template"],
+        "ownerFrame": meta["owner"]
     }
 
     # The optional information. Kotlin side use label instead of owner_mode.
@@ -544,12 +546,10 @@ class Converter:
         func_name, evidence, _ = self.skill_converter.get_full_skills(utterance, expectations, debug)
         # For now, we assume single intent.
         result = {
+            "owner": func_name,
             "utterance": utterance,
             "evidence": evidence
         }
-
-        if func_name is not None:
-            result["owner"] = CamelToSnake.decode(func_name)
 
         # TODO: figure out how to handle the multi intention utterance.
         return [result]
