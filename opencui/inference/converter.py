@@ -307,7 +307,7 @@ class ISkillConverter(SkillConverter, ABC):
             item = {
                 "type": "exemplar",
                 "owner": nodes[index].metadata["owner"],
-                "text": nodes[index].metadata["template"],
+                "text": nodes[index].text,
                 "result": preds[index]
             }
             infos.append(item)
