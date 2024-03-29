@@ -307,7 +307,7 @@ class ISkillConverter(SkillConverter, ABC):
             item = {
                 "type": "exemplar",
                 "owner": nodes[index].metadata["owner"],
-                "text": nodes[index].metadata["template"],
+                "text": nodes[index].text,
                 "result": preds[index]
             }
             infos.append(item)
@@ -328,7 +328,7 @@ class ISkillConverter(SkillConverter, ABC):
         print(f"parse for skill: {text} with {expectations}")
         # For now, we only pick one skill
         picker = SingleOwnerPicker(expectations)
-        skills, exemplar_nodes = self.retrieve(text, expectations)
+        skills, exemplar_nodes = self.retrieve(text)
         print(f"get_skills for {text} with {len(exemplar_nodes)} nodes\n")
 
         debug_infos = []

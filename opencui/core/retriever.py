@@ -142,7 +142,9 @@ class HybridRetriever(BaseRetriever):
                 index=embedding_index,
                 similarity_top_k=topk)
 
-            # For exemplar, the embedding and keyword need to use different text
+            # For exemplar, the embedding and keyword need to use different
+            # The reason we use original template is to reduce the casual match
+            # related to slot name, since the original template use slot_label.
             keywords_nodes = []
             raw_nodes = list(embedding_index.docstore.docs.values())
             for node in raw_nodes:
@@ -243,7 +245,7 @@ class ContextRetriever:
             slot_nodes.extend(filter(match, nodes))
         return slot_nodes
 
-    def __call__(self, query, expectations):
+    def __call__(self, query):
         # The goal here is to find the combined descriptions and exemplars.
         if self.desc_retriever is not None:
             desc_nodes = [
