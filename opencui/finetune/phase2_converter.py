@@ -67,7 +67,7 @@ class PromptConverter(TrainPhase2Converter):
                 raise ValueError(f"Mode {mode} is not supported.")
 
             ins.append(self.prompts[mode](input_dict))
-            outputs.append(self.label(decision))
+            outs.append(self.label(decision))
 
 
 
