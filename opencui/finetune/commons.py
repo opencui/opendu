@@ -63,21 +63,25 @@ def build_dataset_index(tag: str, dsc: Dataset, output: str, embedding: BaseEmbe
     create_index(output, "exemplar", exemplar_nodes, embedding)
 
 
-#
-# This is need to create the different dataset based on prompt templating.
-# We expect the input dataset has utterance field.
-# We need to make sure the output dataset has input/output field,
 @dataclass
 class DatasetFactory(ABC):
     __metaclass__ = abc.ABCMeta
     tag: str
-    schema: Schema
 
     @abc.abstractmethod
     def __getitem__(self, split: str = "train") -> Dataset:
         """This return the domain meta needed."""
         return
 
+
+#
+# This is need to create the different dataset based on prompt templating.
+# We expect the input dataset has utterance field.
+# We need to make sure the output dataset has input/output field,
+@dataclass
+class SchemaDatasetFactory(DatasetFactory, ABC):
+    __metaclass__ = abc.ABCMeta
+    schema: Schema
 
 @dataclass
 class MappedDatasetDict(ABC):
@@ -106,7 +110,7 @@ def collect_slot_values(dataset):
     return entities
 
 
-class JsonDatasetFactory(DatasetFactory, ABC):
+class JsonDatasetFactory(SchemaDatasetFactory, ABC):
     def __init__(self, path, tag=None, prefix=""):
         self.path = path
         schema_dict = json.load(open(f"{path}/schema.json"))
@@ -123,7 +127,7 @@ class JsonDatasetFactory(DatasetFactory, ABC):
         return self.datasets[item]
 
 
-class JsonBareDatasetFactory(DatasetFactory, ABC):
+class JsonBareDatasetFactory(SchemaDatasetFactory, ABC):
     def __init__(self, path, tag=None, prefix=""):
         self.path = path
         files = {
@@ -139,7 +143,7 @@ class JsonBareDatasetFactory(DatasetFactory, ABC):
 
 
 
-class DatasetFactoryMerger(DatasetFactory, ABC):
+class DatasetFactoryMerger(SchemaDatasetFactory, ABC):
     def __init__(self, factories):
         self.factories = factories
 
@@ -178,6 +182,29 @@ class ConvertedFactory(DatasetFactory):
         return dataset.map(self.convert_one, batched=True, remove_columns=self.columns)
 
 
+@dataclass
+class PromptedFactory(DatasetFactory):
+    __metaclass__ = abc.ABCMeta
+    def __init__(self, file, unused_columns):
+        self.file = file
+        self.converters = [PromptConverter()]
+        self.columns = unused_columns
+        self.tag = file.split("/")[3]
+
+    def convert_one(self, item):
+        ins = []
+        outs = []
+        for convert in self.converters:
+            convert(item, ins, outs)
+        assert len(ins) == len(outs)
+        return {"input": ins, "output": outs}
+
+    def __getitem__(self, split: str) -> Dataset:
+        if split != "train": return None
+        dataset = load_dataset('json', data_files=self.file)[split]
+        return dataset.map(self.convert_one, batched=True, remove_columns=self.columns)
+
+
 # Here we create the dataset factory for skills
 def load_skill_factory(skill_modes, factories):
     # make sure run build_skill_dataset first.
@@ -207,24 +234,16 @@ def load_bot_factory(converted_factories):
     # this is used to extract all the datasets from labeling process and make it available.
     # We assume that there are botsets/{lang}/{bots}/
     matching_data_directories = glob.glob("./botsets/en/*/MatchLabeledData.json")
-    converter = PromptConverter()
-    columns = []
+    columns = ['_created_at', '_id', 'bot', 'context', 'decision', 'lang', 'matchType', 'owner', 'reference', 'userId', 'userOrg', 'utterance']
     for directory in matching_data_directories:
-        tag = directory.split("/")[3]
-        # Load the original dataset.
-        orig_factory = JsonDatasetFactory(directory, tag)
         # Add prompt to it.
-        converted_factories.append(
-            ConvertedFactory(orig_factory, [conterter], columns)
-        )
+        converted_factories.append(PromptedFactory(directory, columns))
 
 
 # Load training set, based on what is inside the --training_mode desc-exemplar-extractive-slot
 def load_training_dataset(args):
     converted_factories = []
-
-
-
+    load_bot_factory(converted_factories)
     if "desc" in args.training_mode:
         print("load desc dataset")
         load_skill_factory(["desc"], converted_factories)
@@ -305,9 +324,10 @@ class SlotFinalizer:
         return " ".join(payloads)
 
 if __name__ == "__main__":
-
-    tokens = "[ peter  norvig ] er "
-
-    simplify = SlotSimplifier()
-
-    print(" ".join(map(lambda x: x.strip(), simplify(tokens))))
+    factories = []
+    load_bot_factory(factories)
+    factory = factories[0]
+    print(factory)
+    trainset = factory["train"]
+    for item in trainset:
+        print(item)
