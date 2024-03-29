@@ -61,21 +61,34 @@ python3 funetune/find_k_for_prompt.py
 Assuming that you have schema-guided dialogue dataset at <dir for lug>/../dstc8-schema-guided-dialogue/
 
 ### Fine-tune the generation model
-By default, OpenLug uses a cascade model, where we use a lora based skill more to determine the skill/function 
-first, then use a different lora adaptor for determine the slot/parameter values. Ideally, both adaptors are 
-paired with the same base model. The generation models need to be fine-tuned separately. Mainly by changing the shared 
+By default, OpenLug uses a cascade model, where we use a skill model to determine the skill/function 
+first, then use a different model for determine the slot/parameter values. Ideally, both models, along with other
+required models are trained in a multitask fashion, in either full fine-tuning or lora based. It is also possible to
+fine-tune requires generation models separately, but that is not what we aim for now. Mainly by changing the shared 
 configuration in core/config.py and training aspect in finetune/generation.sh.  
 
-Use skill and extractive_slot for training_mode in finetune/generation.sh for fine-tuning skill and slot models respectively.
+The NLU models will be trained on both public dataset, and the data generated from OpenCUI platform. We will
+potentially have two different models: specialized for one bot, and generalized for all bots. The first choice is
+useful for isolated the performance, and private deployment. The second choice is useful for dev environment on
+platform. Here we focus on how to do full fine-tuning for latter.
 
-```bash
-python3 finetune/generation.sh
-```
+Since we are using a decomposed model, more directly pair wise discriminative model, for the hot fix capability,
+the data for fine-tuning can be generated in two different ways: 
+1. Labels are available before retrieval, so that we need to build index and produce retrieved pairs. 
+2. Labels are available on pairs already so that we just need to add prompt to it.
 
-After finetune, it is advised to publish the resulting adaptors to huggingface so that people can test your adaptors.
+We use decomposed discriminative model mainly because it is easy to provide labels, as operators only need to
+fix the parts that need to be fixed instead of needing to provide the full label every time.
+
+
+
+#### Prepare the for dataset.
+Assuming that we put dataset in a directory called root. Then we can place training data we get for each bot in
+the separate directories in coded in: org_bot_lang. 
+
 
 ### Testing
-The follow python script can be used to test finetuned adaptors.
+The follow python script can be used to test finetuned models.
 ```bash
 python3 fineturn/test.py 
 ```
@@ -98,7 +111,7 @@ function name, and one for predicting arguments. In this latter approach, we hav
 
 We will focus on using two models to solve the conversion, and focus on extracting value for one slot each time. Of
 course, since we are using decoder-only model, two models are really just two different prompt templates typically
-using the same model. 
+using the same model.
 
 
 Reference:

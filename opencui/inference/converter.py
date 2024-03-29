@@ -328,7 +328,7 @@ class ISkillConverter(SkillConverter, ABC):
         print(f"parse for skill: {text} with {expectations}")
         # For now, we only pick one skill
         picker = SingleOwnerPicker(expectations)
-        skills, exemplar_nodes = self.retrieve(text, expectations)
+        skills, exemplar_nodes = self.retrieve(text)
         print(f"get_skills for {text} with {len(exemplar_nodes)} nodes\n")
 
         debug_infos = []

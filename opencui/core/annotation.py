@@ -241,25 +241,30 @@ class CamelToSnake:
 
 
 # This try to replace label with name so that it is easy to change DU behavior without touch label.
-class Replace:
+class ToSlotName:
     def __init__(self, module:Schema, owner:str):
         self.module = module
         self.owner = owner
 
-    def __call__(self, match):
-        label = match.group(1)
+    def __call__(self, label):
         full_label = f"{self.owner}.{label}"
         slot_meta = self.module.slots[full_label]
-        slot_name = slot_meta.name
-        # TODO(sean): Should we keep label? f"{slot_name} <{label}>"
-        # We use < slot_name > for markers needed when we fine tune embedding
+        return slot_meta.name
+
+
+class MatchReplace:
+    def __init__(self, replace):
+        self.replace = replace
+    def __call__(self, match):
+        label = match.group(1)
+        slot_name = self.replace(label)
         return f"< {slot_name} >"
 
 
 def build_nodes_from_exemplar_store(module_schema: Schema, store: ExemplarStore, nodes: List[TextNode]):
     pattern = re.compile(r"<(.+?)>")
     for label, exemplars in store.items():
-        label_to_name = Replace(module_schema, label)
+        label_to_name = MatchReplace(ToSlotName(module_schema, label))
         for exemplar in exemplars:
             template = exemplar["template"]
             text = pattern.sub(label_to_name, template)
