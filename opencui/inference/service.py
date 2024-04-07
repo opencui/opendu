@@ -8,7 +8,7 @@ import sys
 from enum import Enum
 import os
 from lru import LRU
-
+import traceback as tb
 from aiohttp import web
 import shutil
 from opencui.core.config import LugConfig
@@ -54,19 +54,27 @@ async def index(request: web.Request):
         shutil.rmtree(index_path)
 
     logging.info(f"create index for {bot}")
-    indexing(bot_path)
+    try:
+        indexing(bot_path)
 
-    # Assume it is always
-    reload(bot, request.app)
+        # Assume it is always
+        reload(bot, request.app)
+    except Exception as e:
+        traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
+        return web.Response(text=traceback_str, status=500)
 
-    # client will only check 200.
     return web.Response(text="Ok")
 
 
 @routes.get("/v1/load/{bot}")
 async def load(request: web.Request):
     bot = request.match_info['bot']
-    reload(bot, request.app)
+    try:
+        reload(bot, request.app)
+    except Exception as e:
+        traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
+        return web.Response(text=traceback_str, status=500)
+
     # client will only check 200.
     return web.Response(text="Ok")
 
