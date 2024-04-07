@@ -82,8 +82,13 @@ async def load(request: web.Request):
 @routes.post("/v1/predict/{bot}")
 async def understand(request: web.Request):
     bot = request.match_info['bot']
+    
     # Make sure we have reload the index.
-    reload(bot, request.app)
+    try:
+        reload(bot, request.app)
+    except Exception as e:
+        traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
+        return web.Response(text=traceback_str, status=500)
 
     req = await request.json()
     logging.info(req)
