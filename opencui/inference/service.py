@@ -8,7 +8,7 @@ import sys
 from enum import Enum
 import os
 from lru import LRU
-
+import traceback as tb
 from aiohttp import web
 import shutil
 from opencui.core.config import LugConfig
@@ -54,19 +54,27 @@ async def index(request: web.Request):
         shutil.rmtree(index_path)
 
     logging.info(f"create index for {bot}")
-    indexing(bot_path)
+    try:
+        indexing(bot_path)
 
-    # Assume it is always
-    reload(bot, request.app)
+        # Assume it is always
+        reload(bot, request.app)
+    except Exception as e:
+        traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
+        return web.Response(text=traceback_str, status=500)
 
-    # client will only check 200.
     return web.Response(text="Ok")
 
 
 @routes.get("/v1/load/{bot}")
 async def load(request: web.Request):
     bot = request.match_info['bot']
-    reload(bot, request.app)
+    try:
+        reload(bot, request.app)
+    except Exception as e:
+        traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
+        return web.Response(text=traceback_str, status=500)
+
     # client will only check 200.
     return web.Response(text="Ok")
 
@@ -74,8 +82,13 @@ async def load(request: web.Request):
 @routes.post("/v1/predict/{bot}")
 async def understand(request: web.Request):
     bot = request.match_info['bot']
+
     # Make sure we have reload the index.
-    reload(bot, request.app)
+    try:
+        reload(bot, request.app)
+    except Exception as e:
+        traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
+        return web.Response(text=traceback_str, status=500)
 
     req = await request.json()
     logging.info(req)
@@ -105,22 +118,37 @@ async def understand(request: web.Request):
         return web.json_response({"errMsg": f"Not implemented yet."})
 
     if mode == "SKILL":
-        expectations = req.get("expectations")
-        results = l_converter.detect_triggerables(utterance, expectations)
+        try:
+            expectations = req.get("expectations")
+            results = l_converter.detect_triggerables(utterance, expectations)
+        except Exception as e:
+            traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
+            return web.Response(text=traceback_str, status=500)
+
         return web.json_response(results)
 
     if mode == "SLOT":
-        slots = req.get("slots")
-        entities = req.get("candidates")
-        results = l_converter.fill_slots(utterance, slots, entities)
-        logging.info(results)
+        try:
+            slots = req.get("slots")
+            entities = req.get("candidates")
+            results = l_converter.fill_slots(utterance, slots, entities)
+            logging.info(results)
+        except Exception as e:
+            traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
+            return web.Response(text=traceback_str, status=500)
+
         return web.json_response(results)
 
     if mode == "BINARY":
-        questions = req.get("questions")
-        dialog_acts = req.get("dialogActs")
-        # So that we can use different llm.
-        resp = l_converter.inference(utterance, questions)
+        try:
+            questions = req.get("questions")
+            dialog_acts = req.get("dialogActs")
+            # So that we can use different llm.
+            resp = l_converter.inference(utterance, questions)
+        except Exception as e:
+            traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
+            return web.Response(text=traceback_str, status=500)
+
         return web.json_response(resp)
 
 

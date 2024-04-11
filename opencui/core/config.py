@@ -47,4 +47,4 @@ class InferenceConfig(BaseModel):
     skill_model: str = ""
     extractive_slot_model: str = ""
     nli_model: str = ""
-    converter_debug: str = True
+    converter_debug: bool = True
