@@ -4,9 +4,9 @@
 #
 export PYTHONPATH="$PYTHONPATH:."
 
-python3 opencui/finetune/t2t.py \
-    --model_name_or_path google/flan-t5-large \
-    --output_dir ./output/flant5large \
+accelerate launch opencui/finetune/t2t.py \
+    --model_name_or_path google-t5/t5-large \
+    --output_dir ./output/t5large \
     --logging_steps 50 \
     --save_strategy epoch \
     --data_seed 42 \

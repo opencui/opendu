@@ -6,7 +6,7 @@ export PYTHONPATH="$PYTHONPATH:."
 
 accelerate launch opencui/finetune/t2t.py \
     --model_name_or_path google/gemma-2b \
-    --output_dir  ./output/gemma2b \
+    --output_dir  ./output/gemma2b-lora \
     --logging_steps 50 \
     --save_strategy epoch \
     --data_seed 42 \
@@ -36,7 +36,7 @@ accelerate launch opencui/finetune/t2t.py \
     --seed 0 \
     --debug_dataset False \
     --training_mode desc-exemplar-extractive_slot-nli  \
-    --peft_mode null \
+    --peft_mode lora \
     --model_type gpt \
     --trust_remote_code \
     --report_to wandb

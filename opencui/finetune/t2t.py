@@ -171,12 +171,9 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
             "help": "How many checkpoints to save before the oldest is overwritten"
         },
     )
-    fp16: bool = field(
-        default=False, metadata={"help": "Whether or not use fp16 during training."}
-    ),
     bf16: bool = field(
         default=True, metadata={"help": "Whether or not use bf16 during training."}
-    ),
+    )
     debug_dataset: bool = field(
         default=False, metadata={"help": "print out dataset instead"}
     )
@@ -271,9 +268,9 @@ def get_model(args, peft_config=None):
         special_tokens_dict['additional_special_tokens'] = SpecialTokens.list()
 
     # For now, regardless, we always train in multitasks, so no need to add special token.
-    #smart_tokenizer_and_embedding_resize(
-    #    special_tokens_dict=special_tokens_dict, tokenizer=tokenizer, model=model
-    #)
+    smart_tokenizer_and_embedding_resize(
+        special_tokens_dict=special_tokens_dict, tokenizer=tokenizer, model=model
+    )
 
     return model, tokenizer
 

@@ -19,10 +19,9 @@ class LugConfig:
 
 class InferenceConfig(BaseModel):
     embedding_device: str = "cuda:0"
-    embedding_model: str = "BAAI/bge-base-en-v1.5"
-    embedding_desc_model: str = ""
-    embedding_desc_prompt: str = "baai_desc"
-    embedding_exemplar_prompt: str = "baai_exemplar"
+    #embedding_model: str = "BAAI/bge-base-en-v1.5"
+    embedding_model: str = "dunzhang/stella_en_400M_v5"
+
 
     # We might not want to touch this, without rerun find_k
     desc_retrieve_topk: int = 8

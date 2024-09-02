@@ -1,5 +1,6 @@
 import math
-from typing import Any, List
+from typing import Any, ClassVar, List
+from enum import Enum
 
 import numpy as np
 from llama_index.core.bridge.pydantic import PrivateAttr
@@ -9,102 +10,109 @@ from sentence_transformers import SentenceTransformer
 from opencui.core.config import LugConfig
 
 
+# There are two different retrieval tasks:
+# 1. desc, where query is query, and key/text is the deescription.
+# 2. exemplar, wehre query is query, and key/text is exemplar.
+
+DESC = "desc"
+EXEMPLAR = "exemplar"
+
+
 # We reuse the underlying embedding when we can.
 class EmbeddingStore:
     _models: dict[str, SentenceTransformer] = {}
-
-    # We need different instruction pairs for different use cases.
-    INSTRUCTIONS = {
-        "qa": {
-            "query":
-            "Represent this query for retrieving relevant documents: ",
-            "key": "Represent this document for retrieval: ",
-        },
-        "icl": {
-            "query":
-            "Convert this example into vector to look for useful examples: ",
-            "key": "Convert this example into vector for retrieval: ",
-        },
-        "desc": {
-            "query":
-            "Convert this text into vector to look for useful function: ",
-            "key":
-            "Convert this function description into vector for retrieval: ",
-        },
-        "exemplar": {
-            "query":
-            "Convert this text into vector to look for useful examples: ",
-            "key": "Convert this example into vector for retrieval: ",
-        },
-        "chat": {
-            "query":
-            "Embed this dialogue to find useful historical dialogues: ",
-            "key": "Embed this historical dialogue for retrieval: ",
-        },
-        "lrlm": {
-            "query":
-            "Embed this text chunk for finding useful historical chunks: ",
-            "key": "Embed this historical text chunk for retrieval: ",
-        },
-        "tool": {
-            "query":
-            "Transform this user request for fetching helpful tool descriptions: ",
-            "key": "Transform this tool description for retrieval: "
-        },
-        "convsearch": {
-            "query":
-            "Encode this query and context for searching relevant passages: ",
-            "key": "Encode this passage for retrieval: ",
-        },
-        "baai_desc": {
-            "query": "",
-            "key": "Represent this sentence for searching relevant passages:"
-        },
-        "baai_exemplars": {
-            "query": "",
-            "key": ""
-        }
-    }
 
     @classmethod
     def get_model(cls, model_name):
         if model_name in EmbeddingStore._models:
             return EmbeddingStore._models[model_name]
         else:
-            model = SentenceTransformer(model_name, device=LugConfig.get().embedding_device)
-            EmbeddingStore._models[model_name] = model
+            model = SentenceTransformer(model_name, device=LugConfig.get().embedding_device, trust_remote_code=True)
+            EmbeddingStore._models[model_name] = model.half()
             return model
 
     @classmethod
     def get_embedding_by_task(cls, kind):
+        # make sure 
+        if kind != "desc" and kind != "exemplar":
+            raise RuntimeError("We can only handle desc and exemplar")
+        
+        model_name = LugConfig.get().embedding_model
         model = EmbeddingStore.get_model(LugConfig.get().embedding_model)
-        return InstructedEmbeddings(model, EmbeddingStore.INSTRUCTIONS[kind])
+        if model_name.startswith("dunzhang"):
+            return StellaEmbeddings(model, kind)
+        else:
+            return BaaiEmbeddings(model, kind)
 
     @classmethod
     def for_description(cls) -> BaseEmbedding:
-        model = EmbeddingStore.get_model(LugConfig.get().embedding_model)
-        kind = LugConfig.get().embedding_desc_prompt
-        return InstructedEmbeddings(model, EmbeddingStore.INSTRUCTIONS[kind])
-
+        return EmbeddingStore.get_embedding_by_task(DESC)
+    
     @classmethod
     def for_exemplar(cls) -> BaseEmbedding:
-        model = EmbeddingStore.get_model(LugConfig.get().embedding_model)
-        kind = LugConfig.get().embedding_desc_prompt
-        return InstructedEmbeddings(model, EmbeddingStore.INSTRUCTIONS[kind])
+        return EmbeddingStore.get_embedding_by_task(EXEMPLAR)
 
 
-class InstructedEmbeddings(BaseEmbedding):
+# This embedding is based on Stella.
+# This embedding has two different modes: one for query, and one for description.
+class StellaEmbeddings(BaseEmbedding):
     _instructions: dict[str, str] = PrivateAttr()
     _model: SentenceTransformer = PrivateAttr()
+    _query_prompt: dict[str, str] = PrivateAttr()
+    _text_prompt: dict[str, str] = PrivateAttr()
+
+    def __init__(self, model: SentenceTransformer, kind: str, **kwargs: Any) -> None:
+        self._model = model
+        self._query_prompt = {"prompt_name": "s2p_query" } if kind == DESC else {"prompt_name": "s2s_query" }
+        self._text_prompt = {} if kind == DESC else {"prompt_name": "s2s_query" }
+        super().__init__(**kwargs)
+
+    @classmethod
+    def class_name(cls) -> str:
+        return "stella"
+
+    async def _aget_query_embedding(self, query: str) -> List[float]:
+        return self._get_query_embedding(query)
+
+    async def _aget_text_embedding(self, text: str) -> List[float]:
+        return self._get_text_embedding(text)
+
+    def _get_query_embedding(self, query: str) -> List[float]:
+        return self._model.encode(query, normalize_embeddings=True, show_progress_bar=False, **self._query_prompt)
+
+    def _get_text_embedding(self, text: str) -> List[float]:
+        return self._model.encode(text, normalize_embeddings=True, show_progress_bar=False, **self._text_prompt)
+
+    def _get_text_embeddings(self, texts: List[str]) -> List[List[float]]:
+        embeddings = self._model.encode(texts, normalize_embeddings=True, **self._text_prompt)
+        return embeddings.tolist()
+
+
+# This is for BAAI
+class BaaiEmbeddings(BaseEmbedding):
+    _instructions: dict[str, str] = PrivateAttr()
+    _model: SentenceTransformer = PrivateAttr()
+
+    # We need different instruction pairs for different use cases.
+    prompts: ClassVar[dict[str, dict[str, str]]] = {
+        DESC : {
+            "query": "",
+            "key": "Represent this sentence for searching relevant passages:"
+        },
+        EXEMPLAR : {
+            "query": "",
+            "key": ""
+        }
+    }
 
     def __init__(
         self,
         model: SentenceTransformer,
-        instruction: dict[str, str],
+        kind: str,
         **kwargs: Any,
     ) -> None:
         self._model = model
-        self._instructions = instruction
+        self._instructions = BaaiEmbeddings.prompts[kind]
         super().__init__(**kwargs)
 
     @classmethod
@@ -136,6 +144,8 @@ class InstructedEmbeddings(BaseEmbedding):
         embeddings = self._model.encode(texts, normalize_embeddings=True)
         return embeddings.tolist()
 
+
+
 def similarity(u0, u1, encoder):
     em0 = encoder.get_query_embedding(u0)
     em1 = encoder.get_text_embedding(u1)
@@ -148,6 +158,8 @@ class Comparer:
         self.encoder1 = encoder1
 
     def __call__(self, u0, t0):
+        print(u0)
+        print(t0)
         print(similarity(u0, t0, self.encoder0))
         print(similarity(u0, t0, self.encoder1))
 
@@ -174,6 +186,10 @@ if __name__ == "__main__":
 
     u0 = "okay, i'd like to make a transfer of 370 dollars from checking to khadija."
     t0 = 'that one works. i would like to buy a bus ticket.'
+    compare(u0, t0)
+
+    u0 = "okay, i'd like to make a transfer of 370 dollars from checking to khadija."
+    t0 = 'help user transfer their money from one account to another.'
     compare(u0, t0)
 
 
