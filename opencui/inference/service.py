@@ -180,6 +180,6 @@ if __name__ == "__main__":
             lru_capacity = int(arg)
 
     # This load the generator LLM first.
-    embedder = SentenceTransformer(LugConfig.get().embedding_model, device=LugConfig.get().embedding_device)
+    embedder = SentenceTransformer(LugConfig.get().embedding_model, device=LugConfig.get().embedding_device, trust_remote_code=True)
     Generator.build()
     web.run_app(init_app(root_path, lru_capacity), port=3001)
