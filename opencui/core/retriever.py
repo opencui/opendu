@@ -17,7 +17,7 @@ from llama_index.core.schema import NodeWithScore, TextNode, BaseNode
 
 from opencui.core.annotation import (FrameId, FrameSchema, Schema, CamelToSnake, get_value)
 from opencui.core.config import LugConfig
-from opencui.core.embedding import EmbeddingStore
+from opencui.core import embedding
 
 
 def build_nodes_from_skills(module: str, skills: dict[str, FrameSchema], nodes):
@@ -91,10 +91,9 @@ class EmbeddingRetriever(BaseRetriever):
     """Custom retriever that performs both semantic search."""
     @staticmethod
     def load_retriever(path: str, tag: str, topk: int = 8) -> None:
-        embedding = EmbeddingStore.get_embedding_by_task(tag)
         Settings.llm = None
         Settings.llm_predictor = None
-        Settings.embed_model=embedding
+        Settings.embed_model=embedding.EmbeddingStore.get_embedding_by_task(tag)
 
         try:
             storage_context = StorageContext.from_defaults(
@@ -125,10 +124,9 @@ class HybridRetriever(BaseRetriever):
     """Custom retriever that performs both semantic search and hybrid search."""
     @staticmethod
     def load_retriever(path: str, tag: str, topk: int = 8) -> None:
-        embedding = EmbeddingStore.get_embedding_by_task(tag)
         Settings.llm = None
         Settings.llm_predictor = None
-        Settings.embed_model=embedding
+        Settings.embed_model=embedding.EmbeddingStore.get_embedding_by_task(tag)
 
         try:
             storage_context = StorageContext.from_defaults(
