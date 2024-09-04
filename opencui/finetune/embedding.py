@@ -12,7 +12,7 @@ from opencui.core.annotation import FrameSchema
 from opencui.core.config import LugConfig
 from opencui.core.embedding import EmbeddingStore
 from opencui.core.retriever import EmbeddingRetriever, HybridRetriever
-from opencui.finetune.commons import SchemaDatasetFactory
+from opencui.finetune.commons import JsonDatasetFactory, SchemaDatasetFactory
 
 
 #
