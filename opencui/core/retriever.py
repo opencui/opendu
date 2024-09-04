@@ -281,7 +281,6 @@ class ContextRetriever:
 
 
 def load_context_retrievers(module: Schema, path: str):
-
     return ContextRetriever(
         module,
         EmbeddingRetriever.load_retriever(path, "desc", LugConfig.get().desc_retrieve_topk),

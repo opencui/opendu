@@ -57,7 +57,7 @@ async def index(request: web.Request):
     try:
         indexing(bot_path)
 
-        # Assume it is always
+        # Assume it is always a good idea to reload the index.
         reload(bot, request.app)
     except Exception as e:
         traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
@@ -188,6 +188,6 @@ if __name__ == "__main__":
             lru_capacity = int(arg)
 
     # This load the generator LLM first.
-    embedder = SentenceTransformer(LugConfig.get().embedding_model, device=LugConfig.get().embedding_device)
+    embedder = SentenceTransformer(LugConfig.get().embedding_model, device=LugConfig.get().embedding_device, trust_remote_code=True)
     Generator.build()
     web.run_app(init_app(root_path, lru_capacity), port=3001)

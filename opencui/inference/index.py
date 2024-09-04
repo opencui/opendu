@@ -33,7 +33,7 @@ def indexing(module):
 
     output_path = f"{module}/index/"
 
-    print(f"load {module}")
+    print(f"Loading {module}")
     module_schema, examplers, recognizers = load_all_from_directory(module)
     print(module_schema)
     build_nodes_from_skills(module, module_schema.skills, desc_nodes)

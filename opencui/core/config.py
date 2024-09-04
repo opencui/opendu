@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel
 
-DEVICE="cpu"
+DEVICE="cuda:0"
 
 class LugConfig:
     _instance = None
@@ -20,8 +20,8 @@ class LugConfig:
 
 class InferenceConfig(BaseModel):
     embedding_device: str = DEVICE
-    embedding_model: str = "BAAI/bge-base-en-v1.5"
-    #embedding_model: str = "dunzhang/stella_en_400M_v5"
+    #embedding_model: str = "BAAI/bge-base-en-v1.5"
+    embedding_model: str = "dunzhang/stella_en_400M_v5"
 
 
     # We might not want to touch this, without rerun find_k
