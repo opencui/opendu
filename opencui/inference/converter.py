@@ -2,13 +2,8 @@ import json
 import re
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from enum import Enum
 
-import torch
-from peft import PeftConfig, PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, AutoModelForSeq2SeqLM, AutoConfig
 
-from opencui import ModelType
 from opencui.core.annotation import (CamelToSnake, DialogExpectation, EntityMetas, Exemplar, FrameValue, ListRecognizer,
                                      OwnerMode, ExactMatcher, get_value)
 from opencui.core.config import LugConfig
