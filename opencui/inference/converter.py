@@ -144,7 +144,7 @@ class ExemplarConverter(SkillConverter, ABC):
             }
             infos.append(item)
 
-    def get_full_skills(self, text, expectations=None, debug=False):
+    def get_skills(self, text, expectations=None, debug=False):
         print(f"parse for skill: {text} with {expectations}")
         # For now, we only pick one skill
         picker = SingleOwnerPicker(expectations)
