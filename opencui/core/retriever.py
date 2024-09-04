@@ -102,10 +102,9 @@ class EmbeddingRetriever(BaseRetriever):
     """Custom retriever that performs both semantic search."""
     @staticmethod
     def load_retriever(path: str, tag: str, topk: int = 8) -> None:
-        embedding = embedding.EmbeddingStore.get_embedding_by_task(tag)
         Settings.llm = None
         Settings.llm_predictor = None
-        Settings.embed_model=embedding
+        Settings.embed_model=embedding.EmbeddingStore.get_embedding_by_task(tag)
 
         try:
             storage_context = StorageContext.from_defaults(
