@@ -1,30 +1,23 @@
-# DUG
+# RAU
 
-DUG, or Dialogue Understanding and Generation, is an open-source, retrieval-augmented generation (RAG) based 
-function-calling API implementation. It is designed for both dialog understanding in chatbot development
-and tool-using agent development. Consequently, we will use the term 'function' interchangeably
-with 'skill', 'intent', and 'parameter' with 'slot'.
+RAU, or Retrieval augumented Understanding, is an open-source, retrieval-augmented generation (RAG) based dialog understanding, or function-calling implementation. It is also somewhat related to semantic parsing. It is designed for both dialog understanding in chatbot development and tool-using agent development. Consequently, we will use the term 'function' interchangeably with 'skill', 'intent', and 'parameter' with 'slot'.
 
 It can be used with any LLMs with provided finetune script for both embedding model and generation model.
 Efficient inference is possible using excellent project like llama.cpp, vllm. With open sourced LLM, you 
 can privately deploy the entire function calling API solution anywhere you want.
 
-It can be utilized with any Language Models (LLMs) using the provided finetune script for both the 
-embedding model and generation model. Efficient inference is achievable through excellent projects like llama.cpp 
-and vllm. With an open-sourced LLM, you have the flexibility to privately deploy the entire function-calling
-API solution wherever you prefer. For now, this repo focus on decoder only or encoder-decoder models required by
-text generation.
+It can be utilized with any Language Models (LLMs) using the provided finetune script for both the embedding model and generation model. Efficient inference is achievable through excellent projects like llama.cpp and vllm. With an open-sourced LLM, you have the flexibility to privately deploy the entire function-calling API solution wherever you prefer. For now, this repo focus on decoder only or encoder-decoder models required by text generation.
 
 There are couple basic goals for this project:
 1. It should use the same return as OpenAI function calling API.
-2. It can be instructed by OpenAPI/OpenAI function schemas.
+2. It can use both OpenAPI/OpenAI function schemas.
 3. It should be easy to fix understanding issues, with exemplars defined in OpenCUI format.
 4. It should be easy to utilize the external entity recognizer for slot filling. 
 
 ## What signal can be used to define conversion?
 DUG takes three kind of different signal to shape how conversion is done:
 1. Function schema, particular [OpenAPI](https://spec.openapis.org/oas/latest.html)/[OpenAI](https://platform.openai.com/docs/api-reference/chat/create#chat/create-functions) function schema.
-2. Function exemplar, the utterance template that is associated with function.
+2. Expression exemplar, the utterance template that is associated with some function.
 3. Entity recognizer for the slots.
 
 ### Function schema
@@ -113,8 +106,7 @@ available via APIs.
  
 ## Caveat
 There are a couple of things that we plan to get to but there are not included in the initial version.
-1. Currently, we only support conversion to functions from single module. The function in the single module are expected to be exclusive
-in the semantic space.
+1. Currently, we only support conversion to functions from single module. The function in the single module are expected to be exclusive in the semantic space.
 2. We do not fully support overloaded functions yet, they are considered to be single function.
 3. We do not support multiple functions mentioned in single utterance.
 4. We do not support alternative semantics in parameter value, such as "No spice, please."

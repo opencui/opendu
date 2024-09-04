@@ -101,14 +101,6 @@ async def understand(request: web.Request):
     mode = req.get("mode")
     l_converter: Converter = request.app["converters"][bot]
 
-    if mode == "DESCSIM":
-        descriptions = req.get("descriptions")
-        return web.json_response({})
-
-    if mode == "EXEMPLARSIM":
-        exemplars = req.get("exemplars")
-        return web.json_response({})
-
     if mode == "DEBUG":
         expectations = req.get("expectations")
         results = l_converter.debug(utterance, expectations)

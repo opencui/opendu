@@ -20,7 +20,11 @@ from opencui.core.config import LugConfig
 from opencui.core.embedding import EmbeddingStore
 
 
-def build_nodes_from_skills(module: str, skills: dict[str, FrameSchema], nodes):
+# For now, we assume there is only one description, but we can potentially change that.
+def build_nodes_from_skills(
+        module: str, 
+        skills: dict[str, FrameSchema],
+        nodes):
     for label, skill in skills.items():
         desc = skill["description"]
         name = skill["name"]
@@ -40,8 +44,11 @@ def build_nodes_from_skills(module: str, skills: dict[str, FrameSchema], nodes):
 
 
 # This is used to create the retriever so that we can get dynamic exemplars into understanding.
-def create_index(base: str, tag: str, nodes: list[TextNode],
-                 embedding: BaseEmbedding):
+def create_index(
+        base: str, 
+        tag: str, 
+        nodes: list[TextNode],
+        embedding: BaseEmbedding):
     path = f"{base}/{tag}/"
     # Init download hugging fact model
     Settings.llm = None
@@ -64,15 +71,20 @@ def create_index(base: str, tag: str, nodes: list[TextNode],
         shutil.rmtree(path, ignore_errors=True)
 
 
-def build_desc_index(module: str, dsc: Schema, output: str,
-                     embedding: BaseEmbedding):
+def build_desc_index(
+        module: str, 
+        dsc: Schema,
+        output: str,
+        embedding: BaseEmbedding):
     desc_nodes = []
     build_nodes_from_skills(module, dsc.skills, desc_nodes)
     create_index(output, "desc", desc_nodes, embedding)
 
 
 # This merge the result.
-def merge_nodes(nodes0: list[NodeWithScore], nodes1: list[NodeWithScore])-> list[NodeWithScore]:
+def merge_nodes(
+        nodes0: list[NodeWithScore],
+        nodes1: list[NodeWithScore])-> list[NodeWithScore]:
     nodes = {}
     scores = {}
     for ns in nodes0 + nodes1:
@@ -84,7 +96,6 @@ def merge_nodes(nodes0: list[NodeWithScore], nodes1: list[NodeWithScore])-> list
 
     res = [NodeWithScore(node=nodes[nid], score=scores[nid]) for nid in nodes.keys()]
     return sorted(res, key=lambda x: x.score, reverse=True)
-
 
 
 class EmbeddingRetriever(BaseRetriever):
@@ -122,7 +133,7 @@ class EmbeddingRetriever(BaseRetriever):
 
 #
 class HybridRetriever(BaseRetriever):
-    """Custom retriever that performs both semantic search and hybrid search."""
+    """Custom retriever that performs both semantic search and keyword search."""
     @staticmethod
     def load_retriever(path: str, tag: str, topk: int = 8) -> None:
         embedding = EmbeddingStore.get_embedding_by_task(tag)
@@ -181,7 +192,10 @@ class HybridRetriever(BaseRetriever):
             return self._keyword_retriever.retrieve(query_bundle)
 
 
-def dedup_nodes(old_results: list[TextNode], with_mode, arity=1):
+def dedup_nodes(
+        old_results: list[TextNode],
+        with_mode,
+        arity=1):
     new_results = []
     intents = defaultdict(int)
     for item in old_results:
@@ -192,6 +206,7 @@ def dedup_nodes(old_results: list[TextNode], with_mode, arity=1):
     return new_results
 
 
+# This only matches the exemplar when context agrees.
 class ContextMatcher:
     def __init__(self, frame):
         self.frame = frame["frame"]
