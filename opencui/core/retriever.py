@@ -131,6 +131,7 @@ class EmbeddingRetriever(BaseRetriever):
         """Retrieve nodes given query."""
         return self._vector_retriever.retrieve(query_bundle)
 
+
 #
 class HybridRetriever(BaseRetriever):
     """Custom retriever that performs both semantic search and keyword search."""
