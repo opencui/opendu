@@ -16,7 +16,7 @@ from datasets import Dataset, load_dataset, concatenate_datasets
 from llama_index.core.embeddings import BaseEmbedding
 from llama_index.core.schema import TextNode
 
-from opencui.core.prompt import (Prompt, MulticlassSkillPrompts, BinarySkillPrompts,
+from opencui.core.pybars_prompt import (Prompt, MulticlassSkillPrompts, BinarySkillPrompts,
                                  ExemplarPrompts, DescriptionPrompts, BoolPrompts, YniPrompts, ExtractiveSlotPrompts)
 from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher, MatchReplace, get_value
 from opencui.core.config import LugConfig

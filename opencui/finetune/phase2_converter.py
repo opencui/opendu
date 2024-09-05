@@ -14,7 +14,7 @@ from random import sample, seed
 from typing import Optional
 from dataclasses_json import dataclass_json
 
-from opencui.core.prompt import (Prompt, ExemplarPrompts, DescriptionPrompts, BoolPrompts, YniPrompts, ExtractiveSlotPrompts)
+from opencui.core.pybars_prompt import (Prompt, ExemplarPrompts, DescriptionPrompts, BoolPrompts, YniPrompts, ExtractiveSlotPrompts)
 from opencui.core.config import LugConfig
 @dataclass_json
 @dataclass
