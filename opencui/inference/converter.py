@@ -195,13 +195,6 @@ class SkillConverter(ABC):
         pass
 
 
-def parse_json_from_string(text, default=None):
-    try:
-        return json.loads(text)
-    except ValueError as e:
-        return default
-
-
 # This is used to pick the owner by first accumulate on the exemplars by weight 2
 # then accumulate on desc by weight 1.
 class SingleOwnerPicker:
@@ -241,7 +234,8 @@ class SingleOwnerPicker:
         return None if len(pairs) == 0 else pairs[0][0]
 
 
-class ISkillConverter(SkillConverter, ABC):
+# This use nearest neighbors in the exemplar space, and some simple voting for detemine the skills. 
+class KnnSkillConverter(SkillConverter, ABC):
     def __init__(self, retriever: ContextRetriever, generator):
         self.retrieve = retriever
         self.generator = generator
@@ -485,7 +479,7 @@ class Converter:
         self.bracket_match = re.compile(r"\[([^]]*)\]")
         self.skill_converter = None
 
-        self.skill_converter = ISkillConverter(retriever, self.generator)
+        self.skill_converter = KnnSkillConverter(retriever, self.generator)
         self.yni_results = {"Affirmative", "Negative", "Indifferent", "Irrelevant" }
 
 
