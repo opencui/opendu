@@ -15,6 +15,7 @@ from opencui.core.config import LugConfig
 from opencui.core.prompt import (ExtractiveSlotPrompts, YniPrompts, DescriptionPrompts, ExemplarPrompts)
 from opencui.core.retriever import (ContextRetriever, load_context_retrievers)
 from opencui.inference.schema_parser import load_all_from_directory
+from opencui.utils.json_tools import parse_json_from_string
 
 # The modes that we will support.
 GenerateMode = Enum("GenerateMode", ["desc", "exemplar", "extractive", "nli"])
@@ -187,19 +188,12 @@ class FftGenerator(Generator, ABC):
 
 class SkillConverter(ABC):
     @abstractmethod
-    def get_skills(self, text) -> list[str]:
+    def get_skills(self, text, expectations=None, debug=False):
         pass
 
     @abstractmethod
     def grade(self, text, owner, owner_mode, counts_dict):
         pass
-
-
-def parse_json_from_string(text, default=None):
-    try:
-        return json.loads(text)
-    except ValueError as e:
-        return default
 
 
 # This is used to pick the owner by first accumulate on the exemplars by weight 2
@@ -241,7 +235,8 @@ class SingleOwnerPicker:
         return None if len(pairs) == 0 else pairs[0][0]
 
 
-class ISkillConverter(SkillConverter, ABC):
+# This use nearest neighbors in the exemplar space, and some simple voting for detemine the skills. 
+class KnnSkillConverter(SkillConverter, ABC):
     def __init__(self, retriever: ContextRetriever, generator):
         self.retrieve = retriever
         self.generator = generator
@@ -324,7 +319,7 @@ class ISkillConverter(SkillConverter, ABC):
             }
             infos.append(item)
 
-    def get_full_skills(self, text, expectations, debug=False):
+    def get_skills(self, text, expectations, debug=False):
         print(f"parse for skill: {text} with {expectations}")
         # For now, we only pick one skill
         picker = SingleOwnerPicker(expectations)
@@ -371,9 +366,6 @@ class ISkillConverter(SkillConverter, ABC):
         label = picker.decide()
         return label, list(map(node_to_exemplar, exemplar_nodes)), debug_infos
 
-    def get_skills(self, text):
-        label, node = self.get_full_skills(text)
-        return label
 
     @staticmethod
     def update(preds, truth, counts, skill_prompts, skill_outputs, output=True):
@@ -488,14 +480,14 @@ class Converter:
         self.bracket_match = re.compile(r"\[([^]]*)\]")
         self.skill_converter = None
 
-        self.skill_converter = ISkillConverter(retriever, self.generator)
+        self.skill_converter = KnnSkillConverter(retriever, self.generator)
         self.yni_results = {"Affirmative", "Negative", "Indifferent", "Irrelevant" }
 
 
     # Reference implementation for function calling.
     def understand(self, text: str) -> FrameValue:
         # low level get skill.
-        func_name = self.skill_converter.get_skills(text)
+        func_name, _ = self.skill_converter.get_skills(text)
 
         if not self.with_arguments:
             return FrameValue(name=func_name, arguments={})
@@ -535,7 +527,7 @@ class Converter:
 
 
     def debug(self, utterance, expectations):
-        _, _, debugs = self.skill_converter.get_full_skills(utterance, expectations, True)
+        _, _, debugs = self.skill_converter.get_skills(utterance, expectations, True)
         # For now, we assume single intent.
 
         # TODO: figure out how to handle the multi intention utterance.
@@ -543,7 +535,7 @@ class Converter:
 
 
     def detect_triggerables(self, utterance, expectations, debug=False):
-        func_name, evidence, _ = self.skill_converter.get_full_skills(utterance, expectations, debug)
+        func_name, evidence, _ = self.skill_converter.get_skills(utterance, expectations, debug)
         # For now, we assume single intent.
         result = {
             "owner": func_name,
