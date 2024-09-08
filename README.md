@@ -140,4 +140,3 @@ python3 inference/cmd.py -s <directory_you_read_schema_from>
 This project is relying on many impactful open source projects, we list the most important ones:
 1. [LlamaIndex](https://github.com/run-llama/llama_index) for RAG implementation.
 2. [huggingface.ai](https://huggingface.ai) for dataset, fine-tuning
-3. [S-Lora](https://github.com/S-LoRA/S-LoRA) For efficient inference with multiple lora adaptors.
