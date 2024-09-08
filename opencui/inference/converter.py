@@ -12,7 +12,7 @@ from opencui import ModelType
 from opencui.core.annotation import (CamelToSnake, DialogExpectation, EntityMetas, Exemplar, FrameValue, ListRecognizer,
                                      OwnerMode, ExactMatcher, get_value)
 from opencui.core.config import LugConfig
-from opencui.core.prompt import (ExtractiveSlotPrompts, YniPrompts, DescriptionPrompts, ExemplarPrompts)
+from opencui.core.pybars_prompt import (ExtractiveSlotPrompts, YniPrompts, DescriptionPrompts, ExemplarPrompts)
 from opencui.core.retriever import (ContextRetriever, load_context_retrievers)
 from opencui.inference.schema_parser import load_all_from_directory
 from opencui.utils.json_tools import parse_json_from_string
