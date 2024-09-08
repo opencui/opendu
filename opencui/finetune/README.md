@@ -2,7 +2,7 @@
 
 There are at lease two instructed models you might need to fine-tune for better performance. But you can only
 do this when you have some reasonable amount of labeled example available. The goal of fine-tuning code base
-is make it possible for the advanced developers to squeeze the last bit of the performance of this architecture, 
+is to make it possible for the advanced developers to squeeze the last bit of the performance of this architecture, 
 for most of the developer, we hope the default configuration plus the hotfixing capability is enough.  
 
 While it is possible to fine-tune both the generator and embedding needed by retrieval, we will support the 
@@ -12,10 +12,9 @@ fine-tuning in three steps:
 3. Finetune embedding.
 
 Here support means we will have tested code and enough documentation for you to replicate the process. Additionally,
-we will support the tool-use or function calling use case first, since dialog understanding related tasks are 
-largely depending on the dialog state tracking design, different designs can have different requirements. We will
-focus on the OpenCUI state tracking design for now. As in general, we only focus on the understanding related 
-fine-tune for now. 
+we will support the tool-use or function calling use case first, since dialog understanding related tasks
+largely depend on the dialog state tracking design, different designs can have different requirements. We will
+focus on the OpenCUI state tracking design for now.
 
 ## How to finetune the generator for understanding
 

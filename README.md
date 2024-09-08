@@ -1,10 +1,14 @@
-# RAU
+# RASP
 
-RAU, or Retrieval augumented Understanding, is an open-source, retrieval-augmented generation (RAG) based dialog understanding, or function-calling implementation. It is also somewhat related to semantic parsing. It is designed for both dialog understanding in chatbot development and tool-using agent development. Consequently, we will use the term 'function' interchangeably with 'skill', 'intent', and 'parameter' with 'slot'.
+RASP, or Retrieval augmented semantic parsing, is an open-source, retrieval-augmented generation (RAG) styled
+semantic parsing implementation. It is designed for both dialog understanding in chatbot development and function
+calling for tool-using agent development. Consequently, we will use the term 'function' interchangeably with 'skill',
+'intent', and 'parameter' with 'slot'.
+
 
 It can be used with any LLMs with provided finetune script for both embedding model and generation model.
 Efficient inference is possible using excellent project like llama.cpp, vllm. With open sourced LLM, you 
-can privately deploy the entire function calling API solution anywhere you want.
+can deploy the entire dialog understanding or function calling API solution anywhere you want.
 
 It can be utilized with any Language Models (LLMs) using the provided finetune script for both the embedding model and generation model. Efficient inference is achievable through excellent projects like llama.cpp and vllm. With an open-sourced LLM, you have the flexibility to privately deploy the entire function-calling API solution wherever you prefer. For now, this repo focus on decoder only or encoder-decoder models required by text generation.
 
@@ -46,7 +50,7 @@ An example in OpenAI format is as follows:
                 "description": "The temperature unit to use. Infer this from the users location."
             }
         },
-        "required": ["location", "format"],
+        "required": ["location", "format"]
     }
 }
 ```
