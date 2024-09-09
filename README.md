@@ -1,28 +1,30 @@
-# RADU
+# RAU
 
-RADU (Retrieval-Augmented Dialog Understanding) is an open-source implementation of semantic parsing based on retrieval-augmented generation (RAG) techniques. Since the goal of dialog understanding is to convert natural language into a structured representation for some function, we use the following terms interchangeably:
+RAU (Retrieval-Augmented Understanding) is an open-source implementation of semantic parsing based on retrieval-augmented generation (RAG) techniques, it is designed to convert natural language into a structured representation for semantic. In addition to dialog understanding for chatbot development, this package can also be used for function calling for agent development, thus can also be referred as RAFC (Retrieval-Augmented Function Calling). As such, we use the following terms interchangeably:
+
 - 'function', 'skill', and 'intent'
 - 'parameter' and 'slot'
+- 'semantic parsing', 'function calling' and '(dialog) understanding'
 
-
-It can be used with any LLMs with provided finetune script for both embedding model and generation model.
-Efficient inference is possible using excellent project like llama.cpp, vllm. With open sourced LLM, you 
-can deploy the entire dialog understanding or function calling API solution anywhere you want. For now,
-we focus on decoder-only or encoder-decoder models required by text generation.
+It can be used with any LLMs with provided finetune script for both embedding model and generation model. Efficient inference is possible using excellent project like llama.cpp, vllm. With open sourced LLM, you can deploy the entire dialog understanding or function calling API solution anywhere you want. For now, we focus on decoder-only or encoder-decoder models required by text generation.
 
 There are couple basic goals for this project:
+
 1. It should produce the same return as OpenAI function calling API.
 2. It can use both OpenAPI/OpenAI function schemas.
 3. It should be easy to fix understanding issues, with exemplars defined in OpenCUI format.
-4. It should be easy to take advantage of the external entity recognizer for slot filling. 
+4. It should be easy to take advantage of the external entity recognizer for slot filling.
 
 ## What signal can be used to define conversion?
+
 RADU takes three kinds of different signals to shape how conversion is done:
+
 1. Function schema, particularly [OpenAPI](https://spec.openapis.org/oas/latest.html)/[OpenAI](https://platform.openai.com/docs/api-reference/chat/create#chat/create-functions) function schemas.
 2. Expression exemplars: utterance templates associated with specific functions, where the templates are designed to trigger their corresponding functions.
 3. Entity recognizers: external entity recognizers that can extract value for the slots or function parameters from user utterance.
 
 ### Function schema
+
 To convert natural language into a structured representation for each function, we first need its schema. This schema includes:
 
 - **description**: A summary of the function's purpose, guiding the model on when and how to call it.
@@ -32,6 +34,7 @@ To convert natural language into a structured representation for each function, 
 Note that OpenAPI and OpenAI have slightly different methods for specifying functions.
 
 An example in OpenAI format is as follows:
+
 ```json
 {
     "name": "get_current_weather",
@@ -55,9 +58,11 @@ An example in OpenAI format is as follows:
 ```
 
 ### Function exemplar
+
 Function exemplars are utterance templates associated with specific functions. They provide a quick and efficient way to correct misunderstandings in user input within a retrieval-augmented setting. By linking these exemplars to functions, we can improve the system's ability to accurately interpret and respond to user utterances.
 
 An example in the json format is as follows:
+
 ```json
 {
   "get_current_weather" : [
@@ -72,6 +77,7 @@ An example in the json format is as follows:
 ```
 
 ### Entity recognizer for the slots (Not implemented yet)
+
 It is common for businesses to have private domain entities that are not well-represented in the public domain text used for training LLMs. This can make it difficult for LLMs to recognize these entities out of the box. RASP allows you to specify a recognizer for each slot, which can be either a list of entity instances or a pattern.
 
 An example in the json format is as follows:
@@ -95,13 +101,15 @@ An example in the json format is as follows:
 ```
 
 ## Model supported
+
 The embedding model will be SentenceTransformer based. We will update the code when stronger embedding models become available. For now, we support BAAI and Stella family of embedding models.
 
 For generation, we assume that dialog understanding doesn't require extremely large parameter models. We focus on smaller LLMs that can be fine-tuned using consumer-grade GPUs, making deployment easier and more accessible. However, there's no restriction on using larger models if desired.
 
 - [&#x2714;] [T5](https://huggingface.co/docs/transformers/model_doc/t5)
- 
+
 ## Caveat
+
 There are several features that we plan to implement but are not included in the initial version:
 
 1. We support multiple modules (think of as a collection of functions), but the functions in the same module are expected to be mutually exclusive in the semantic space, a requirement for how we fine-tuning,
@@ -111,30 +119,51 @@ There are several features that we plan to implement but are not included in the
 5. We do not yet pay special attention to implicature calculation.
 
 ## Usage
-To use the converter, follow these three simple steps:
 
-#### 1. Prepare the signals needed to define the conversation:
+To use the converter, you first need to prepare the inputs needed to define the semantic parsing:
+
 1. Function schema: Can be in OpenAPI or OpenAI format. Refer to the corresponding documentation for creating these schemas.
 2. Function exemplars: Mainly used to list hard-to-understand utterances. Provide templates instead of raw utterances.
 3. Entity recognizers: Used to help LLMs extract business-dependent entities.
 
-#### 2. Build index
-Place three files in one directory: `schema.json`, `exemplars.json`, and `recognizers.json`, one for each signal type defined above.
+### Command line mode
+
+Place three files in one directory: `schema.json`, `exemplars.json`, and `recognizers.json`, one for each input type defined above.
 
 ```bash
-export PYTHONPATH="$PYTHONPATH:."
 python3 opencui/inference/index.py -s <directory_you_read_schema_from>
 ```
+
 By default, the code won't check the format for function specifications but will verify the format for exemplars and recognizers, raising exceptions if issues are found.
 
-#### 3. Initialize converter and convert
-Note:
-You can also test it in the command line:
+You can now test it in the command line:
 
 ```bash
-export PYTHONPATH="$PYTHONPATH:."
-python3 inference/cmd.py -s <directory_you_read_schema_from>
+python3 inference/cmd_test.py -s <directory_you_read_schema_from>
 ```
+
+### Service Mode
+
+The entire process can also be accessed via a restful end point. To start the service, simply:
+
+```bash
+python3 opencui/inference/service.py -s examples/
+```
+
+To make in the index:
+
+```bash
+curl http://<host>:3001/v1/index/<directory_of_the_module>
+```
+
+To parse the user utterance:
+
+```bash
+curl -d '{"utterance" : "<your_input sentence>", "mode" : "SKILL"}' -H "Content-Type: application/json" -X post http://<host>:3001/v1/predict/<directory_of_module>
+```
+
+Todo: more detailed documentation for service.
+
 ## Special considerations
 
 ### How to retrieve
@@ -142,25 +171,28 @@ python3 inference/cmd.py -s <directory_you_read_schema_from>
 Retrieval methods differ for descriptions and exemplars:
 
 1. Descriptions:
+   
    - Use embedding-only retrieval
    - Employ asymmetrical dual embedding for vector search
-
 2. Exemplars:
+   
    - Use hybrid retrieval (combining embedding and keyword search)
    - Use symmetrical embedding for vector search
    - Apply the same model for both user utterances and exemplars
 
-
 ### Dialog understanding strategy
+
 Given the function schema, exemplars, and entity recognizers, we can define multiple strategies to convert natural language into a structured representation for each function. For example, after retrieval:
 
-1. We can use a function calling model to directly convert the user utterance into a structured representation. The main problem with this approach is that currently, these models only support function description as input, not examples in the input, so example based in-context learning is not possible. 
-
+1. We can use a function calling model to directly convert the user utterance into a structured representation. The main problem with this approach is that currently, these models only support function description as input, not examples in the input, so example based in-context learning is not possible.
 2. Alternatively, we can first determine the function itself, and then generate the parameter values. Each of these sub-steps can also be solved using different strategies. For instance, slot filling can be approached as a set of question-answering problems, with one question for each slot and the user utterance as the passage.
 
 We will support multiple strategies, allowing you to swap different components in and out to best fit your use case.
 
 ## Acknowledgements
+
 This project is relying on many impactful open source projects, we list the most important ones:
+
 1. [LlamaIndex](https://github.com/run-llama/llama_index) for RAG implementation.
 2. [huggingface.ai](https://huggingface.ai) for dataset, fine-tuning
+
