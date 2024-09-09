@@ -1,45 +1,50 @@
-# Finetuning for Language Understanding and Generation
+# Finetuning for Dialog Understanding
+  
+The framework itself is designed to provide most developers with sufficient performance through default configurations and hotfixing capabilities out-of-the-box already. The fine-tuning support is to enable advanced developers to maximize the performance of this framework.
 
-There are at lease two instructed models you might need to fine-tune for better performance. But you can only
-do this when you have some reasonable amount of labeled example available. The goal of fine-tuning code base
-is to make it possible for the advanced developers to squeeze the last bit of the performance of this architecture, 
-for most of the developer, we hope the default configuration plus the hotfixing capability is enough.  
+There are at least two instructed models you might want to fine-tune for better performance: embedding and generator. Both require a reasonable amount of labeled examples. We support two different approaches for fine-tuning the generator:
 
-While it is possible to fine-tune both the generator and embedding needed by retrieval, we will support the 
-fine-tuning in three steps:
-1. Finetune generator, in full.
-2. Finetune generator, using lora (this does not change overall process, just how to set up training and inference).
-3. Finetune embedding.
+1. Full: Focusing on smaller LLMs.
+2. LoRA: Allowing fine-tuning of larger models.
 
-Here support means we will have tested code and enough documentation for you to replicate the process. Additionally,
-we will support the tool-use or function calling use case first, since dialog understanding related tasks
-largely depend on the dialog state tracking design, different designs can have different requirements. We will
-focus on the OpenCUI state tracking design for now.
+These approaches don't change the overall process, just how training and inference are set up. 
 
-## How to finetune the generator for understanding
+Note: Using only user utterances and slot values may not be sufficient to recover the corresponding exemplar, especially if a slot value appears multiple times in the utterance. To address this, the labeling process should:
 
-Fine-tuning the generator is an extra step needed for understanding. One still need to define the schema first. When
-you have a schema, the main thing you need to do is: 
-1. Prepare the labeled examples in form of AnnotatedExemplar.
-2. Trigger the fine-tuning for generator, so that you can use the model for inference.
+1. Explicitly provide exemplars, or
+2. Provide spans for each value
 
-### Prepare exemplars
-For now, we assume that the labeled examples for fine-tuning generator requires a couple of things:
-- user utterance, for example: "I like to get a ticket to New York"
-- template, a value normalized utterance, for example: "I like to get <quantity> ticket to <destination>".
-- target_name, function (also known as intent, skill) name, for example "buy_airline_ticket"
-- target_arguments, parameter (or slot) values, for example: {"quantity" : 1, "destination" : "new york"} 
+Failing to do so risks some labeled examples being discarded during fine-tuning.
 
-Notice, with just user utterance and slot values, we might not be able to recover corresponding exemplar, if some
-slot value occurs more than one time in the utterance. So in general, the label process need to explicitly provider
-exemplars, or provide span for each value, or risk some labeled example is discarded during the fine-tuning. For now,
-we assume that a parameter/slot is recognized is either by recognizer or LLM, but not both. This requirement is only 
-good enough for tool-use use cases, for dialog understanding, there are some additional considerations depending on the
-state tracking implementation.
+Currently, we assume that a parameter/slot is recognized either by a recognizer or an LLM, but not both. This approach is adequate for tool-use use cases. However, for dialog understanding, there are some additional considerations depending on the state tracking implementation.
 
-Per standard practices, it will be good if you prepare three datasets, for training, validation and testing. The first
-datasets that we are using is based on [schema-guided dialogue dataset](https://github.com/google-research-datasets/dstc8-schema-guided-dialogue).
+## How to finetune the generator
+You must first define the schema. Once you have a schema, the main steps are:
+1. Prepare raw labeled datesets in the form of AnnotatedExemplars.
+2. Create the fine-tuning dataset based on the prompt template and inference strategy.
+3. Run fine-tuning code to create a fine-tuned model for inference.
 
+### Prepare raw labeled examples
+For now, we assume that the labeled examples for fine-tuning the generator require the following components:
+
+1. User utterance 
+   Example: "I'd like to get a ticket to New York"
+
+2. Target name (function, intent, or skill name)
+   Example: "buy_airline_ticket"
+
+3. Target arguments (parameter or slot values)
+   Example: {"quantity": 1, "destination": "new york"}
+
+Note that we need utterance template, an normalized version of the original user utterance, for inference. With user utterance and slot values, we can recover corresponding exemplar for most of time. But when some slot value occurs more than one time in the utterance, we will run into trouble. So such case, the label process need to explicitly provider exemplars, or provide span for each value, or risk such labeled example is discarded for RAG inference. 
+
+Per standard practices, it will be good if you prepare three datasets, for training, validation and testing. An example raw datasets is [schema-guided dialogue dataset](https://github.com/google-research-datasets/dstc8-schema-guided-dialogue). These raw dataset can be prepared in any format, as long as it also come with the code to generate the dataset in form of AnnotatedExemplars, of course, we also need to generate the information needed for RAG inference (as our fine-tuning dataset will be using the same prompt template as RAG).
+
+
+### Create the fine-tuning dataset
+The actual fine-tuning dataset is created based on the raw dataset, semantic parsing strategy, together with prompt template of the choice. 
+
+There are many valid semantic parsing strategy, depending on how we make use of language models. For example, we can use a 
 To create the training examples from the supplied schemas and exemplars, it is possible that we need to generate
 negative examples, this requires that the functions from each module is mutually exclusive in the semantic space,
 and there is no overloaded functions. Overloaded functions need to handled in the state tracking. At beginning, we only
