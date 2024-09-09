@@ -1,3 +1,6 @@
+# Copyright 2024, OpenCUI
+# Licensed under the Apache License, Version 2.0.
+
 import getopt
 import sys
 import json
