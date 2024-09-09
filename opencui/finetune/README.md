@@ -21,8 +21,9 @@ Currently, we assume that a parameter/slot is recognized either by a recognizer 
 ## How to finetune the generator
 You must first define the schema. Once you have a schema, the main steps are:
 1. Prepare raw labeled datesets in the form of AnnotatedExemplars.
-2. Create the fine-tuning dataset based on the prompt template and inference strategy.
-3. Run fine-tuning code to create a fine-tuned model for inference.
+2. Create the index for retrieval, for each module.
+3. Create the fine-tuning dataset based on retrieval result, the prompt template and inference strategy.
+4. Run fine-tuning code to create a fine-tuned model for inference.
 
 ### Prepare raw labeled examples
 For now, we assume that the labeled examples for fine-tuning the generator require the following components:
@@ -41,81 +42,56 @@ Note that we need utterance template, an normalized version of the original user
 Per standard practices, it will be good if you prepare three datasets, for training, validation and testing. An example raw datasets is [schema-guided dialogue dataset](https://github.com/google-research-datasets/dstc8-schema-guided-dialogue). These raw dataset can be prepared in any format, as long as it also come with the code to generate the dataset in form of AnnotatedExemplars, of course, we also need to generate the information needed for RAG inference (as our fine-tuning dataset will be using the same prompt template as RAG).
 
 
-### Create the fine-tuning dataset
-The actual fine-tuning dataset is created based on the raw dataset, semantic parsing strategy, together with prompt template of the choice. 
+### Create the index for retrieval
+Given the schema and exemplars generated for each module, it's straightforward to create the index for retrieval, as this generates the dynamic context needed by the prompt template. However, special care must be taken to ensure that the instantiated prompt meets the criteria you had when designing the prompt template. 
 
-There are many valid semantic parsing strategy, depending on how we make use of language models. For example, we can use a 
-To create the training examples from the supplied schemas and exemplars, it is possible that we need to generate
-negative examples, this requires that the functions from each module is mutually exclusive in the semantic space,
-and there is no overloaded functions. Overloaded functions need to handled in the state tracking. At beginning, we only
-support the single module, but there is plan to support multiple modules.
+For example, if you assume that the correct answer should be included in the prompt, you need to verify that this is indeed the case. Run experiments to determine the correct values for hyperparameters.
 
+Use the following script to determine the hyperparameters for retrieval:
 
-### Determine the hyperparameters for retrieval
-One of the main consideration for fine-tuning generation for RAG is what dynamic information are needed by prompt.
-So special care need to be taken to make sure that instantiated prompt meet the criteria you had when you design the 
-prompt templated. For example, if you assume that the correct answer should be included in the prompt, then you will
-need to make sure that is indeed is the case. So you need to run some experiments to make sure that you choose the
-correct value for hyperparameters.
-
-The script you can use to determine the hyperparameter for retrieval:
 ```bash
-python3 funetune/find_k_for_prompt.py 
+python3 finetune/find_k_for_prompt.py 
 ```
-Assuming that you have schema-guided dialogue dataset at <dir for lug>/../dstc8-schema-guided-dialogue/
+
+### Create the fine-tuning dataset
+The actual fine-tuning dataset is created based on the following components:
+1. Raw dataset
+2. Retriever
+3. Semantic parsing strategy
+4. Chosen prompt template
+
+Different semantic parsing strategies cast the dialog understanding task into different forms, thus requiring the generation of different fine-tuning datasets.
+
+For some dialog understanding strategies, we need to generate negative examples. This requires that:
+1. Functions from each module are mutually exclusive in the semantic space
+2. There are no overloaded functions (these need to be handled in state tracking)
+
+With these assumptions, we can select similar utterances from other functions as negative examples.
+
+Finally, we can place training data we get for each module in the separate directories in coded in: <org>_<bot>_<lang>. 
+
 
 ### Fine-tune the generation model
-By default, OpenLug uses a cascade model, where we use a skill model to determine the skill/function 
-first, then use a different model for determine the slot/parameter values. Ideally, both models, along with other
-required models are trained in a multitask fashion, in either full fine-tuning or lora based. It is also possible to
-fine-tune requires generation models separately, but that is not what we aim for now. Mainly by changing the shared 
-configuration in core/config.py and training aspect in finetune/generation.sh.  
-
-The NLU models will be trained on both public dataset, and the data generated from OpenCUI platform. We will
-potentially have two different models: specialized for one bot, and generalized for all bots. The first choice is
-useful for isolated the performance, and private deployment. The second choice is useful for dev environment on
-platform. Here we focus on how to do full fine-tuning for latter.
-
-Since we are using a decomposed model, more directly pair wise discriminative model, for the hot fix capability,
-the data for fine-tuning can be generated in two different ways: 
-1. Labels are available before retrieval, so that we need to build index and produce retrieved pairs. 
-2. Labels are available on pairs already so that we just need to add prompt to it.
-
-We use decomposed discriminative model mainly because it is easy to provide labels, as operators only need to
-fix the parts that need to be fixed instead of needing to provide the full label every time.
+Regardless we are using full fine-tuning or lora, we will focus on use one model for different tasks. The main reason is that dialog understanding is a form of translation from one representation to another, which is naturally a good fit for language models. We have two example scripts for you to get started.
 
 
+## Decomposed modeling
 
-#### Prepare the for dataset.
-Assuming that we put dataset in a directory called root. Then we can place training data we get for each bot in
-the separate directories in coded in: org_bot_lang. 
+For now, we decompose the dialog understaing into two steps: intent detection and slot value extraction. Basically, we first predict function name given user utterance, and then we predict argument values for given function and utterance. Since we are using decoder-only model, both tasks, along with other required tasks can be trained in a multitask fashion, in either full fine-tuning or lora based. So these models are really just different prompt templates based on the same model. 
+ 
 
+### Intent dection/Function name prediction
+For this sub-task, we have two approaches:
+1. KNN based approach, where we fine-tune a model to predict whether a given utterance and a provided exemplar means the same, and the utterance will share the same function name with the exemplar.
+2. RAG based approach, where we fine-tune a model to predict the function name given the descriptions fo the function, and example utterances and their labels.
 
-### Testing
-The follow python script can be used to test finetuned models.
-```bash
-python3 fineturn/test.py 
-```
+### Slot value extraction
 
-
-## Special considerations
-Fine-tuning generator for RAG applications bring some new considerations. 
-
-### How to retrieve
-The description can be retrieved using embedding only. The exemplar should be retrieved in hybrid mode, with both
-embedding and  keyword search. The vector search for description should use asymmetrical dual embedding, while for 
-exemplar, vector search should use symmetrical embedding, using the same model for both user utterance and exemplars.
-
-### How to model the conversion
-There are many potential system architecture to model the conversation. For example, we can do one-shot model, or using
-single model or prompt to predict both function name and its arguments. We can also have two models, one for predicting
-function name, and one for predicting arguments. In this latter approach, we have two approaches:
+For this sub-task, we have two approaches:
 1. Only extract value for one slot at each time,
 2. Extract value for all slot in one shot. 
 
-We will focus on using two models to solve the conversion, and focus on extracting value for one slot each time. Of
-course, since we are using decoder-only model, two models are really just two different prompt templates typically
-using the same model.
+These RADU models will be trained on both public dataset, and the data generated from OpenCUI platform. We will potentially have two different models: specialized for one bot, and generalized for all bots. The first choice is useful for isolated the performance, and private deployment. The second choice is useful for dev environment on platform. Here we focus on how to do full fine-tuning for latter.
 
 
 Reference:

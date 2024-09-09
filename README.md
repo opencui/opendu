@@ -135,9 +135,32 @@ You can also test it in the command line:
 export PYTHONPATH="$PYTHONPATH:."
 python3 inference/cmd.py -s <directory_you_read_schema_from>
 ```
+## Special considerations
+
+### How to retrieve
+
+Retrieval methods differ for descriptions and exemplars:
+
+1. Descriptions:
+   - Use embedding-only retrieval
+   - Employ asymmetrical dual embedding for vector search
+
+2. Exemplars:
+   - Use hybrid retrieval (combining embedding and keyword search)
+   - Use symmetrical embedding for vector search
+   - Apply the same model for both user utterances and exemplars
+
+
+### Dialog understanding strategy
+Given the function schema, exemplars, and entity recognizers, we can define multiple strategies to convert natural language into a structured representation for each function. For example, after retrieval:
+
+1. We can use a function calling model to directly convert the user utterance into a structured representation. The main problem with this approach is that currently, these models only support function description as input, not examples in the input, so example based in-context learning is not possible. 
+
+2. Alternatively, we can first determine the function itself, and then generate the parameter values. Each of these sub-steps can also be solved using different strategies. For instance, slot filling can be approached as a set of question-answering problems, with one question for each slot and the user utterance as the passage.
+
+We will support multiple strategies, allowing you to swap different components in and out to best fit your use case.
 
 ## Acknowledgements
 This project is relying on many impactful open source projects, we list the most important ones:
 1. [LlamaIndex](https://github.com/run-llama/llama_index) for RAG implementation.
 2. [huggingface.ai](https://huggingface.ai) for dataset, fine-tuning
-3. [S-Lora](https://github.com/S-LoRA/S-LoRA) For efficient inference with multiple lora adaptors.
