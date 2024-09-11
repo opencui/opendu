@@ -3,10 +3,10 @@
 
 from sentence_transformers import SentenceTransformer
 
-from opencui.core.config import LugConfig
+from opencui.core.config import RauConfig
 from opencui.inference.converter import Generator
 
 # This script is used to trigger the caching of the models during the docker build to speed up the deployment.
 if __name__ == "__main__":
-    embedder = SentenceTransformer(LugConfig.get().embedding_model, device=LugConfig.get().embedding_device)
+    embedder = SentenceTransformer(RauConfig.get().embedding_model, device=RauConfig.get().embedding_device)
     generator = Generator.build()

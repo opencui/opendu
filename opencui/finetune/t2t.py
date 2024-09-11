@@ -14,14 +14,13 @@ import evaluate
 import numpy as np
 import torch
 import transformers
-from datasets import Dataset, concatenate_datasets, interleave_datasets
+from datasets import Dataset, interleave_datasets
 from peft import LoraConfig, get_peft_model, TaskType, PrefixTuningConfig
 
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed,
                           DataCollatorForSeq2Seq, AutoModelForSeq2SeqLM)
 
-from opencui.core.config import LugConfig
-from opencui.core.annotation import ModelType
+from opencui.core.config import RauConfig, ModelType
 from opencui.core.special_tokens import SpecialTokens
 from opencui.finetune.commons import (load_training_dataset)
 from opencui.finetune.datacollator import DataCollatorForCausalLM
@@ -435,7 +434,7 @@ def preprocess_logits_for_metrics(logits, labels):
 
 def train():
     # Turn of the evaluation mode.
-    LugConfig.get().eval_mode = False
+    RauConfig.get().eval_mode = False
 
     hfparser = transformers.HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments, GenerationArguments)

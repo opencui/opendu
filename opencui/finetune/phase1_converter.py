@@ -11,7 +11,7 @@ from random import sample, seed
 from typing import Optional
 from dataclasses_json import dataclass_json
 
-from opencui.core.config import LugConfig
+from opencui.core.config import RauConfig
 from opencui.core.retriever import create_index, ContextRetriever
 from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher, MatchReplace, get_value
 from opencui.core.pybars_prompt import (Prompt, MulticlassSkillPrompts, BinarySkillPrompts,
@@ -95,7 +95,7 @@ class TrainPhase1Converter(ABC):
 
 class MultiClassSkillConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever):
-        self.prompt = MulticlassSkillPrompts[LugConfig.get().skill_prompt]
+        self.prompt = MulticlassSkillPrompts[RauConfig.get().skill_prompt]
         self.context_retrieve = retriever
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
@@ -178,7 +178,7 @@ class MultiClassSkillConverter(TrainPhase1Converter):
 
 class OneSkillConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever):
-        self.prompt = BinarySkillPrompts[LugConfig.get().skill_prompt]
+        self.prompt = BinarySkillPrompts[RauConfig.get().skill_prompt]
         self.context_retrieve = retriever
         self.neg_k = 1
         self.match_mode = "normal"
@@ -249,8 +249,8 @@ InstanceMode = Enum("InstanceMode", ["desc", "example", "both"])
 class DescExemplarConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever, mode=InstanceMode.both):
         # Make sure that we have the same key for Desc and exemplar prompt.
-        self.desc_prompt = DescriptionPrompts[LugConfig.get().skill_prompt]
-        self.example_prompt = ExemplarPrompts[LugConfig.get().skill_prompt]
+        self.desc_prompt = DescriptionPrompts[RauConfig.get().skill_prompt]
+        self.example_prompt = ExemplarPrompts[RauConfig.get().skill_prompt]
         self.context_retrieve = retriever
         self.neg_k = 1
         self.mode = mode
@@ -259,7 +259,7 @@ class DescExemplarConverter(TrainPhase1Converter):
     @staticmethod
     def label(value):
         label_dict = {"label": "true" if value else "false"}
-        return BoolPrompts[LugConfig.get().bool_prompt](label_dict)
+        return BoolPrompts[RauConfig.get().bool_prompt](label_dict)
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # Working on the batched dataset, with first dimension is column then index.

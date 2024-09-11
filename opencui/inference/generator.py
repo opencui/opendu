@@ -9,7 +9,7 @@ from peft import PeftConfig, PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, AutoModelForSeq2SeqLM, AutoConfig
 
 from opencui import ModelType
-from opencui.core.config import LugConfig
+from opencui.core.config import RauConfig
 
 
 # The modes that we will support.
@@ -31,9 +31,9 @@ class Generator(ABC):
 
     @staticmethod
     def build():
-        if GeneratorType[LugConfig.get().generator] == GeneratorType.FftGenerator and Generator.generator is None:
+        if GeneratorType[RauConfig.get().generator] == GeneratorType.FftGenerator and Generator.generator is None:
             Generator.generator = FftGenerator()
-        if GeneratorType[LugConfig.get().generator] == GeneratorType.LoraGenerator and Generator.generator is None:
+        if GeneratorType[RauConfig.get().generator] == GeneratorType.LoraGenerator and Generator.generator is None:
             Generator.generator = LoraGenerator()
         return Generator.generator
 
@@ -66,7 +66,7 @@ class Generator(ABC):
 # This should be desc/exemplar based.
 class LoraGenerator(Generator, ABC):
     def __init__(self):
-        parts = LugConfig.get().skill_model.split("/")
+        parts = RauConfig.get().skill_model.split("/")
 
         desc_model = f"{parts[0]}/desc-{parts[1]}"
         exemplar_model = f"{parts[0]}/exemplar-{parts[1]}"
@@ -81,7 +81,7 @@ class LoraGenerator(Generator, ABC):
         base_model = Generator.from_pretrained(
             skill_config.base_model_name_or_path,
             return_dict=True,
-            device_map=LugConfig.get().llm_device,
+            device_map=RauConfig.get().llm_device,
             trust_remote_code=True,
             torch_dtype=torch.bfloat16
         )
@@ -98,20 +98,20 @@ class LoraGenerator(Generator, ABC):
             exemplar_model, adapter_name=GenerateMode.exemplar.name)
 
         self.lora_model.load_adapter(
-            LugConfig.get().extractive_slot_model, adapter_name=GenerateMode.extractive.name)
+            RauConfig.get().extractive_slot_model, adapter_name=GenerateMode.extractive.name)
 
-        if LugConfig.get().nli_model != "":
-            self.lora_model.load_adapter(LugConfig.get().nli_model, adapter_name=GenerateMode.nli.name)
+        if RauConfig.get().nli_model != "":
+            self.lora_model.load_adapter(RauConfig.get().nli_model, adapter_name=GenerateMode.nli.name)
 
         # Move to device
-        self.lora_model.to(LugConfig.get().llm_device)
+        self.lora_model.to(RauConfig.get().llm_device)
         self.lora_model.eval()
 
     def generate(self, input_texts: list[str], mode: GenerateMode):
         self.lora_model.set_adapter(mode.name)
         encoding = self.tokenizer(
             input_texts, padding=True, return_tensors="pt"
-        ).to(LugConfig.get().llm_device)
+        ).to(RauConfig.get().llm_device)
 
         with torch.no_grad():
             peft_outputs = self.lora_model.generate(
@@ -137,20 +137,20 @@ class FftGenerator(Generator, ABC):
         # Is this the right place to clean cache.
         torch.cuda.empty_cache()
         self.model = Generator.from_pretrained(
-            LugConfig.get().model,
+            RauConfig.get().model,
             return_dict=True,
-            device_map=LugConfig.get().llm_device,
+            device_map=RauConfig.get().llm_device,
             trust_remote_code=True,
             torch_dtype=torch.bfloat16
         )
-        self.model_type = Generator.get_model_type(LugConfig.get().model)
+        self.model_type = Generator.get_model_type(RauConfig.get().model)
         self.model.eval()
-        self.tokenizer = AutoTokenizer.from_pretrained(LugConfig.get().model)
+        self.tokenizer = AutoTokenizer.from_pretrained(RauConfig.get().model)
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "left"
 
         # Move to device
-        self.model.to(LugConfig.get().llm_device)
+        self.model.to(RauConfig.get().llm_device)
         self.model.eval()
 
     def generate(self, input_texts: list[str], mode: GenerateMode):
@@ -160,7 +160,7 @@ class FftGenerator(Generator, ABC):
 
         encoding = self.tokenizer(
             input_texts, padding=True, truncation=True, return_tensors="pt"
-        ).to(LugConfig.get().llm_device)
+        ).to(RauConfig.get().llm_device)
 
         with torch.no_grad():
             outputs = self.model.generate(

@@ -15,7 +15,7 @@ from typing import Optional
 from dataclasses_json import dataclass_json
 
 from opencui.core.pybars_prompt import (Prompt, ExemplarPrompts, DescriptionPrompts, BoolPrompts, YniPrompts, ExtractiveSlotPrompts)
-from opencui.core.config import LugConfig
+from opencui.core.config import RauConfig
 @dataclass_json
 @dataclass
 class LabeledMatchingData:
@@ -39,14 +39,14 @@ class TrainPhase2Converter(ABC):
 class PromptConverter(TrainPhase2Converter):
     def __init__(self):
         self.prompts = {
-            "desc": DescriptionPrompts[LugConfig.get().skill_prompt],
-            "exemplar": ExemplarPrompts[LugConfig.get().skill_prompt]
+            "desc": DescriptionPrompts[RauConfig.get().skill_prompt],
+            "exemplar": ExemplarPrompts[RauConfig.get().skill_prompt]
         }
 
     @staticmethod
     def label(value):
         label_dict = {"label": "true" if value else "false"}
-        return BoolPrompts[LugConfig.get().bool_prompt](label_dict)
+        return BoolPrompts[RauConfig.get().bool_prompt](label_dict)
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         for idx, mode in enumerate(batch["matchType"]):

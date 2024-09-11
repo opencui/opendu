@@ -11,7 +11,7 @@ from lru import LRU
 import traceback as tb
 from aiohttp import web
 import shutil
-from opencui.core.config import LugConfig
+from opencui.core.config import RauConfig
 from opencui import load_converter
 from opencui.inference.converter import Converter, Generator, load_converter
 from opencui.inference.index import indexing
@@ -188,6 +188,6 @@ if __name__ == "__main__":
             lru_capacity = int(arg)
 
     # This load the generator LLM first.
-    embedder = SentenceTransformer(LugConfig.get().embedding_model, device=LugConfig.get().embedding_device, trust_remote_code=True)
+    embedder = SentenceTransformer(RauConfig.get().embedding_model, device=RauConfig.get().embedding_device, trust_remote_code=True)
     Generator.build()
     web.run_app(init_app(root_path, lru_capacity), port=3001)

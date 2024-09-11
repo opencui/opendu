@@ -7,7 +7,7 @@ from llama_index.core.bridge.pydantic import PrivateAttr
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from sentence_transformers import SentenceTransformer
 
-from opencui.core.config import LugConfig
+from opencui.core.config import RauConfig
 
 
 # There are two different retrieval tasks:
@@ -27,7 +27,7 @@ class EmbeddingStore:
         if model_name in EmbeddingStore._models:
             return EmbeddingStore._models[model_name]
         else:
-            model = SentenceTransformer(model_name, device=LugConfig.get().embedding_device, trust_remote_code=True)
+            model = SentenceTransformer(model_name, device=RauConfig.get().embedding_device, trust_remote_code=True)
             EmbeddingStore._models[model_name] = model.half()
             return model
 
@@ -37,8 +37,8 @@ class EmbeddingStore:
         if kind != "desc" and kind != "exemplar":
             raise RuntimeError("We can only handle desc and exemplar")
         
-        model_name = LugConfig.get().embedding_model
-        model = EmbeddingStore.get_model(LugConfig.get().embedding_model)
+        model_name = RauConfig.get().embedding_model
+        model = EmbeddingStore.get_model(RauConfig.get().embedding_model)
         if model_name.startswith("dunzhang"):
             return StellaEmbeddings(model, kind)
         else:

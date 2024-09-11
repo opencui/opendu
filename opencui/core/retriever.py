@@ -16,7 +16,7 @@ from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core.schema import NodeWithScore, TextNode, BaseNode
 
 from opencui.core.annotation import (FrameId, FrameSchema, Schema, CamelToSnake, get_value)
-from opencui.core.config import LugConfig
+from opencui.core.config import RauConfig
 from opencui.core import embedding
 
 
@@ -216,7 +216,7 @@ class ContextRetriever:
         self.desc_retriever = d_retrievers
         self.exemplar_retriever = e_retriever
         assert(e_retriever is not None)
-        self.arity = LugConfig.get().exemplar_retrieve_arity
+        self.arity = RauConfig.get().exemplar_retrieve_arity
         self.extended_mode = False
 
     def retrieve_by_desc(self, query):
@@ -276,13 +276,13 @@ class ContextRetriever:
         ]
 
         # Need to remove the bad owner/func/skill/intent.
-        skills = [self.module.get_skill(owner) for owner in owners if self.module.is_good_skill(owner) ]
+        skills = [self.module.get_skill(owner) for owner in owners if self.module.has_skill(owner)]
         return skills, exemplar_nodes
 
 
 def load_context_retrievers(module: Schema, path: str):
     return ContextRetriever(
         module,
-        EmbeddingRetriever.load_retriever(path, "desc", LugConfig.get().desc_retrieve_topk),
-        HybridRetriever.load_retriever(path, "exemplar", LugConfig.get().exemplar_retrieve_topk),
+        EmbeddingRetriever.load_retriever(path, "desc", RauConfig.get().desc_retrieve_topk),
+        HybridRetriever.load_retriever(path, "exemplar", RauConfig.get().exemplar_retrieve_topk),
     )
