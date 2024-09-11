@@ -1,6 +1,6 @@
 import json
 from opencui import EmbeddingStore, ConvertedFactory, build_dataset_index, JsonDatasetFactory, \
-    LugConfig, DescExemplarConverter, InstanceMode
+    RauConfig, DescExemplarConverter, InstanceMode
 from opencui.core.retriever import build_desc_index, load_context_retrievers, ContextRetriever
 
 
@@ -52,7 +52,7 @@ if __name__ == "__main__":
         tags = ["train", "test", "validation"]
         for tag in tags:
             examples = prompted_factory[tag]
-            with open(f"{path}/{skill_mode}-{LugConfig.get().skill_prompt}.{tag}.jsonl", "w") as file:
+            with open(f"{path}/{skill_mode}-{RauConfig.get().skill_prompt}.{tag}.jsonl", "w") as file:
                 print(f"there are {len(examples)} examples left for {tag}.")
                 for example in examples:
                     file.write(f"{json.dumps(example)}\n")

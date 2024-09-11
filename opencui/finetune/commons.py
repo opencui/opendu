@@ -19,7 +19,7 @@ from llama_index.core.schema import TextNode
 from opencui.core.pybars_prompt import (Prompt, MulticlassSkillPrompts, BinarySkillPrompts,
                                  ExemplarPrompts, DescriptionPrompts, BoolPrompts, YniPrompts, ExtractiveSlotPrompts)
 from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher, MatchReplace, get_value
-from opencui.core.config import LugConfig
+from opencui.core.config import RauConfig
 from opencui.core.retriever import create_index, ContextRetriever
 from opencui.finetune.phase1_converter import AnnotatedExemplar, TrainPhase1Converter
 from opencui.finetune.phase2_converter import LabeledMatchingData, PromptConverter
@@ -210,7 +210,7 @@ def load_skill_factory(skill_modes, factories):
     # make sure run build_skill_dataset first.
     for skill_mode in skill_modes:
         factories.append(
-            JsonDatasetFactory("./dugsets/sgd/", "sgd", f"{skill_mode}-{LugConfig.get().skill_prompt}.")
+            JsonDatasetFactory("./dugsets/sgd/", "sgd", f"{skill_mode}-{RauConfig.get().skill_prompt}.")
         )
 
 def load_extractive_slot_factory(converted_factories):
@@ -223,7 +223,7 @@ def load_extractive_slot_factory(converted_factories):
 
 def load_nli_factory(converted_factories):
     # Here we assume the raw input is sentence, focus and label (positive, negative and neutral)
-    converter = YniConverter(YniPrompts[LugConfig.get().yni_prompt])
+    converter = YniConverter(YniPrompts[RauConfig.get().yni_prompt])
     columns = ["question", "response", "label"]
     converted_factories.append(
         ConvertedFactory(JsonBareDatasetFactory("./dugsets/yni/", "yni"), [converter], columns)

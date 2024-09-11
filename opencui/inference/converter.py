@@ -5,9 +5,9 @@ import json
 import re
 from enum import Enum
 
-from opencui.inference.intent_detector import KnnSkillConverter
+from opencui.inference.intent_detector import KnnIntentDetector
 from opencui.core.annotation import (EntityMetas, FrameValue, ListRecognizer, get_value)
-from opencui.core.config import LugConfig
+from opencui.core.config import RauConfig
 from opencui.core.pybars_prompt import (ExtractiveSlotPrompts, YniPrompts)
 from opencui.core.retriever import (ContextRetriever, load_context_retrievers)
 from opencui.inference.schema_parser import load_all_from_directory
@@ -31,20 +31,20 @@ class Converter:
             self.recognizer = ListRecognizer(entity_metas)
 
         self.generator = Generator.build()
-        self.slot_prompt = ExtractiveSlotPrompts[LugConfig.get().slot_prompt]
-        self.yni_prompt = YniPrompts[LugConfig.get().yni_prompt]
+        self.slot_prompt = ExtractiveSlotPrompts[RauConfig.get().slot_prompt]
+        self.yni_prompt = YniPrompts[RauConfig.get().yni_prompt]
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r"\[([^]]*)\]")
         self.skill_converter = None
 
-        self.skill_converter = KnnSkillConverter(retriever, self.generator)
+        self.skill_converter = KnnIntentDetector(retriever, self.generator)
         self.yni_results = {"Affirmative", "Negative", "Indifferent", "Irrelevant" }
 
 
     # Reference implementation for function calling.
     def understand(self, text: str) -> FrameValue:
         # low level get skill.
-        func_name, _ = self.skill_converter.get_skills(text)
+        func_name, _ = self.skill_converter.detect_intents(text)
 
         if not self.with_arguments:
             return FrameValue(name=func_name, arguments={})
@@ -63,11 +63,11 @@ class Converter:
             slot_input_dict.update(module.slots[slot])
             slot_prompts.append(self.slot_prompt(slot_input_dict))
 
-        if LugConfig.get().converter_debug:
+        if RauConfig.get().converter_debug:
             print(json.dumps(slot_prompts, indent=2))
         slot_outputs = self.generator.generate(slot_prompts, GenerateMode.extractive)
 
-        if LugConfig.get().converter_debug:
+        if RauConfig.get().converter_debug:
             print(json.dumps(slot_outputs, indent=2))
 
         slot_values = [parse_json_from_string(seq) for seq in slot_outputs]
@@ -84,7 +84,7 @@ class Converter:
 
 
     def debug(self, utterance, expectations):
-        _, _, debugs = self.skill_converter.get_skills(utterance, expectations, True)
+        _, _, debugs = self.skill_converter.detect_intents(utterance, expectations, True)
         # For now, we assume single intent.
 
         # TODO: figure out how to handle the multi intention utterance.
@@ -92,7 +92,7 @@ class Converter:
 
 
     def detect_triggerables(self, utterance, expectations, debug=False):
-        func_name, evidence, _ = self.skill_converter.get_skills(utterance, expectations, debug)
+        func_name, evidence, _ = self.skill_converter.detect_intents(utterance, expectations, debug)
         # For now, we assume single intent.
         result = {
             "owner": func_name,
@@ -112,11 +112,11 @@ class Converter:
             slot_input_dict = {"utterance": text, "name": name, "candidates": values}
             slot_prompts.append(self.slot_prompt(slot_input_dict))
 
-        if LugConfig.get().converter_debug:
+        if RauConfig.get().converter_debug:
             print(json.dumps(slot_prompts, indent=2))
         slot_outputs = self.generator.generate(slot_prompts, GenerateMode.extractive)
 
-        if LugConfig.get().converter_debug:
+        if RauConfig.get().converter_debug:
             print(json.dumps(slot_outputs, indent=2))
 
         results = {}
@@ -137,7 +137,7 @@ class Converter:
         outputs = self.generator.generate(input_prompts, GenerateMode.nli)
         outputs = list(map(lambda x: x if (x in self.yni_results) else "Irrelevant", outputs))
 
-        if LugConfig.get().converter_debug:
+        if RauConfig.get().converter_debug:
             print(f"{input_prompts} {outputs}")
         return outputs
 

@@ -9,7 +9,7 @@ from sentence_transformers.readers import InputExample
 from torch.utils.data import DataLoader
 
 from opencui.core.annotation import FrameSchema
-from opencui.core.config import LugConfig
+from opencui.core.config import RauConfig
 from opencui.core.embedding import EmbeddingStore
 from opencui.core.retriever import EmbeddingRetriever, HybridRetriever
 from opencui.finetune.commons import JsonDatasetFactory, SchemaDatasetFactory
@@ -32,9 +32,9 @@ class DatasetCreatorWithIndex:
     def build(cls, creator: SchemaDatasetFactory, path: str):
         return DatasetCreatorWithIndex(
             creator=creator,
-            desc_retriever=EmbeddingRetriever(path, "desc", LugConfig.get().desc_retrieve_topk),
+            desc_retriever=EmbeddingRetriever(path, "desc", RauConfig.get().desc_retrieve_topk),
             exemplar_retriever=HybridRetriever(
-                path, "exemplar", LugConfig.get().exemplar_retrieve_topk
+                path, "exemplar", RauConfig.get().exemplar_retrieve_topk
             ),
         )
 
@@ -149,12 +149,12 @@ if __name__ == "__main__":
         has_no_intent, SchemaDatasetFactory,
     )
 
-    print(LugConfig.get().embedding_model)
+    print(RauConfig.get().embedding_model)
     dsc = [
         DatasetCreatorWithIndex.build(
             JsonDatasetFactory("./dugsets/sgd/"),
             "./index/sgdskill/")
     ]
     dataset = DataLoader(generate_sentence_pairs(dsc))
-    base_model = EmbeddingStore.get_model(LugConfig.get().embedding_model)
+    base_model = EmbeddingStore.get_model(RauConfig.get().embedding_model)
     train(base_model, dataset, "./output/embedding/")

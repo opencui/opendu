@@ -1,21 +1,39 @@
-# This is used for configure the project during the index and training.
+# Copyright 2024, OpenCUI
+# Licensed under the Apache License, Version 2.0.
 
 from pydantic import BaseModel
+from enum import Enum
+
+
+# This is used for configure the project during the index and training.
+class ModelType(Enum):
+    t5 = 1
+    gpt = 2
+    llama = 3
+
+    # This normalizes type to t5/gpt/bert (potentially)
+    @staticmethod
+    def normalize(model_in_str):
+        if ModelType[model_in_str] == ModelType.llama:
+            return ModelType.gpt
+        return ModelType[model_in_str]
+
 
 DEVICE="cuda:0"
 
-class LugConfig:
+
+class RauConfig:
     _instance = None
 
     @classmethod
     def init(cls, jsonobj):
-        LugConfig._instance = InferenceConfig(**jsonobj)
+        RauConfig._instance = InferenceConfig(**jsonobj)
 
     @classmethod
     def get(cls):
-        if LugConfig._instance is None:
-            LugConfig._instance = InferenceConfig()
-        return LugConfig._instance
+        if RauConfig._instance is None:
+            RauConfig._instance = InferenceConfig()
+        return RauConfig._instance
 
 
 class InferenceConfig(BaseModel):

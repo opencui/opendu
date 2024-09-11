@@ -4,20 +4,23 @@
 import json
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from enum import Enum
 
 from opencui.core.annotation import (CamelToSnake, DialogExpectation, Exemplar, OwnerMode, ExactMatcher)
-from opencui.core.config import LugConfig
+from opencui.core.config import RauConfig
 from opencui.core.pybars_prompt import (DescriptionPrompts, ExemplarPrompts)
 from opencui.core.retriever import (ContextRetriever)
 from opencui.inference.generator import GenerateMode
 
 from opencui.utils.json_tools import parse_json_from_string
 
-# The modes that we will support.
+#
+# The intent detector try to detect all triggerable intents from user utterance, with respect to
+# existing conversational history, summarized in expectations. However, expectations are only used
+# during the retrieval stage, not in the decision stage beyond that.
+#
 class IntentDetector(ABC):
     @abstractmethod
-    def get_skills(self, text, expectations=None, debug=False):
+    def detect_intents(self, text, expectations=None, debug=False):
         pass
 
     @abstractmethod
@@ -27,12 +30,12 @@ class IntentDetector(ABC):
 
 # This is used to pick the owner by first accumulate on the exemplars by weight 2
 # then accumulate on desc by weight 1.
-class SingleOwnerPicker:
+class SingleOwnerKnnPicker:
     def __init__(self, expected):
         self.counts = defaultdict(int)
         # This we make sure that
         self.modes = [OwnerMode.normal]
-        self.expectedTypes = SingleOwnerPicker.get_types(expected)
+        self.expectedTypes = SingleOwnerKnnPicker.get_types(expected)
         self.weightForExpected = 0.0
         
     def accumulate(self, flags: list[bool], owners: list[str], weight=2):
@@ -65,12 +68,12 @@ class SingleOwnerPicker:
 
 
 # This use nearest neighbors in the exemplar space, and some simple voting for detemine the skills. 
-class KnnSkillConverter(IntentDetector, ABC):
+class KnnIntentDetector(IntentDetector, ABC):
     def __init__(self, retriever: ContextRetriever, generator):
         self.retrieve = retriever
         self.generator = generator
-        self.desc_prompt = DescriptionPrompts[LugConfig.get().skill_prompt]
-        self.example_prompt = ExemplarPrompts[LugConfig.get().skill_prompt]
+        self.desc_prompt = DescriptionPrompts[RauConfig.get().skill_prompt]
+        self.example_prompt = ExemplarPrompts[RauConfig.get().skill_prompt]
         self.use_exemplar = True
         self.use_desc = True
         assert self.use_desc or self.use_exemplar
@@ -113,7 +116,7 @@ class KnnSkillConverter(IntentDetector, ABC):
 
     @staticmethod
     def parse_results(skill_prompts, owners, skill_outputs, owner_modes):
-        if LugConfig.get().converter_debug:
+        if RauConfig.get().converter_debug:
             print(json.dumps(skill_prompts, indent=2))
             print(json.dumps(skill_outputs, indent=2))
 
@@ -148,10 +151,10 @@ class KnnSkillConverter(IntentDetector, ABC):
             }
             infos.append(item)
 
-    def get_skills(self, text, expectations, debug=False):
+    def detect_intents(self, text, expectations, debug=False):
         print(f"parse for skill: {text} with {expectations}")
         # For now, we only pick one skill
-        picker = SingleOwnerPicker(expectations)
+        picker = SingleOwnerKnnPicker(expectations)
         skills, exemplar_nodes = self.retrieve(text)
         print(f"get_skills for {text} with {len(exemplar_nodes)} nodes\n")
 
@@ -220,7 +223,7 @@ class KnnSkillConverter(IntentDetector, ABC):
         if not self.matcher.is_good_mode(owner_mode):
             return
 
-        picker = SingleOwnerPicker([])
+        picker = SingleOwnerKnnPicker([])
         # nodes owner are always included in the
         skills, nodes = self.retrieve(text, [])
 
@@ -268,7 +271,6 @@ class KnnSkillConverter(IntentDetector, ABC):
         # We only output when there is a need for study
         self.update(exemplar_preds, exemplar_truth, count_dict["exemplar"], exemplar_prompts, exemplar_outputs, debug_output)
         self.update(desc_preds, desc_truth, count_dict["desc"], desc_prompts, desc_outputs, debug_output)
-
 
 
 def node_to_exemplar(node):

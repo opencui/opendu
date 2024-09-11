@@ -8,18 +8,6 @@ from pydantic import BaseModel, Field
 from enum import Enum
 from llama_index.core.schema import TextNode
 
-class ModelType(Enum):
-    t5 = 1
-    gpt = 2
-    llama = 3
-
-    # This normalizes type to t5/gpt/bert (potentially)
-    @staticmethod
-    def normalize(model_in_str):
-        if ModelType[model_in_str] == ModelType.llama:
-            return ModelType.gpt
-        return ModelType[model_in_str]
-
 
 @dataclass_json
 @dataclass
@@ -94,8 +82,9 @@ class Schema:
     def get_skill(self, frame_id: FrameId):
         return self.skills[frame_id.name]
 
-    def is_good_skill(self, frame_id: FrameId):
+    def has_skill(self, frame_id: FrameId):
         return frame_id.name in self.skills
+
 
 OwnerMode = Enum('OwnerMode', ["normal", "extended"])
 
@@ -222,7 +211,6 @@ def get_value(item, key, value=None):
         return item[key]
     except:
         return value
-
 
 #
 # This is need to convert the camel casing to snake casing.
