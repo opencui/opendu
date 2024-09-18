@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# this shell can expand the tar ball, and copy the extracted file to right place for debug.
+#
+# This shell can expand the tar ball, and copy the extracted dumeta to right place, and run curl to index it.
 # Check if a filename is provided
 if [ $# -eq 0 ]; then
     echo "Please provide a tar.gz filename as an argument."
@@ -13,7 +14,7 @@ temp_dir=$(mktemp -d)
 # Extract the tar.gz file to the temporary directory
 tar -xzf "$1" -C "$temp_dir"
 
-files=$(find "$temp_dir/en" -name "me_test*")
+files=$(find "$temp_dir/en" -name "me_test*" -type f -exec grep -l "IChatbot()" {} +)
 
 echo "Files found (simple method):"
 echo "$files"
