@@ -67,7 +67,7 @@ class SingleOwnerKnnPicker:
         return None if len(pairs) == 0 else pairs[0][0]
 
 
-# This use nearest neighbors in the exemplar space, and some simple voting for detemine the skills. 
+# This use nearest neighbors in the exemplar space, and some simple voting for determine the skills.
 class KnnIntentDetector(IntentDetector, ABC):
     def __init__(self, retriever: ContextRetriever, generator):
         self.retrieve = retriever
