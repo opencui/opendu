@@ -89,6 +89,10 @@ class StellaEmbeddings(BaseEmbedding):
         return embeddings.tolist()
 
 
+# We might want to support embedding from Jina, but it has a CC BY-NC 4.0 license.
+# so waiting for now to see if there are other friendlier models with multi-language .
+
+
 # This is for BAAI
 class BaaiEmbeddings(BaseEmbedding):
     _instructions: dict[str, str] = PrivateAttr()
