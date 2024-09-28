@@ -1,0 +1,9 @@
+{#
+This does for intent detection task, as a multi class problem, with all the information, skills (name, description),
+exemplars (utterance, and outputs, as we allow multiple intents), and system instruction. The output should be in Json
+format.
+ #}
+[ {% for output in outputs %} { "implied" : "{{ output }}"  }, {% endfor %} ]
+
+
+

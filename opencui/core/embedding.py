@@ -62,10 +62,11 @@ class StellaEmbeddings(BaseEmbedding):
     _text_prompt: dict[str, str] = PrivateAttr()
 
     def __init__(self, model: SentenceTransformer, kind: str, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
         self._model = model
         self._query_prompt = {"prompt_name": "s2p_query" } if kind == DESC else {"prompt_name": "s2s_query" }
         self._text_prompt = {} if kind == DESC else {"prompt_name": "s2s_query" }
-        super().__init__(**kwargs)
+
 
     @classmethod
     def class_name(cls) -> str:

@@ -1,0 +1,25 @@
+{#
+This does for intent detection task, as a multi class problem, with all the information, skills (name, description),
+exemplars (utterance, and outputs, as we allow multiple intents), and system instruction. The output should be in Json
+format.
+ #}
+Given a incomplete list of skills and their corresponding description, along with some examples, output all the skills
+that was implied by input text, return empty list if there is no skill in the list is implied by input, and output in
+the proper json format.
+
+The skills are:
+{% for skill in skills %}
+{{ skill.name }}:{{ skill.description }}
+{% endfor %}
+
+Here are some examples:
+{% for example in examples %}
+Input: {{ example.input }}
+Prediction: [ {% for output in example.outputs %} { "implied" : "{{ output }}"  }, {% endfor %} ]
+{% endfor %}
+
+For the given input: {{ utterance }}
+Prediction:
+
+
+

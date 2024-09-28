@@ -1,0 +1,11 @@
+Decide whether the response is affirmative, negative, indifferent or irrelevaent to this yes/no question:
+{{question}}\n
+
+Here some examples:
+{% for example in examples %}
+Response: {{example.response}}
+Decision:{{example.label}}
+{% endfor %}
+
+Response: {{response}}
+Decision:
