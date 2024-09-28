@@ -1,0 +1,15 @@
+Decide whether the following template means the same as:
+{{ utterance }}
+
+{#  we assume we have a list of examples #}
+Here some examples:
+{% for example in examples %}
+Template: {{example.template}}
+Decision:{{example.label}}
+
+{% endfor %}
+
+Template: {{template}}
+Decision:
+
+
