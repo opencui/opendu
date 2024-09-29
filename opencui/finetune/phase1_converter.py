@@ -11,11 +11,12 @@ from random import sample, seed
 from typing import Optional
 from dataclasses_json import dataclass_json
 
+from dugsets.yni.prompt import prompt
+from opencui import InstructBuilder
 from opencui.core.config import RauConfig
 from opencui.core.retriever import create_index, ContextRetriever
 from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher, MatchReplace, get_value
-from opencui.core.prompt import (PybarsPrompt, MulticlassSkillPrompts, BinarySkillPrompts,
-                                 ExemplarPrompts, DescriptionPrompts, BoolPrompts, YniPrompts, ExtractiveSlotPrompts)
+from opencui.core.prompt import (PybarsPrompt, Task, promptManager)
 
 @dataclass_json
 @dataclass
@@ -95,7 +96,9 @@ class TrainPhase1Converter(ABC):
 
 class MultiClassSkillConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever):
-        self.prompt = MulticlassSkillPrompts[RauConfig.get().skill_prompt]
+        label = promptManager.get_task_label(Task.SKILL)
+        assert label.startswith("skill-mc"), "need to be skill-mc prefix"
+        self.prompt = promptManager.get_builder(Task.SKILL)
         self.context_retrieve = retriever
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
@@ -178,7 +181,9 @@ class MultiClassSkillConverter(TrainPhase1Converter):
 
 class OneSkillConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever):
-        self.prompt = BinarySkillPrompts[RauConfig.get().skill_prompt]
+        label = promptManager.get_task_label(Task.SKILL)
+        assert label.startswith("skill-sc"), "need to be skill-sc prefix"
+        self.prompt = promptManager.get_builder(Task.SKILL)
         self.context_retrieve = retriever
         self.neg_k = 1
         self.match_mode = "normal"
@@ -322,8 +327,8 @@ class NliConverter(TrainPhase1Converter, ABC):
 
 
 class YniConverter(TrainPhase1Converter, ABC):
-    def __init__(self, prompt):
-        self.prompt = prompt
+    def __init__(self):
+        self.prompt = promptManager.get_builder(Task.YNI)
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # We assume the input is dict version of AnnotatedExemplar
@@ -345,7 +350,7 @@ class SlotExtractConverter(TrainPhase1Converter, ABC):
 # This is for extractive slot value understanding.
 # For now, we only get positive example.
 class OneSlotExtractConverter(SlotExtractConverter):
-    def __init__(self, module: Schema, slot_prompt: PybarsPrompt, entities):
+    def __init__(self, module: Schema, slot_prompt: InstructBuilder, entities):
         self.prompt = slot_prompt
         self.module = module
         self.include_negative = True

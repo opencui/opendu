@@ -21,7 +21,7 @@ from opencui.core.prompt import (PybarsPrompt, MulticlassSkillPrompts, BinarySki
 from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher, MatchReplace, get_value
 from opencui.core.config import RauConfig
 from opencui.core.retriever import create_index, ContextRetriever
-from opencui.finetune.phase1_converter import AnnotatedExemplar, TrainPhase1Converter
+from opencui.finetune.phase1_converter import AnnotatedExemplar, TrainPhase1Converter, YniConverter
 from opencui.finetune.phase2_converter import LabeledMatchingData, PromptConverter
 
 
@@ -223,7 +223,7 @@ def load_extractive_slot_factory(converted_factories):
 
 def load_nli_factory(converted_factories):
     # Here we assume the raw input is sentence, focus and label (positive, negative and neutral)
-    converter = YniConverter(YniPrompts[RauConfig.get().yni_prompt])
+    converter = YniConverter()
     columns = ["question", "response", "label"]
     converted_factories.append(
         ConvertedFactory(JsonBareDatasetFactory("./dugsets/yni/", "yni"), [converter], columns)
