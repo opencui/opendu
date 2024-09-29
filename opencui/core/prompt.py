@@ -193,6 +193,7 @@ class PybarsPromptManager(PromptManager):
             'Input: {{utterance}} \n\n Decision:'
         ),
         "skill-knn-structural": PybarsPrompt(
+
             'Decide whether the following template means the same as:\n {{utterance}}.\n\n'
             '{{#list_examples examples}}Template: {{template}}\nDecision:{{label}}\n\n{{/list_examples}}'
             'Template: {{template}}\nDecision:'),
