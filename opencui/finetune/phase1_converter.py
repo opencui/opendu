@@ -11,8 +11,8 @@ from dataclasses_json import dataclass_json
 
 from opencui import InstructBuilder
 from opencui.core.retriever import create_index, ContextRetriever
-from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher, MatchReplace, get_value
-from opencui.core.prompt import (PybarsPrompt, Task, promptManager)
+from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher
+from opencui.core.prompt import (Task, promptManager)
 
 @dataclass_json
 @dataclass
@@ -88,6 +88,7 @@ class TrainPhase1Converter(ABC):
     @abc.abstractmethod
     def __call__(self, batch, ins: list[str], outs: list[str]):
         return
+
 
 
 class MultiClassSkillConverter(TrainPhase1Converter):

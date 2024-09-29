@@ -12,7 +12,6 @@ import traceback as tb
 from aiohttp import web
 import shutil
 from opencui.core.config import RauConfig
-from opencui import load_converter
 from opencui.inference.converter import Converter, Generator, load_converter
 from opencui.inference.index import indexing
 from sentence_transformers import SentenceTransformer
