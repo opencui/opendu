@@ -14,7 +14,7 @@ from dataclasses_json import dataclass_json
 from opencui.core.config import RauConfig
 from opencui.core.retriever import create_index, ContextRetriever
 from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher, MatchReplace, get_value
-from opencui.core.pybars_prompt import (Prompt, MulticlassSkillPrompts, BinarySkillPrompts,
+from opencui.core.prompt import (PybarsPrompt, MulticlassSkillPrompts, BinarySkillPrompts,
                                  ExemplarPrompts, DescriptionPrompts, BoolPrompts, YniPrompts, ExtractiveSlotPrompts)
 
 @dataclass_json
@@ -345,7 +345,7 @@ class SlotExtractConverter(TrainPhase1Converter, ABC):
 # This is for extractive slot value understanding.
 # For now, we only get positive example.
 class OneSlotExtractConverter(SlotExtractConverter):
-    def __init__(self, module: Schema, slot_prompt: Prompt, entities):
+    def __init__(self, module: Schema, slot_prompt: PybarsPrompt, entities):
         self.prompt = slot_prompt
         self.module = module
         self.include_negative = True

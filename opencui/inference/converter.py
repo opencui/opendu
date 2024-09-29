@@ -8,7 +8,7 @@ from enum import Enum
 from opencui.inference.intent_detector import KnnIntentDetector
 from opencui.core.annotation import (EntityMetas, FrameValue, ListRecognizer, get_value)
 from opencui.core.config import RauConfig
-from opencui.core.pybars_prompt import (ExtractiveSlotPrompts, YniPrompts)
+from opencui.core.prompt import (ExtractiveSlotPrompts, YniPrompts)
 from opencui.core.retriever import (ContextRetriever, load_context_retrievers)
 from opencui.inference.schema_parser import load_all_from_directory
 from opencui.inference.generator import GenerateMode, Generator
