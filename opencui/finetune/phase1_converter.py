@@ -6,10 +6,10 @@ import re
 from abc import ABC
 from dataclasses import dataclass
 from enum import Enum
-from random import sample, seed
 from typing import Optional
 from dataclasses_json import dataclass_json
 
+from dugsets.yni.prompt import prompt
 from opencui import InstructBuilder
 from opencui.core.config import RauConfig
 from opencui.core.retriever import create_index, ContextRetriever
@@ -252,8 +252,8 @@ InstanceMode = Enum("InstanceMode", ["desc", "example", "both"])
 class DescExemplarConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever, mode=InstanceMode.both):
         # Make sure that we have the same key for Desc and exemplar prompt.
-        self.desc_prompt = DescriptionPrompts[RauConfig.get().skill_prompt]
-        self.example_prompt = ExemplarPrompts[RauConfig.get().skill_prompt]
+        self.desc_prompt = promptManager.get_builder(Task.SKILL_DESC)
+        self.example_prompt = promptManager.get_builder(Task.SKILL)
         self.context_retrieve = retriever
         self.neg_k = 1
         self.mode = mode
@@ -262,7 +262,7 @@ class DescExemplarConverter(TrainPhase1Converter):
     @staticmethod
     def label(value):
         label_dict = {"label": "true" if value else "false"}
-        return BoolPrompts[RauConfig.get().bool_prompt](label_dict)
+        return promptManager.get_builder(Task.BOOL_VALUE)(label_dict)
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # Working on the batched dataset, with first dimension is column then index.
