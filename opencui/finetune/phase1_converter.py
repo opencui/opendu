@@ -14,8 +14,8 @@ from dataclasses_json import dataclass_json
 from opencui.core.config import RauConfig
 from opencui.core.retriever import create_index, ContextRetriever
 from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher, MatchReplace, get_value
-from opencui.core.pybars_prompt import (PybarsPrompt, MulticlassSkillPrompts, BinarySkillPrompts,
-                                        ExemplarPrompts, DescriptionPrompts, BoolPrompts, YniPrompts, ExtractiveSlotPrompts)
+from opencui.core.prompt import (PybarsPrompt, MulticlassSkillPrompts, BinarySkillPrompts,
+                                 ExemplarPrompts, DescriptionPrompts, BoolPrompts, YniPrompts, ExtractiveSlotPrompts)
 
 @dataclass_json
 @dataclass

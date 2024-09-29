@@ -7,7 +7,7 @@ from collections import defaultdict
 
 from opencui.core.annotation import (CamelToSnake, DialogExpectation, Exemplar, OwnerMode, ExactMatcher)
 from opencui.core.config import RauConfig
-from opencui.core.pybars_prompt import (DescriptionPrompts, ExemplarPrompts)
+from opencui.core.prompt import (DescriptionPrompts, ExemplarPrompts)
 from opencui.core.retriever import (ContextRetriever)
 from opencui.inference.generator import GenerateMode
 
