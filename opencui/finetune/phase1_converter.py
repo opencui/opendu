@@ -9,9 +9,7 @@ from enum import Enum
 from typing import Optional
 from dataclasses_json import dataclass_json
 
-from dugsets.yni.prompt import prompt
 from opencui import InstructBuilder
-from opencui.core.config import RauConfig
 from opencui.core.retriever import create_index, ContextRetriever
 from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher, MatchReplace, get_value
 from opencui.core.prompt import (PybarsPrompt, Task, promptManager)
