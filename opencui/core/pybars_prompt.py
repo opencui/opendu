@@ -5,6 +5,84 @@
 import html
 
 from pybars import Compiler
+from abc import ABC, abstractmethod
+from typing import Callable
+
+from opencui.core.config import RauConfig
+from abc import ABC
+from typing import Callable
+
+from jinja2 import Environment, FileSystemLoader
+
+
+
+# Let's setup instruction builder
+class InstructBuilder(ABC):
+    @abstractmethod
+    def build(self, **kwargs):
+        pass
+
+#
+# For each class of problem, we might have many different prompt template, assumes the same set of variables.
+# eventually, this will be a global manager, so that we can specify prompt template (instruction builder)
+# by it's label.
+#
+class PromptManager(ABC):
+    @abstractmethod
+    def __getitem__(self, label) -> InstructBuilder:
+        pass
+
+    def get_builder(self, task: Task):
+        match task:
+            case Task.SKILL:
+                return self[RauConfig.get().skill_prompt]
+            case Task.SKILL_DESC:
+                return self[RauConfig.get().skill_desc_prompt]
+            case Task.SLOT:
+                return self[RauConfig.get().slot_prompt]
+            case Task.YNI:
+                return self[RauConfig.get().yni_prompt]
+            case Task.BOOL_VALUE:
+                return self[RauConfig.get().bool_prompt]
+
+    def get_task_label(self, task: Task):
+        match task:
+            case Task.SKILL:
+                return RauConfig.get().skill_prompt.split(".")[0]
+            case Task.SKILL_DESC:
+                return RauConfig.get().skill_desc_prompt.split(".")[0]
+            case Task.SLOT:
+                return RauConfig.get().slot_prompt.split(".")[0]
+            case Task.YNI:
+                return RauConfig.get().yni_prompt.split(".")[0]
+            case Task.BOOL_VALUE:
+                return RauConfig.get().bool_prompt.split(".")[0]
+
+
+
+#
+# Assume the source have examples, slots, skills, values as well as utterance.
+# This prompt template is designed to address template for full skill.
+#
+class JinjaPromptBuilder(InstructBuilder, ABC):
+    def __init__(self, label: str):
+        env = Environment(loader=FileSystemLoader("opencui/core/templates"))
+        self.template = env.get_template(label)
+
+
+    def __call__(self, **kwargs) -> str:
+        # First we need to create the example.
+        return self.build(**kwargs)
+
+    def build(self, **kwargs) -> str:
+        return self.template.render(**kwargs)
+
+
+# Notice this manager does not need to
+class JingaPromptManager(PromptManager, ABC):
+    def __getitem__(self, label):
+        return JinjaPromptBuilder(label)
+
 
 
 #
@@ -54,7 +132,7 @@ class ObjectLister:
 #
 # Assume the source have examples, slots, skills, values as well as utterance.
 # This prompt template is designed to address template for full skill.
-class Prompt:
+class PybarsPrompt:
     default_helpers = {
             "list_examples": ObjectLister(),
             "list_skills": ObjectLister(
@@ -88,19 +166,6 @@ class Prompt:
         )
 
 
-# Each class prompt assumes the same set of variables.
-class ClassPrompts:
-    def __init__(self, **kvargs):
-        self.helpers = Prompt.default_helpers
-        self.prompt_map = {
-            key: Prompt(source, self.helpers) for key, source in kvargs.items()
-        }
-        print(self.prompt_map)
-
-    def __getitem__(self, item):
-        return self.prompt_map[item]
-
-
 #
 # LugPrompts assumes the following prompt template in pybars depending on the following information:
 # skills: List[SkillSpec]
@@ -109,27 +174,27 @@ class ClassPrompts:
 # values: ?
 #
 MulticlassSkillPrompts = {
-    "specs_only": Prompt(
+    "specs_only": PybarsPrompt(
         "{{#list_skills skills}} {{name}}: {{description}} {{/list_skills}}\n"
         'Classify the input sentence: "{{utterance}}" as one of '
         '{{#list_skill_names skills}} "{{name}}" {{/list_skill_names}}.\n'
         'The prediction is:'
     ),
-    "specs_exampled": Prompt(
+    "specs_exampled": PybarsPrompt(
         '{{#list_skills skills}} "{{name}}": {{description}} {{/list_skills}}\n'
         "{{#list_examples examples}}Input template: {{template}} means {{owner}}\n{{/list_examples}}\n"
         'Classify the input sentence: "{{utterance}}" as one of '
         '{{#list_skill_names skills}} "{{name}}" {{/list_skill_names}}.\n'
         "The prediction is:"
     ),
-    "full": Prompt(
+    "full": PybarsPrompt(
         '{{#list_skills skills}} "{{name}}": {{description}} {{/list_skills}}\n'
         "Classify the input as one of "
         '{{#list_skill_names skills}} "{{name}}" {{/list_skill_names}}.\n\n'
         '{{#list_examples examples}}Input: "{{template}}"\nOutput:"{{owner}}"\n{{/list_examples}}\n'
         'Input: "{{utterance}}"\nOutput:'
     ),
-    "basic": Prompt(
+    "basic": PybarsPrompt(
         '{{#list_skill_names skills}} "{{name}}": {{description}} {{/list_skill_names}}\n'
         "Output null if input does not imply any one of them.\n\n"
         '{{#list_examples examples}}Input: "{{template}}"\nOutput:"{{owner}}"\n{{/list_examples}}\n'
@@ -138,12 +203,12 @@ MulticlassSkillPrompts = {
 }
 
 BinarySkillPrompts = {
-    "default": Prompt(
+    "default": PybarsPrompt(
         'Determine whether the input means "{{skill.name}}": {{skill.description}}, output true or false.\n'
         '{{#list_examples examples}}Input: [{{template}}] means "{{target}}"? Output: {{decision}}{{/list_examples}}'
         'Input: [{{utterance}}] means "{{skill.name}}"? Output: '
     ),
-    "natural": Prompt(
+    "natural": PybarsPrompt(
         'Determine whether the input means "{{skill.name}}": {{skill.description}}, output true or false.\n'
         "{{#list_examples examples}}"
         'Question: Does "{{template}}" mean "{{target}}"? Answer: {{decision}}'
@@ -154,35 +219,35 @@ BinarySkillPrompts = {
 
 
 DescriptionPrompts = {
-    "default": Prompt(
+    "default": PybarsPrompt(
         'Is it true that "{{utterance}}" fits the description "{{skill.description}}"?'
     ),
-    "structural": Prompt(
+    "structural": PybarsPrompt(
         'Decide whether the input fit this function description: {{skill.description}}'
         'Input: {{utterance}} \n\n Decision:'
     ),
-    "struct-short": Prompt(
+    "struct-short": PybarsPrompt(
         'Given the function description:\n "{{skill.description}}" \n'
         'and the sentence: {{utterance}} \n'
         'Is it true that the sentence fits the function description?'
     ),
-    "token": Prompt(
+    "token": PybarsPrompt(
         '<utterance> {{utterance}} </utterance> <func> {{skill.name}} : {{skill.description}} </func> <description>'
     ),
-    "struct-token": Prompt(
+    "struct-token": PybarsPrompt(
         'Given the function '
         '<func_name> {{skill.name}} </func_name> with its description: <func_desc> {{skill.description}} </func_desc>, '
         'decide whether <utterance> {{utterance}} </utterance> means this function.'
         'The answer is'
     ),
-    "struct-token1": Prompt(
+    "struct-token1": PybarsPrompt(
         'Given:\n'
         'the utterance: <utterance> {{utterance}} </utterance>\n'  
         'the function description: <func_desc> {{skill.description}} </func_desc>\n'
         'Is it true that the utterance fit the function description?'
         '<desc> The answer is '
     ),
-    "struct-token2": Prompt(
+    "struct-token2": PybarsPrompt(
         'Given:\n'
         'the utterance: <utterance> {{utterance}} </utterance>\n'
         'the function description: <func_desc> {{skill.description}} </func_desc>\n'
@@ -191,52 +256,51 @@ DescriptionPrompts = {
     ),
 }
 
+
 # This should have the same exact key as the above prompt dictionary.
-ExemplarPrompts = ClassPrompts(
-    default='Is it true that "{{utterance}}" means the same as the example: "{{template}}"?',
-    structural='Decide whether the following template means the same as:\n {{utterance}}.\n\n'
-               '{{#list_examples examples}}Template: {{template}}\nDecision:{{label}}\n\n{{/list_examples}}'
-               'Template: {{template}}\nDecision:',
-
-    reverse='Decide whether the input means the same as this template: {{template}}.'
-            'Input: {{utterance}} \n\n Decision:',
-
-    struct_short='Given the template: \n "{{template}}" \n'
-                 'and the sentence: \n "{{utterance}}" \n'
-                 'Is it true that the sentence means the same as the template? '
-)
+ExemplarPrompts = {
+    "default": PybarsPrompt(
+        'Is it true that "{{utterance}}" means the same as the example: "{{template}}"?'),
+    "structural": PybarsPrompt(
+        'Decide whether the following template means the same as:\n {{utterance}}.\n\n'
+        '{{#list_examples examples}}Template: {{template}}\nDecision:{{label}}\n\n{{/list_examples}}'
+        'Template: {{template}}\nDecision:'),
+}
 
 # For the slots of enum type, we used different prompt in order to improve the
 # Candidates should be , separated string for now.
-ExtractiveSlotPrompts = ClassPrompts(
-    default='{{#list_values values}} {{value}} {{/list_values}}\n'
-            'The value for {{name}} from "{{utterance}}" is:',
-    structural='Mark the value for {{name}} in utterance.\n\n'
-               '{{#list_examples examples}}Utterance: {{utterance}}\nOutput:{{label}}\n\n{{/list_examples}}'
-               'Utterance: {{utterance}}\nOutput:',
-    candidates='Mark the value for {{name}} in utterance.\n\n'
-               '{{#list_examples examples}}Utterance: {{utterance}}\nCandidates: {{candidates}}\nOutput:{{label}}\n\n{{/list_examples}}'
-               'Utterance: {{utterance}}\nCandidates: {{candidates}}\nOutput:',
+ExtractiveSlotPrompts = {
+    "default": PybarsPrompt(
+        '{{#list_values values}} {{value}} {{/list_values}}\n'
+        'The value for {{name}} from "{{utterance}}" is:'),
+    "structural": PybarsPrompt(
+        'Mark the value for {{name}} in utterance.\n\n'
+        '{{#list_examples examples}}Utterance: {{utterance}}\nOutput:{{label}}\n\n{{/list_examples}}'
+        'Utterance: {{utterance}}\nOutput:'),
+}
 
-)
+YniPrompts = {
+    "default": PybarsPrompt(
+        'Decide whether the response is affirmative, negative, indifferent or irrelevant to this '
+        'yes/no '
+        'question:\n\n'
+        '{{question}}\n'
+        '{{#list_examples examples}}Response: {{response}}\nDecision:{{label}}\n\n{{/list_examples}}'
+        'Response: {{response}}\nDecision:')
+}
 
-YniPrompts = ClassPrompts(
-    default='Decide whether the response is affirmative, negative, indifferent or irrelevant to this yes/no question:\n\n'
-            '{{question}}\n'
-            '{{#list_examples examples}}Response: {{response}}\nDecision:{{label}}\n\n{{/list_examples}}'
-            'Response: {{response}}\nDecision:'
-)
 
+NliPrompts = {
+    "boolq": PybarsPrompt(
+        'Given the premise: "{{premise}}", the hypothesis: "{{hypothesis}}" is its ')
+}
 
-NliPrompts = ClassPrompts(
-    boolq='Given the premise: "{{premise}}", the hypothesis: "{{hypothesis}}" is its '
-)
 
 BoolPrompts = {
-    "default": Prompt('{{label}}</s>'),
-    "plain": Prompt('{{label}}'),
-    "truefalse": Prompt('{{label}}</true_false_response></s>'),
-    "yesno": Prompt('{{label}}</yes_no_response></s>')
+    "default": PybarsPrompt('{{label}}</s>'),
+    "plain": PybarsPrompt('{{label}}'),
+    "truefalse": PybarsPrompt('{{label}}</true_false_response></s>'),
+    "yesno": PybarsPrompt('{{label}}</yes_no_response></s>')
 }
 
 
