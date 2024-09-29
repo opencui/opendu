@@ -50,9 +50,10 @@ class InferenceConfig(BaseModel):
     skill_arity: int = 1
     llm_device: str = DEVICE
 
-    skill_prompt: str = "structural"
-    slot_prompt: str = "structural"
-    yni_prompt: str = "default"
+    skill_prompt: str = "skill-knn-structural"
+    skill_desc_prompt: str = "skill-desc-structural"
+    slot_prompt: str = "slot-qa-structural"
+    yni_prompt: str = "yni-default"
     bool_prompt: str = "plain"
 
     eval_mode: bool = True

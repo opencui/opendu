@@ -27,9 +27,14 @@ class Task(Enum):
 
 # Let's setup instruction builder
 class InstructBuilder(ABC):
+
+    def __call__(self, **kwargs):
+        return self.build(**kwargs)
+
     @abstractmethod
     def build(self, **kwargs):
         pass
+
 
 #
 # For each class of problem, we might have many different prompt template, assumes the same set of variables.
@@ -66,7 +71,6 @@ class PromptManager(ABC):
                 return RauConfig.get().yni_prompt.split(".")[0]
             case Task.BOOL_VALUE:
                 return RauConfig.get().bool_prompt.split(".")[0]
-
 
 
 #
@@ -141,7 +145,7 @@ class ObjectLister:
 #
 # Assume the source have examples, slots, skills, values as well as utterance.
 # This prompt template is designed to address template for full skill.
-class PybarsPrompt:
+class PybarsPrompt(InstructBuilder):
     default_helpers = {
             "list_examples": ObjectLister(),
             "list_skills": ObjectLister(
@@ -174,6 +178,46 @@ class PybarsPrompt:
             self.template(item, helpers=self.helpers, partials=self.partials)
         )
 
+    def build(self, **kwargs):
+        # First we need to create the example.
+        return html.unescape(
+            self.template(kwargs, helpers=self.helpers, partials=self.partials)
+        )
+
+
+class PybarsPromptManager(PromptManager):
+    def __init__(self):
+        self.collections = {
+        "skill-desc-structural": PybarsPrompt(
+            'Decide whether the input fit this function description: {{skill.description}}'
+            'Input: {{utterance}} \n\n Decision:'
+        ),
+        "skill-knn-structural": PybarsPrompt(
+
+            'Decide whether the following template means the same as:\n {{utterance}}.\n\n'
+            '{{#list_examples examples}}Template: {{template}}\nDecision:{{label}}\n\n{{/list_examples}}'
+            'Template: {{template}}\nDecision:'),
+        "slot-qa-structural": PybarsPrompt(
+            'Mark the value for {{name}} in utterance.\n\n'
+            '{{#list_examples examples}}Utterance: {{utterance}}\nOutput:{{label}}\n\n{{/list_examples}}'
+            'Utterance: {{utterance}}\nOutput:'),
+        "yni-default": PybarsPrompt(
+            'Decide whether the response is affirmative, negative, indifferent or irrelevant to this '
+            'yes/no '
+            'question:\n\n'
+            '{{question}}\n'
+            '{{#list_examples examples}}Response: {{response}}\nDecision:{{label}}\n\n{{/list_examples}}'
+            'Response: {{response}}\nDecision:'),
+        "bool-value-plain": PybarsPrompt('{{label}}'),
+
+    }
+
+    def __getitem__(self, label) -> InstructBuilder:
+        return self.collections[label]
+
+
+# We should be able to switch to different manager later.
+promptManager = PybarsPromptManager()
 
 #
 # LugPrompts assumes the following prompt template in pybars depending on the following information:
@@ -314,6 +358,9 @@ BoolPrompts = {
 
 
 if __name__ == "__main__":
+
+
+
     examples = [
         {"response": "April 2st", "label": "related"},
         {"response": "April 3st", "label": "unrelated"}
@@ -327,6 +374,8 @@ if __name__ == "__main__":
 
     print(YniPrompts["default"](x))
 
+    print(promptManager["yni-default"](x))
+
     examples = [
         {"template": "April 2st", "label": "related"},
         {"template": "April 3st", "label": "unrelated"}
@@ -338,3 +387,6 @@ if __name__ == "__main__":
         "examples": examples
     }
     print(ExemplarPrompts["structural"](x))
+    print(promptManager["skill-knn-structural"](x))
+
+     # print(promptManager.get_builder(Task.SKILL))

@@ -8,7 +8,7 @@ from enum import Enum
 from opencui.inference.intent_detector import KnnIntentDetector
 from opencui.core.annotation import (EntityMetas, FrameValue, ListRecognizer, get_value)
 from opencui.core.config import RauConfig
-from opencui.core.prompt import (ExtractiveSlotPrompts, YniPrompts)
+from opencui.core.prompt import (promptManager, Task)
 from opencui.core.retriever import (ContextRetriever, load_context_retrievers)
 from opencui.inference.schema_parser import load_all_from_directory
 from opencui.inference.generator import GenerateMode, Generator
@@ -31,8 +31,8 @@ class Converter:
             self.recognizer = ListRecognizer(entity_metas)
 
         self.generator = Generator.build()
-        self.slot_prompt = ExtractiveSlotPrompts[RauConfig.get().slot_prompt]
-        self.yni_prompt = YniPrompts[RauConfig.get().yni_prompt]
+        self.slot_prompt = promptManager.get_builder(Task.SLOT)
+        self.yni_prompt = promptManager.get_builder(Task.YNI)
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r"\[([^]]*)\]")
         self.skill_converter = None

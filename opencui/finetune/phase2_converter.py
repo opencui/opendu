@@ -1,21 +1,11 @@
 import abc
-import json
-import random
-import re
-from os import listdir
-from os.path import isfile, join
-import glob
-
 from abc import ABC
-from collections import defaultdict
 from dataclasses import dataclass
-from enum import Enum
-from random import sample, seed
-from typing import Optional
 from dataclasses_json import dataclass_json
 
-from opencui.core.prompt import (PybarsPrompt, ExemplarPrompts, DescriptionPrompts, BoolPrompts, YniPrompts, ExtractiveSlotPrompts)
-from opencui.core.config import RauConfig
+from opencui.core.prompt import (promptManager, Task)
+
+
 @dataclass_json
 @dataclass
 class LabeledMatchingData:
@@ -39,14 +29,14 @@ class TrainPhase2Converter(ABC):
 class PromptConverter(TrainPhase2Converter):
     def __init__(self):
         self.prompts = {
-            "desc": DescriptionPrompts[RauConfig.get().skill_prompt],
-            "exemplar": ExemplarPrompts[RauConfig.get().skill_prompt]
+            "desc": promptManager.get_builder(Task.SKILL_DESC),
+            "exemplar": promptManager.get_builder(Task.SKILL)
         }
 
     @staticmethod
     def label(value):
         label_dict = {"label": "true" if value else "false"}
-        return BoolPrompts[RauConfig.get().bool_prompt](label_dict)
+        return promptManager.get_builder(Task.BOOL_VALUE)(label_dict)
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         for idx, mode in enumerate(batch["matchType"]):
