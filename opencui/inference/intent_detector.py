@@ -7,7 +7,7 @@ from collections import defaultdict
 
 from opencui.core.annotation import (CamelToSnake, DialogExpectation, Exemplar, OwnerMode, ExactMatcher)
 from opencui.core.config import RauConfig
-from opencui.core.prompt import (DescriptionPrompts, ExemplarPrompts)
+from opencui.core.prompt import (DescriptionPrompts,promptManager, ExemplarPrompts, Task)
 from opencui.core.retriever import (ContextRetriever)
 from opencui.inference.generator import GenerateMode
 
@@ -72,7 +72,7 @@ class KnnIntentDetector(IntentDetector, ABC):
     def __init__(self, retriever: ContextRetriever, generator):
         self.retrieve = retriever
         self.generator = generator
-        self.desc_prompt = DescriptionPrompts[RauConfig.get().skill_prompt]
+        self.desc_prompt = promptManager.get_builder(Task.SKILL_DESC)
         self.example_prompt = ExemplarPrompts[RauConfig.get().skill_prompt]
         self.use_exemplar = True
         self.use_desc = True

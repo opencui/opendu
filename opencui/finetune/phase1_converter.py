@@ -4,14 +4,12 @@ import random
 import re
 
 from abc import ABC
-from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
 from random import sample, seed
 from typing import Optional
 from dataclasses_json import dataclass_json
 
-from dugsets.yni.prompt import prompt
 from opencui import InstructBuilder
 from opencui.core.config import RauConfig
 from opencui.core.retriever import create_index, ContextRetriever

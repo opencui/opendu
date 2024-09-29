@@ -208,6 +208,7 @@ class PybarsPromptManager(PromptManager):
             '{{#list_examples examples}}Response: {{response}}\nDecision:{{label}}\n\n{{/list_examples}}'
             'Response: {{response}}\nDecision:'),
         "bool-value-plain": PybarsPrompt('{{label}}'),
+
     }
 
     def __getitem__(self, label) -> InstructBuilder:
