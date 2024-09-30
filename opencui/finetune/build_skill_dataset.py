@@ -1,7 +1,7 @@
 import json
-from opencui import EmbeddingStore, ConvertedFactory, build_dataset_index, JsonDatasetFactory, \
-    RauConfig, DescExemplarConverter, InstanceMode, MultiClassSkillConverter, TrainPhase1Converter
-from opencui.core.retriever import build_desc_index, load_context_retrievers, ContextRetriever
+from opencui.core.embedding import EmbeddingStore
+from opencui import ConvertedFactory, build_dataset_index, JsonDatasetFactory, skill_converter
+from opencui.core.retriever import build_desc_index, load_context_retrievers
 from opencui.core.prompt import promptManager, Task
 
 
@@ -14,16 +14,6 @@ from opencui.core.prompt import promptManager, Task
 # The separate indexing for desc and exemplars are useful for many strategies: multi-class, single class
 # and KNN based. We already have the T5/KNN based solutions, we will look at Llama 8B/multiclass based solutions.
 #
-
-
-def skill_converter(retriever: ContextRetriever, skill_mode):
-    if skill_mode == "desc":
-        return DescExemplarConverter(retriever, InstanceMode.desc)
-    if skill_mode == "exemplar":
-        return DescExemplarConverter(retriever, InstanceMode.example)
-    if skill_mode == "multi-class":
-        return MultiClassSkillConverter(retriever)
-
 
 # This creates factory
 def build_skill_factory(output, factory, mode):
@@ -40,6 +30,7 @@ def build_skill_factory(output, factory, mode):
     return ConvertedFactory(factory, [skill_converter(context_retriever, mode)], skill_columns)
 
 
+# This is how we create the skill dataset given exemplars dataset.
 def build_skill_dataset(output, factory, modes, index=True):
     # Save the things to disk first, for training we keep each module separate.
     # Down the road, we might

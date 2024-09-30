@@ -16,13 +16,12 @@ from datasets import Dataset, load_dataset, concatenate_datasets
 from llama_index.core.embeddings import BaseEmbedding
 from llama_index.core.schema import TextNode
 
-from opencui.core.prompt import (PybarsPrompt, MulticlassSkillPrompts, BinarySkillPrompts,
-                                 ExemplarPrompts, DescriptionPrompts, BoolPrompts, YniPrompts, ExtractiveSlotPrompts)
-from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher, MatchReplace, get_value
+
+from opencui.core.annotation import Schema, MatchReplace, get_value
 from opencui.core.config import RauConfig
 from opencui.core.retriever import create_index, ContextRetriever
 from opencui.finetune.phase1_converter import AnnotatedExemplar, TrainPhase1Converter, YniConverter
-from opencui.finetune.phase2_converter import LabeledMatchingData, PromptConverter
+from opencui.finetune.phase2_converter import PromptConverter
 
 
 def build_nodes_from_dataset(module: str, dataset: Dataset, nodes):

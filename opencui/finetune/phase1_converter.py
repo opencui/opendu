@@ -243,6 +243,14 @@ class SingleClassSkillConverter(TrainPhase1Converter):
 # This only works with simple use case where we only match in normal/exact/literal sense.
 InstanceMode = Enum("InstanceMode", ["desc", "example", "both"])
 
+def skill_converter(retriever: ContextRetriever, skill_mode):
+    if skill_mode == "desc":
+        return DescExemplarConverter(retriever, InstanceMode.desc)
+    if skill_mode == "exemplar":
+        return DescExemplarConverter(retriever, InstanceMode.example)
+    if skill_mode == "multi-class":
+        return MultiClassSkillConverter(retriever)
+
 def suffix_sublists_with_empty(lst):
     return [lst[i:] for i in range(len(lst) + 1)]
 
