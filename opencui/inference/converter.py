@@ -35,7 +35,6 @@ class Converter:
         self.yni_prompt = promptManager.get_builder(Task.YNI)
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r"\[([^]]*)\]")
-        self.skill_converter = None
 
         self.skill_converter = KnnIntentDetector(retriever, self.generator)
         self.yni_results = {"Affirmative", "Negative", "Indifferent", "Irrelevant" }

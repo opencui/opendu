@@ -367,8 +367,10 @@ class DescExemplarConverter(TrainPhase1Converter):
                     ins.append(self.desc_prompt(input_dict))
                     outs.append(self.label(self.matcher.match(owner, skill['name'], owner_mode)))
 
-
-# We need to handle many different use case here: premise is what user said, and hypothesis is what we want to know.
+#
+#  We need to handle many different use case here:
+#  premise is what user said, and hypothesis is what we want to know.
+#
 class NliConverter(TrainPhase1Converter, ABC):
     def __init__(self, prompt):
         self.prompt = prompt
@@ -384,6 +386,9 @@ class NliConverter(TrainPhase1Converter, ABC):
             outs.append(f"{label}</s>")
 
 
+#
+# For the yes/no question, what does response implies: yes, not, don't care or not related.
+#
 class YniConverter(TrainPhase1Converter, ABC):
     def __init__(self):
         self.prompt = promptManager.get_builder(Task.YNI)
