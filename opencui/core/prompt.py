@@ -83,8 +83,8 @@ class JinjaPromptBuilder(InstructBuilder, ABC):
         self.template = env.get_template(label)
 
 
-    def __call__(self, **kwargs) -> str:
-        # First we need to create the example.
+    # Assume __call__ takes object, but build take scatter parts.
+    def __call__(self, kwargs) -> str:
         return self.build(**kwargs)
 
     def build(self, **kwargs) -> str:

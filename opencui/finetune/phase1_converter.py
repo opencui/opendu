@@ -90,7 +90,6 @@ class TrainPhase1Converter(ABC):
         return
 
 
-
 class MultiClassSkillConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever):
         label = promptManager.get_task_label(Task.SKILL)
@@ -112,7 +111,6 @@ class MultiClassSkillConverter(TrainPhase1Converter):
             owner = batch["owner"][idx]
 
             # How can we reduce the need for
-
             neg_owners = [
                 node.metadata["owner"]
                 for node in nodes
@@ -176,7 +174,7 @@ class MultiClassSkillConverter(TrainPhase1Converter):
                 outs.append(f"{json.dumps(None)}</s>")
 
 
-class OneSkillConverter(TrainPhase1Converter):
+class SingleClassSkillConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever):
         label = promptManager.get_task_label(Task.SKILL)
         assert label.startswith("skill-sc"), "need to be skill-sc prefix"
@@ -239,12 +237,67 @@ class OneSkillConverter(TrainPhase1Converter):
                 ins.append(self.prompt(input_dict))
                 outs.append(f"{json.dumps(owner == target and OwnerMode[owner_mode] == OwnerMode.normal)}</s>")
 
+
 # This is needed to determine the intention, intended function or skill
 # https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/
 # This only works with simple use case where we only match in normal/exact/literal sense.
-
-
 InstanceMode = Enum("InstanceMode", ["desc", "example", "both"])
+
+def suffix_sublists_with_empty(lst):
+    return [lst[i:] for i in range(len(lst) + 1)]
+
+#
+# For this one, we retrieve based on both on description and then exemplar, we will create the prompt
+# based on both list. We use json output.
+#
+class RagSkillConverter(TrainPhase1Converter):
+    def __init__(self, retriever: ContextRetriever, mode=InstanceMode.both):
+        # Make sure that we have the same key for Desc and exemplar prompt.
+        label = promptManager.get_task_label(Task.SKILL)
+        assert label.startswith("skill-rag"), "need to be skill-rag prefix"
+        self.prompt = promptManager.get_builder(Task.SKILL)
+        self.context_retrieve = retriever
+        self.neg_k = 1
+        self.mode = mode
+        self.matcher = ExactMatcher
+
+    def __call__(self, batch, ins: list[str], outs: list[str]):
+        # We need to make sure that
+        assert self.mode == InstanceMode.both
+
+        # Working on the batched dataset, with first dimension is column then index.
+        for idx, utterance in enumerate(batch["utterance"]):
+            # We assume the input is dict version of AnnotatedExemplar
+            skills, nodes = self.context_retrieve(utterance)
+
+            # remove the identical exemplar
+            nodes = [node for node in nodes if node.id_ != batch["id"][idx]]
+
+            exemplars = [
+                Exemplar(owner=node.metadata["owner"], template=node.text, owner_mode=node.metadata["owner_mode"])
+                for node in nodes
+            ]
+            owner = batch["owner"][idx]
+            owner_mode = batch["owner_mode"][idx]
+
+            # reverse both skills and exemplars
+            skills.reverse()
+            exemplars.reverse()
+
+            # First positive.
+            # We always have all the skills and descriptions, but remove exemplars one at a time.
+            sublists = suffix_sublists_with_empty(exemplars)
+            for sublist in sublists:
+                ins.append(self.prompt.build(utterance=utterance,skills=skills, exemplars=sublist))
+                outs.append(f"""["{owner}"]""")
+
+            neg_skills = filter(lambda x: x["name"] != owner, skills)
+            neg_exemplars = filter(lambda x: x["owner"] != owner, exemplars)
+            neg_sublists = suffix_sublists_with_empty(list(neg_exemplars))
+            for sublist in neg_sublists:
+                ins.append(self.prompt.build(utterance=utterance,skills=skills, exemplars=sublist))
+                outs.append(f"""["{owner}"]""")
+
 
 
 # For this one, we first use example based prediction, and then description based prediction.

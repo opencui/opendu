@@ -53,7 +53,7 @@ Use the following script to determine the hyperparameters for retrieval:
 python3 finetune/find_k_for_prompt.py 
 ```
 
-### Create the fine-tuning dataset
+### Create the fine-tuning dataset (for skills)
 The actual fine-tuning dataset is created based on the following components:
 1. Raw dataset
 2. Retriever
