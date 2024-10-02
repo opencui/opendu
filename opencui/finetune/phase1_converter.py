@@ -84,6 +84,8 @@ class AnnotatedExemplar:
 # by generation fine-tuning. The assumed the columns are input and output, and we added id for debugging
 # purpose.
 # We assume that batch is AnnotatedExemplar in column form, this is what we get from pandas.
+# Ins/Outs are used to collect generated instance that might be more or less than what is the in batch.
+#
 class TrainPhase1Converter(ABC):
     @abc.abstractmethod
     def __call__(self, batch, ins: list[str], outs: list[str]):
@@ -387,7 +389,7 @@ class NliConverter(TrainPhase1Converter, ABC):
 
 
 #
-# For the yes/no question, what does response implies: yes, not, don't care or not related.
+# For the yes/no question, what does response imply: yes, not, don't care or not related.
 #
 class YniConverter(TrainPhase1Converter, ABC):
     def __init__(self):
@@ -405,14 +407,109 @@ class YniConverter(TrainPhase1Converter, ABC):
 
 # This is for slot.
 # The slot converter need to have access to entities.
-class SlotExtractConverter(TrainPhase1Converter, ABC):
+class SlotExtractor(TrainPhase1Converter, ABC):
     entities: dict[str, re.Pattern]
 
 
 #
 # This is for extractive slot value understanding.
-# For now, we only get positive example.
-class OneSlotExtractConverter(SlotExtractConverter):
+# This somewhat influenced by structured extraction from here.
+# https://numind.ai/blog/nuextract-a-foundation-model-for-structured-extraction
+#
+# One of the issue is how do we handle nested structures, while we still separate from
+# how we prompt.
+class RagStructExtractor(SlotExtractor):
+    def __init__(self, module: Schema, slot_prompt: InstructBuilder, entities):
+        self.prompt = slot_prompt
+        self.module = module
+        self.include_negative = True
+        # First try to be efficient.
+        self.entities = entities
+        self.patterns = {}
+        for key, values in entities.items():
+            strings_to_check = list(values)
+            pattern = re.compile("|".join(map(re.escape, strings_to_check)))
+            self.patterns[key] = pattern
+
+    @staticmethod
+    def format_value(key, value=None):
+        return f"{json.dumps(value)}</s>"
+
+    def add_one_negative(self, slot_name, small_value_set):
+        if slot_name not in self.entities:
+            return
+
+        picked = None
+        candidates = self.entities[slot_name]
+
+        while picked in small_value_set:
+            picked = random.choice(candidates)
+
+        if picked is not None:
+            small_value_set.add(picked)
+
+
+    def __call__(self, batch, ins: list[str], outs: list[str]):
+        # We assume the input is dict version of AnnotatedExemplar
+        for idx, sarguments in enumerate(batch["arguments"]):
+            arguments = eval(sarguments)
+            utterance = batch["utterance"][idx]
+            owner = batch["owner"][idx]
+            #
+            # We will handle three different situations:
+            # 1. with just slot schema,
+            # 2. with some examples (not the related one).
+            # 3. with candidates, provided by external recognizer.
+            #
+            # First get all the slots.
+            slots = [self.module.slots[slot_label] for slot_label in self.module.skills[owner]["slots"]]
+
+            for slot_label in self.module.skills[owner]["slots"]:
+                slot = self.module.slots[slot_label]
+                slot_name = slot["name"]
+
+                # Now we need to select the value from entities
+                # In addition to the true value, the best should be of the same type and
+                # also the occurs in the utterance but not the value.
+                values = set(
+                    ListRecognizer.find_matches(self.patterns, slot_name, utterance)
+                )
+                # Most likely we do not need to add the negatives.
+                # self.add_one_negative(slot_label, values)
+                input_dict = {"utterance": utterance}
+                input_dict.update(slot.to_dict())
+                if slot_name in arguments:
+                    value = arguments[slot_name]
+                    # First without values. We assume that value is
+                    input_dict["values"] = []
+                    ins.append(self.prompt(input_dict))
+                    if len(value) == 1:
+                        outs.append(
+                            self.format_value(slot_name, arguments[slot_name][0])
+                        )
+                    else:
+                        outs.append(self.format_value(slot_name, arguments[slot_name]))
+                    # then with values.
+                    input_dict["values"] = values
+                    ins.append(self.prompt(input_dict))
+                    if len(value) == 1:
+                        outs.append(
+                            self.format_value(slot_name, arguments[slot_name][0])
+                        )
+                    else:
+                        outs.append(self.format_value(slot_name, arguments[slot_name]))
+                else:
+                    input_dict["values"] = []
+                    if self.include_negative:
+                        ins.append(self.prompt(input_dict))
+                        outs.append(self.format_value(slot_name, None))
+
+
+#
+# This is for extractive slot value understanding.
+# For each slot, we create a question for the slot value. For some reason, it is not being used.
+#
+class IsolatedQAExtractor(SlotExtractor):
     def __init__(self, module: Schema, slot_prompt: InstructBuilder, entities):
         self.prompt = slot_prompt
         self.module = module

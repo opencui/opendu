@@ -85,6 +85,17 @@ class Schema:
     def has_skill(self, frame_id: FrameId):
         return frame_id.name in self.skills
 
+    def get_slots_in_dict(self, frame_name: str) -> dict:
+        res = {}
+        frame = self.skills[frame_name]
+        for slot in frame.slots:
+            slot_schema = self.slots[slot]
+            if slot_schema.type not in self.skills:
+                res[slot_schema.name] = vars(slot_schema)
+            else:
+                res[slot_schema.name] = self.get_slots_in_dict(slot_schema.type)
+        return res
+
 
 OwnerMode = Enum('OwnerMode', ["normal", "extended"])
 

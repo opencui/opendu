@@ -23,8 +23,14 @@ from opencui.utils.json_tools import parse_json_from_string
 # The difference will be whether we include candidates in the API.
 # We will be focusing on the #1 as #2 can be easily implemented with #1.
 #
+# There are many possible solutions for this:
+# For example, question/answering based: https://arxiv.org/pdf/2406.08848
+# For structure extraction bases: nuextract
+# https://arxiv.org/pdf/2403.17536v1
 
 #
+#
+
 # The slot filler takes task description, and slot descriptions, candidate values and
 # generate the json representation of values.
 #
