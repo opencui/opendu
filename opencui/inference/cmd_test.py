@@ -5,7 +5,7 @@ import getopt
 import sys
 import json
 
-from opencui.inference.converter import load_converter
+from opencui.inference.parser import load_parser
 
 if __name__ == "__main__":
     argv = sys.argv[1:]
@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     index_path = f"{module_paths}/index"
     # First load the schema info.
-    converter = load_converter(module_paths, index_path)
+    converter = load_parser(module_paths, index_path)
 
     text = ""
 

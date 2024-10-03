@@ -1,0 +1,76 @@
+{#
+The should is slot schema in json. The question we need to answer is:
+1. where do we keep the example, here or in the value format.
+2. How many examples do we provide for single valued slot?
+3. How do we specify the multi value ed ness. this can be expression in the candidates.
+4. How do we handle missing value for candidates.
+5.
+
+Extract the information from the input text, given the semantic frame schema and some examples.
+[{ "slot1" :
+    {
+        "discription" : "the name for the user",
+        "multi_value: false,
+        "examples" : "David"
+    }
+    "slot2": {
+        "nested_slot3" : {
+            "descritpion": ""
+            "multi_value": true
+            "examples": ["David"]
+        }
+    }}]
+
+For schema: let's assume the data model is:
+class SlotMeta(BaseModel):
+    description: str
+    multi_value: bool
+
+class EntitySlotMeta(SlotMeta):
+    pass
+
+class FrameSlotMeta(SlotMeta):
+    slots: Dict[str, SlotMeta]
+#}
+{% macro render_slot(slot) -%}
+{
+  "description": "{{ slot.description }}",
+  "multi_value": {{ slot.multi_value | lower }}
+  {% if slot.__class__.__name__ == 'FrameSlotMeta' %}
+    ,"slots": {
+      {% for key, nested_slot in slot.slots.items() %}
+        "{{ key }}": {{ render_slot(nested_slot) }}{% if not loop.last %},{% endif %}
+      {% endfor %}
+    }
+  {% endif %}
+}
+{%- endmacro %}
+{#
+This macro is used to generate examples, during the training we will have two
+version, one with the candidate (if we have one), and one with random example.
+For multi valued slot, we add candidate to the end. Unfortunately, this will
+reduce the possibility of prefix being cached.
+#}
+{% macro render_dict(d) %}
+{
+  {% for key, value in d.items() %}
+    "{{ key }}": {% if value is mapping %}
+      {{ render_dict(value) }}
+    {% elif value is iterable and value is not string %}
+      [
+        {% for item in value %}
+          {% if item is mapping %}
+            {{ render_dict(item) }}
+          {% else %}
+            "{{ item }}"
+          {% endif %}
+          {% if not loop.last %},{% endif %}
+        {% endfor %}
+      ]
+    {% else %}
+      "{{ value }}"
+    {% endif %}
+    {% if not loop.last %},{% endif %}
+  {% endfor %}
+}
+{% endmacro %}

@@ -1,0 +1,2 @@
+{% include 'sf_se_full.base' %}
+{{ render_dict(data) }}

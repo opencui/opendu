@@ -3,6 +3,8 @@
 
 import json
 from abc import ABC, abstractmethod
+from typing import Dict
+
 from pydantic import BaseModel
 from collections import defaultdict
 from enum import Enum
@@ -28,8 +30,18 @@ from opencui.utils.json_tools import parse_json_from_string
 # For structure extraction bases: nuextract
 # https://arxiv.org/pdf/2403.17536v1
 
-#
-#
+
+
+class SlotMeta(BaseModel):
+    description: str
+    multi_value: bool
+
+class EntitySlotMeta(SlotMeta):
+    pass
+
+class FrameSlotMeta(SlotMeta):
+    slots: Dict[str, SlotMeta]
+
 
 # The slot filler takes task description, and slot descriptions, candidate values and
 # generate the json representation of values.
@@ -39,4 +51,3 @@ class SlotFiller(ABC):
     @abstractmethod
     def extract_values(self, text, expectations:FrameSchema, candidates: dict):
         pass
-

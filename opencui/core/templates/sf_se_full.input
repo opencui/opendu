@@ -1,0 +1,13 @@
+{% include 'sf_se_full.base' %}
+Extract values from the input text for a semantic frame, given the description of its slots, whether it is
+multi-valued, in nested structure as follows:
+{
+  {% for key, slot in slots.items() %}
+    "{{ key }}": {{ render_slot(slot) }}{% if not loop.last %},{% endif %}
+  {% endfor %}
+}
+
+Example of value for every slots:
+{{ render_dict(data) }}
+
+Input text: {{utterance}}

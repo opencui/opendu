@@ -35,7 +35,6 @@ class InstructBuilder(ABC):
     def build(self, **kwargs):
         pass
 
-
 #
 # For each class of problem, we might have many different prompt template, assumes the same set of variables.
 # eventually, this will be a global manager, so that we can specify prompt template (instruction builder)
