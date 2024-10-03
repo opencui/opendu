@@ -11,7 +11,6 @@ from enum import Enum
 from random import sample, seed
 from typing import Optional
 
-from dataclasses_json import dataclass_json
 from datasets import Dataset, load_dataset, concatenate_datasets
 from llama_index.core.embeddings import BaseEmbedding
 from llama_index.core.schema import TextNode
@@ -30,7 +29,7 @@ def build_nodes_from_dataset(module: str, dataset: Dataset, nodes):
         arguments = json.loads(item["arguments"].replace("\'", "\""))
         utterance = item["utterance"]
         # Do not trust the original template.
-        template = AnnotatedExemplar.extract_template(utterance, arguments)
+        template = AnnotatedExemplar.extract_template(utterance=utterance, arguments=arguments)
 
         if template is None:
             template = item["template"]

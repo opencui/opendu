@@ -2,9 +2,8 @@
 
 import json
 import os
-from os.path import exists
-from opencui.core.annotation import (CamelToSnake, EntityMetas,
-                                     ExemplarStore, FrameSchema, Schema, SlotSchema, get_value)
+from opencui.core.annotation import (
+    CamelToSnake, EntityMetas, ExemplarStore, FrameSchema, Schema, SlotSchema, get_value)
 
 
 #
@@ -34,8 +33,8 @@ def from_openai(functions) -> Schema:
                 slot_infos[slot_name] = SlotSchema(
                     slot_name, slot_description
                 ).to_dict()
-        skill_infos[f_name] = FrameSchema(f_name, f_description, f_slots).to_dict()
-    return Schema(skill_infos, slot_infos)
+        skill_infos[f_name] = FrameSchema(name=f_name, description=f_description, slots=f_slots).to_dict()
+    return Schema(skills=skill_infos, slots=slot_infos)
 
 
 def from_openapi(specs) -> Schema:
@@ -56,10 +55,10 @@ def from_openapi(specs) -> Schema:
                 slot_name = get_value(_p, "name")
                 slot_description = get_value(_p, "description")
                 if slot_name not in slots:
-                    slots[slot_name] = SlotSchema(slot_name, slot_description).to_dict()
+                    slots[slot_name] = SlotSchema(name=slot_name, description=slot_description).to_dict()
                 parameters.append(slot_name)
-            skills[name] = FrameSchema(name, description, parameters).to_dict()
-    return Schema(skills, slots)
+            skills[name] = FrameSchema(name=name, description=description, slots=parameters).to_dict()
+    return Schema(skills=skills, slots=slots)
 
 
 # This assumes that in a directory we have schemas.json in openai/openapi format, and then exemplars
@@ -69,7 +68,7 @@ def load_schema_from_directory(path):
     if isinstance(schema_object, list):
         l_schema = from_openai(schema_object)
     elif "slots" in schema_object and "skills" in schema_object:
-        l_schema = Schema.from_dict(schema_object)
+        l_schema = Schema(**schema_object)
     else:
         l_schema = from_openapi(schema_object)
     return l_schema

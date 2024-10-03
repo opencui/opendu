@@ -6,29 +6,28 @@ import re
 from abc import ABC
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
-from dataclasses_json import dataclass_json
+from typing import Optional, Dict
 
 from opencui import InstructBuilder
 from opencui.core.retriever import create_index, ContextRetriever
 from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher
 from opencui.core.prompt import (Task, promptManager)
+from pydantic import BaseModel, Field
 
-@dataclass_json
-@dataclass
-class AnnotatedExemplar:
+
+class AnnotatedExemplar(BaseModel):
     """
-    expression examples, if the expected_slots is empty, this can be used for both skills and slots.
+    Expression examples. If the expected_slots is empty, this can be used for both skills and slots.
     """
 
     id: str
     owner: str
     utterance: str  # useful for slot model
-    arguments: dict
-    owner_mode: Optional[str] = "normal"   # this is the label
-    template: str = None
-    context_frame: str = None
-    context_slot: str = None
+    arguments: Dict[str, str]  # Specify the type of the values in the dictionary if needed
+    owner_mode: Optional[str] = Field("normal", description="The label for owner mode")
+    template: Optional[str] = Field(None, description="Template for the exemplar")
+    context_frame: Optional[str] = Field(None, description="Context frame associated with the exemplar")
+    context_slot: Optional[str] = Field(None, description="Context slot associated with the exemplar")
 
     def flatten(self):
         return {
@@ -407,7 +406,7 @@ class YniConverter(TrainPhase1Converter, ABC):
 
 # This is for slot.
 # The slot converter need to have access to entities.
-class SlotExtractor(TrainPhase1Converter, ABC):
+class SlotConverter(TrainPhase1Converter, ABC):
     entities: dict[str, re.Pattern]
 
 
@@ -418,7 +417,8 @@ class SlotExtractor(TrainPhase1Converter, ABC):
 #
 # One of the issue is how do we handle nested structures, while we still separate from
 # how we prompt.
-class RagStructExtractor(SlotExtractor):
+#
+class RagStructConverter(SlotConverter):
     def __init__(self, module: Schema, slot_prompt: InstructBuilder, entities):
         self.prompt = slot_prompt
         self.module = module
@@ -430,6 +430,8 @@ class RagStructExtractor(SlotExtractor):
             strings_to_check = list(values)
             pattern = re.compile("|".join(map(re.escape, strings_to_check)))
             self.patterns[key] = pattern
+        # This is
+        self.input_builder = None
 
     @staticmethod
     def format_value(key, value=None):
@@ -509,7 +511,7 @@ class RagStructExtractor(SlotExtractor):
 # This is for extractive slot value understanding.
 # For each slot, we create a question for the slot value. For some reason, it is not being used.
 #
-class IsolatedQAExtractor(SlotExtractor):
+class IsolatedQAConverter(SlotConverter):
     def __init__(self, module: Schema, slot_prompt: InstructBuilder, entities):
         self.prompt = slot_prompt
         self.module = module

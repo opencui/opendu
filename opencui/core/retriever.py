@@ -271,7 +271,7 @@ class ContextRetriever:
         all_nodes = dedup_nodes(desc_nodes + exemplar_nodes, False, 1)
 
         owners = [
-            FrameId(item.metadata["owner"])
+            FrameId(name=item.metadata["owner"])
             for item in all_nodes
         ]
 

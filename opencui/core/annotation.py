@@ -1,21 +1,18 @@
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Literal, Optional, TypedDict, Union
+from typing import Dict, List, Literal, Optional, TypedDict, Union, Any
 from typing import Optional
-from dataclasses_json import dataclass_json
 from pydantic import BaseModel, Field
 from enum import Enum
 from llama_index.core.schema import TextNode
 
 
-@dataclass_json
-@dataclass
-class SlotSchema:
-    name: str = field(metadata={"required": True})
-    description: str = field(metadata={"required": True})
-    type: str = field(metadata={"required": False}, default=None)
-    label: Optional[str] = None
+class SlotSchema(BaseModel):
+    name: str = Field(..., description="The name of the slot", title="Name", required=True)
+    description: str = Field(..., description="Description of the slot", required=True)
+    type: Optional[str] = Field(None, description="The type of the slot", required=False)
+    label: Optional[str] = Field(None, description="Optional label for the slot")
 
     def __getitem__(self, item):
         match item:
@@ -31,14 +28,12 @@ class SlotSchema:
                 raise RuntimeError("wrong property.")
 
 
-@dataclass_json
-@dataclass
-class FrameSchema:
-    name: str = field(metadata={"required": True})
-    description: str = field(metadata={"required": True})
-    slots: list[str] = field(default_factory=list)
-    headSlot: str = field(metadata={"required": False}, default=None)
-    type: Optional[str] = None
+class FrameSchema(BaseModel):
+    name: str = Field(..., description="The name of the frame", title="Name", required=True)
+    description: str = Field(..., description="Description of the frame", required=True)
+    slots: List[str] = Field(default_factory=list, description="List of slot names in the frame")
+    headSlot: Optional[str] = Field(None, description="Optional head slot", required=False)
+    type: Optional[str] = Field(None, description="Optional type of the frame")
 
     def __getitem__(self, item):
         match item:
@@ -60,24 +55,16 @@ class FrameSchema:
             raise RuntimeError("wrong property.")
 
 
-@dataclass_json
-@dataclass
-class FrameId:
+class FrameId(BaseModel):
     name: str
 
 
 # This name inside the FrameSchema and SlotSchema is semantic bearing.
 # So there should not be overlapping between schema names.
 # the key for skills and slots does not need to be.
-@dataclass_json
-@dataclass
-class Schema:
+class Schema(BaseModel):
     skills: Dict[str, FrameSchema]
     slots: Dict[str, SlotSchema]
-
-    def __init__(self, skills, slots):
-        self.skills = skills
-        self.slots = slots
 
     def get_skill(self, frame_id: FrameId):
         return self.skills[frame_id.name]
@@ -124,24 +111,18 @@ class ExactMatcher:
         return OwnerMode[mode_in_str] == OwnerMode.normal
 
 
-@dataclass_json
-@dataclass
-class FrameValue:
+class FrameValue(BaseModel):
     name: str
     arguments: TypedDict
 
 
-@dataclass_json()
-@dataclass
-class FrameState:
+class FrameState(BaseModel):
     frame: str
     slot: str
     slotType: str
 
 
 # How to present context is strictly state tracking implementation dependent.
-@dataclass_json
-@dataclass
 class DialogExpectation(BaseModel):
     context: list[FrameState]
 
@@ -248,7 +229,7 @@ class ToSlotName:
     def __call__(self, label):
         full_label = f"{self.owner}.{label}"
         slot_meta = self.module.slots[full_label]
-        return slot_meta.name
+        return slot_meta["name"]
 
 
 class MatchReplace:

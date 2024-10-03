@@ -21,7 +21,9 @@ YesNoResult = Enum("YesNoResult", ["Affirmative", "Negative", "Indifferent", "Ir
 
 #
 # This is the parser is used to convert natural language text into its semantic representation.
-# Instead of using function calling 
+# Instead of using function calling enabled model, or prompt, this parser using an agentic
+# approach, by separating intent detection and slot filling into two sub-tasks, and each
+# is addressed by agentic RAG again.
 #
 class Parser:
     def __init__(
