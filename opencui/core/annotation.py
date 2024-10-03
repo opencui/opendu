@@ -9,13 +9,11 @@ from enum import Enum
 from llama_index.core.schema import TextNode
 
 
-@dataclass_json
-@dataclass
-class SlotSchema:
-    name: str = field(metadata={"required": True})
-    description: str = field(metadata={"required": True})
-    type: str = field(metadata={"required": False}, default=None)
-    label: Optional[str] = None
+class SlotSchema(BaseModel):
+    name: str = Field(..., description="The name of the slot", title="Name", required=True)
+    description: str = Field(..., description="Description of the slot", required=True)
+    type: Optional[str] = Field(None, description="The type of the slot", required=False)
+    label: Optional[str] = Field(None, description="Optional label for the slot")
 
     def __getitem__(self, item):
         match item:
@@ -248,7 +246,7 @@ class ToSlotName:
     def __call__(self, label):
         full_label = f"{self.owner}.{label}"
         slot_meta = self.module.slots[full_label]
-        return slot_meta.name
+        return slot_meta["name"]
 
 
 class MatchReplace:
