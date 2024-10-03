@@ -8,10 +8,10 @@ import shutil
 import sys
 import traceback
 
-from opencui.core.annotation import (Exemplar, FrameSchema, build_nodes_from_exemplar_store)
-from opencui.core.embedding import EmbeddingStore
-from opencui.core.retriever import (build_nodes_from_skills, create_index)
-from opencui.inference.schema_parser import load_all_from_directory
+from opendu.core.annotation import (Exemplar, FrameSchema, build_nodes_from_exemplar_store)
+from opendu.core.embedding import EmbeddingStore
+from opendu.core.retriever import (build_nodes_from_skills, create_index)
+from opendu.inference.schema_parser import load_all_from_directory
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))

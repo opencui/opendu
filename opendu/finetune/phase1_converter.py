@@ -8,10 +8,10 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Dict
 
-from opencui import InstructBuilder
-from opencui.core.retriever import create_index, ContextRetriever
-from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher
-from opencui.core.prompt import (Task, promptManager)
+from opendu import InstructBuilder
+from opendu.core.retriever import create_index, ContextRetriever
+from opendu.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher
+from opendu.core.prompt import (Task, promptManager)
 from pydantic import BaseModel, Field
 
 

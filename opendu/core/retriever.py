@@ -15,9 +15,9 @@ from llama_index.core.retrievers import (BaseRetriever, VectorIndexRetriever)
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core.schema import NodeWithScore, TextNode, BaseNode
 
-from opencui.core.annotation import (FrameId, FrameSchema, Schema, CamelToSnake, get_value)
-from opencui.core.config import RauConfig
-from opencui.core import embedding
+from opendu.core.annotation import (FrameId, FrameSchema, Schema, CamelToSnake, get_value)
+from opendu.core.config import RauConfig
+from opendu.core import embedding
 
 
 def build_nodes_from_skills(module: str, skills: dict[str, FrameSchema], nodes):

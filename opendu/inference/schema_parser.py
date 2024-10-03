@@ -2,7 +2,7 @@
 
 import json
 import os
-from opencui.core.annotation import (
+from opendu.core.annotation import (
     CamelToSnake, EntityMetas, ExemplarStore, FrameSchema, Schema, SlotSchema, get_value)
 
 

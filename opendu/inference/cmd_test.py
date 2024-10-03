@@ -5,7 +5,7 @@ import getopt
 import sys
 import json
 
-from opencui.inference.parser import load_parser
+from opendu.inference.parser import load_parser
 
 if __name__ == "__main__":
     argv = sys.argv[1:]

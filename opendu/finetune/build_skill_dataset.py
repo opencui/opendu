@@ -1,8 +1,8 @@
 import json
-from opencui.core.embedding import EmbeddingStore
-from opencui import ConvertedFactory, build_dataset_index, JsonDatasetFactory, skill_converter
-from opencui.core.retriever import build_desc_index, load_context_retrievers
-from opencui.core.prompt import promptManager, Task
+from opendu.core.embedding import EmbeddingStore
+from opendu import ConvertedFactory, build_dataset_index, JsonDatasetFactory, skill_converter
+from opendu.core.retriever import build_desc_index, load_context_retrievers
+from opendu.core.prompt import promptManager, Task
 
 
 #

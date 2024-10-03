@@ -8,11 +8,11 @@ from sentence_transformers import SentenceTransformer, losses
 from sentence_transformers.readers import InputExample
 from torch.utils.data import DataLoader
 
-from opencui.core.annotation import FrameSchema
-from opencui.core.config import RauConfig
-from opencui.core.embedding import EmbeddingStore
-from opencui.core.retriever import EmbeddingRetriever, HybridRetriever
-from opencui.finetune.commons import JsonDatasetFactory, SchemaDatasetFactory
+from opendu.core.annotation import FrameSchema
+from opendu.core.config import RauConfig
+from opendu.core.embedding import EmbeddingStore
+from opendu.core.retriever import EmbeddingRetriever, HybridRetriever
+from opendu.finetune.commons import JsonDatasetFactory, SchemaDatasetFactory
 
 
 #
@@ -144,7 +144,7 @@ def generate_sentence_pairs(dataset_infos: list[DatasetCreatorWithIndex]) -> Dat
 if __name__ == "__main__":
     logger = logging.getLogger()
     logger.setLevel(logging.CRITICAL)
-    from opencui.finetune.commons import (
+    from opendu.finetune.commons import (
         DatasetCreatorWithIndex,
         has_no_intent, SchemaDatasetFactory,
     )

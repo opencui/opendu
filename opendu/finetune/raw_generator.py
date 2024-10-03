@@ -1,6 +1,6 @@
 import sys
 
-from opencui.inference.parser import Generator
+from opendu.inference.parser import Generator
 
 if __name__ == '__main__':
 

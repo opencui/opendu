@@ -7,7 +7,7 @@ from llama_index.core.bridge.pydantic import PrivateAttr
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from sentence_transformers import SentenceTransformer
 
-from opencui.core.config import RauConfig
+from opendu.core.config import RauConfig
 
 
 # There are two different retrieval tasks:

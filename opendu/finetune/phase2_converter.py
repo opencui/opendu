@@ -2,7 +2,7 @@ import abc
 from abc import ABC
 from pydantic import BaseModel
 
-from opencui.core.prompt import (promptManager, Task)
+from opendu.core.prompt import (promptManager, Task)
 
 
 

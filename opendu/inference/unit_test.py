@@ -1,8 +1,8 @@
 import unittest
 import shutil
 
-from opencui.inference.index import indexing
-from opencui.inference.serve import load_converter_from_meta
+from opendu.inference.index import indexing
+from opendu.inference.serve import load_converter_from_meta
 
 class AgentTest(unittest.TestCase):
     converter = None
