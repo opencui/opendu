@@ -407,7 +407,7 @@ class YniConverter(TrainPhase1Converter, ABC):
 
 # This is for slot.
 # The slot converter need to have access to entities.
-class SlotExtractor(TrainPhase1Converter, ABC):
+class SlotConverter(TrainPhase1Converter, ABC):
     entities: dict[str, re.Pattern]
 
 
@@ -418,7 +418,8 @@ class SlotExtractor(TrainPhase1Converter, ABC):
 #
 # One of the issue is how do we handle nested structures, while we still separate from
 # how we prompt.
-class RagStructExtractor(SlotExtractor):
+#
+class RagStructConverter(SlotConverter):
     def __init__(self, module: Schema, slot_prompt: InstructBuilder, entities):
         self.prompt = slot_prompt
         self.module = module
@@ -430,6 +431,8 @@ class RagStructExtractor(SlotExtractor):
             strings_to_check = list(values)
             pattern = re.compile("|".join(map(re.escape, strings_to_check)))
             self.patterns[key] = pattern
+        # This is
+        self.input_builder = None
 
     @staticmethod
     def format_value(key, value=None):
@@ -509,7 +512,7 @@ class RagStructExtractor(SlotExtractor):
 # This is for extractive slot value understanding.
 # For each slot, we create a question for the slot value. For some reason, it is not being used.
 #
-class IsolatedQAExtractor(SlotExtractor):
+class IsolatedQAConverter(SlotConverter):
     def __init__(self, module: Schema, slot_prompt: InstructBuilder, entities):
         self.prompt = slot_prompt
         self.module = module
