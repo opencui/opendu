@@ -56,9 +56,7 @@ class FrameSchema(BaseModel):
             raise RuntimeError("wrong property.")
 
 
-@dataclass_json
-@dataclass
-class FrameId:
+class FrameId(BaseModel):
     name: str
 
 
