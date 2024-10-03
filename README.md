@@ -23,7 +23,7 @@ There are couple basic goals for this project:
 
 ## What signal can be used to define conversion?
 
-RADU takes three kinds of different signals to shape how conversion is done:
+OpenCU takes three kinds of different signals to shape how conversion is done:
 
 1. Function schema, particularly [OpenAPI](https://spec.openapis.org/oas/latest.html)/[OpenAI](https://platform.openai.com/docs/api-reference/chat/create#chat/create-functions) function schemas.
 2. Expression exemplars: utterance templates associated with specific functions, where the templates are designed to trigger their corresponding functions.
