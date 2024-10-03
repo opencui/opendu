@@ -18,7 +18,12 @@ from opencui.utils.json_tools import parse_json_from_string
 # The modes that we will support.
 YesNoResult = Enum("YesNoResult", ["Affirmative", "Negative", "Indifferent", "Irrelevant"])
 
-class Converter:
+
+#
+# This is the parser is used to convert natural language text into its semantic representation.
+# Instead of using function calling 
+#
+class Parser:
     def __init__(
             self,
             retriever: ContextRetriever,
@@ -35,7 +40,6 @@ class Converter:
         self.yni_prompt = promptManager.get_builder(Task.YNI)
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r"\[([^]]*)\]")
-        self.skill_converter = None
 
         self.skill_converter = KnnIntentDetector(retriever, self.generator)
         self.yni_results = {"Affirmative", "Negative", "Indifferent", "Irrelevant" }
@@ -145,7 +149,7 @@ class Converter:
         raise NotImplemented
 
 
-def load_converter(module_path, index_path):
+def load_parser(module_path, index_path):
     # First load the schema info.
     module_schema, _, _ = load_all_from_directory(module_path)
 
@@ -153,4 +157,4 @@ def load_converter(module_path, index_path):
     context_retriever = load_context_retrievers(module_schema, index_path)
 
     # Finally build the converter.
-    return Converter(context_retriever)
+    return Parser(context_retriever)

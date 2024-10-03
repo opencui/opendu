@@ -12,8 +12,7 @@ import traceback as tb
 from aiohttp import web
 import shutil
 from opencui.core.config import RauConfig
-from opencui import load_converter
-from opencui.inference.converter import Converter, Generator, load_converter
+from opencui.inference.parser import Parser, Generator, load_parser
 from opencui.inference.index import indexing
 from sentence_transformers import SentenceTransformer
 
@@ -99,7 +98,7 @@ async def understand(request: web.Request):
         return web.json_response({"errMsg": f"empty user input."})
 
     mode = req.get("mode")
-    l_converter: Converter = request.app["converters"][bot]
+    l_converter: Parser = request.app["converters"][bot]
 
     if mode == "DESCSIM":
         descriptions = req.get("descriptions")
@@ -160,7 +159,7 @@ def reload(key, app):
     if key not in converters or converters[key] is None:
         logging.info(f"load index for {key}...")
         index_path = f"{bot_path}/index/"
-        converters[key] = load_converter(bot_path, index_path)
+        converters[key] = load_parser(bot_path, index_path)
         logging.info(f"bot {key} is ready.")
 
 def init_app(schema_root, size):

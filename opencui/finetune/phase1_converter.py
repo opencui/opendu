@@ -11,8 +11,8 @@ from dataclasses_json import dataclass_json
 
 from opencui import InstructBuilder
 from opencui.core.retriever import create_index, ContextRetriever
-from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher, MatchReplace, get_value
-from opencui.core.prompt import (PybarsPrompt, Task, promptManager)
+from opencui.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher
+from opencui.core.prompt import (Task, promptManager)
 
 @dataclass_json
 @dataclass
@@ -84,6 +84,8 @@ class AnnotatedExemplar:
 # by generation fine-tuning. The assumed the columns are input and output, and we added id for debugging
 # purpose.
 # We assume that batch is AnnotatedExemplar in column form, this is what we get from pandas.
+# Ins/Outs are used to collect generated instance that might be more or less than what is the in batch.
+#
 class TrainPhase1Converter(ABC):
     @abc.abstractmethod
     def __call__(self, batch, ins: list[str], outs: list[str]):
@@ -111,7 +113,6 @@ class MultiClassSkillConverter(TrainPhase1Converter):
             owner = batch["owner"][idx]
 
             # How can we reduce the need for
-
             neg_owners = [
                 node.metadata["owner"]
                 for node in nodes
@@ -175,7 +176,7 @@ class MultiClassSkillConverter(TrainPhase1Converter):
                 outs.append(f"{json.dumps(None)}</s>")
 
 
-class OneSkillConverter(TrainPhase1Converter):
+class SingleClassSkillConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever):
         label = promptManager.get_task_label(Task.SKILL)
         assert label.startswith("skill-sc"), "need to be skill-sc prefix"
@@ -238,12 +239,75 @@ class OneSkillConverter(TrainPhase1Converter):
                 ins.append(self.prompt(input_dict))
                 outs.append(f"{json.dumps(owner == target and OwnerMode[owner_mode] == OwnerMode.normal)}</s>")
 
+
 # This is needed to determine the intention, intended function or skill
 # https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/
 # This only works with simple use case where we only match in normal/exact/literal sense.
-
-
 InstanceMode = Enum("InstanceMode", ["desc", "example", "both"])
+
+def skill_converter(retriever: ContextRetriever, skill_mode):
+    if skill_mode == "desc":
+        return DescExemplarConverter(retriever, InstanceMode.desc)
+    if skill_mode == "exemplar":
+        return DescExemplarConverter(retriever, InstanceMode.example)
+    if skill_mode == "multi-class":
+        return MultiClassSkillConverter(retriever)
+
+def suffix_sublists_with_empty(lst):
+    return [lst[i:] for i in range(len(lst) + 1)]
+
+#
+# For this one, we retrieve based on both on description and then exemplar, we will create the prompt
+# based on both list. We use json output.
+#
+class RagSkillConverter(TrainPhase1Converter):
+    def __init__(self, retriever: ContextRetriever, mode=InstanceMode.both):
+        # Make sure that we have the same key for Desc and exemplar prompt.
+        label = promptManager.get_task_label(Task.SKILL)
+        assert label.startswith("skill-rag"), "need to be skill-rag prefix"
+        self.prompt = promptManager.get_builder(Task.SKILL)
+        self.context_retrieve = retriever
+        self.neg_k = 1
+        self.mode = mode
+        self.matcher = ExactMatcher
+
+    def __call__(self, batch, ins: list[str], outs: list[str]):
+        # We need to make sure that
+        assert self.mode == InstanceMode.both
+
+        # Working on the batched dataset, with first dimension is column then index.
+        for idx, utterance in enumerate(batch["utterance"]):
+            # We assume the input is dict version of AnnotatedExemplar
+            skills, nodes = self.context_retrieve(utterance)
+
+            # remove the identical exemplar
+            nodes = [node for node in nodes if node.id_ != batch["id"][idx]]
+
+            exemplars = [
+                Exemplar(owner=node.metadata["owner"], template=node.text, owner_mode=node.metadata["owner_mode"])
+                for node in nodes
+            ]
+            owner = batch["owner"][idx]
+            owner_mode = batch["owner_mode"][idx]
+
+            # reverse both skills and exemplars
+            skills.reverse()
+            exemplars.reverse()
+
+            # First positive.
+            # We always have all the skills and descriptions, but remove exemplars one at a time.
+            sublists = suffix_sublists_with_empty(exemplars)
+            for sublist in sublists:
+                ins.append(self.prompt.build(utterance=utterance,skills=skills, exemplars=sublist))
+                outs.append(f"""["{owner}"]""")
+
+            neg_skills = filter(lambda x: x["name"] != owner, skills)
+            neg_exemplars = filter(lambda x: x["owner"] != owner, exemplars)
+            neg_sublists = suffix_sublists_with_empty(list(neg_exemplars))
+            for sublist in neg_sublists:
+                ins.append(self.prompt.build(utterance=utterance,skills=skills, exemplars=sublist))
+                outs.append(f"""["{owner}"]""")
+
 
 
 # For this one, we first use example based prediction, and then description based prediction.
@@ -305,8 +369,10 @@ class DescExemplarConverter(TrainPhase1Converter):
                     ins.append(self.desc_prompt(input_dict))
                     outs.append(self.label(self.matcher.match(owner, skill['name'], owner_mode)))
 
-
-# We need to handle many different use case here: premise is what user said, and hypothesis is what we want to know.
+#
+#  We need to handle many different use case here:
+#  premise is what user said, and hypothesis is what we want to know.
+#
 class NliConverter(TrainPhase1Converter, ABC):
     def __init__(self, prompt):
         self.prompt = prompt
@@ -322,6 +388,9 @@ class NliConverter(TrainPhase1Converter, ABC):
             outs.append(f"{label}</s>")
 
 
+#
+# For the yes/no question, what does response imply: yes, not, don't care or not related.
+#
 class YniConverter(TrainPhase1Converter, ABC):
     def __init__(self):
         self.prompt = promptManager.get_builder(Task.YNI)
@@ -338,14 +407,109 @@ class YniConverter(TrainPhase1Converter, ABC):
 
 # This is for slot.
 # The slot converter need to have access to entities.
-class SlotExtractConverter(TrainPhase1Converter, ABC):
+class SlotExtractor(TrainPhase1Converter, ABC):
     entities: dict[str, re.Pattern]
 
 
 #
 # This is for extractive slot value understanding.
-# For now, we only get positive example.
-class OneSlotExtractConverter(SlotExtractConverter):
+# This somewhat influenced by structured extraction from here.
+# https://numind.ai/blog/nuextract-a-foundation-model-for-structured-extraction
+#
+# One of the issue is how do we handle nested structures, while we still separate from
+# how we prompt.
+class RagStructExtractor(SlotExtractor):
+    def __init__(self, module: Schema, slot_prompt: InstructBuilder, entities):
+        self.prompt = slot_prompt
+        self.module = module
+        self.include_negative = True
+        # First try to be efficient.
+        self.entities = entities
+        self.patterns = {}
+        for key, values in entities.items():
+            strings_to_check = list(values)
+            pattern = re.compile("|".join(map(re.escape, strings_to_check)))
+            self.patterns[key] = pattern
+
+    @staticmethod
+    def format_value(key, value=None):
+        return f"{json.dumps(value)}</s>"
+
+    def add_one_negative(self, slot_name, small_value_set):
+        if slot_name not in self.entities:
+            return
+
+        picked = None
+        candidates = self.entities[slot_name]
+
+        while picked in small_value_set:
+            picked = random.choice(candidates)
+
+        if picked is not None:
+            small_value_set.add(picked)
+
+
+    def __call__(self, batch, ins: list[str], outs: list[str]):
+        # We assume the input is dict version of AnnotatedExemplar
+        for idx, sarguments in enumerate(batch["arguments"]):
+            arguments = eval(sarguments)
+            utterance = batch["utterance"][idx]
+            owner = batch["owner"][idx]
+            #
+            # We will handle three different situations:
+            # 1. with just slot schema,
+            # 2. with some examples (not the related one).
+            # 3. with candidates, provided by external recognizer.
+            #
+            # First get all the slots.
+            slots = [self.module.slots[slot_label] for slot_label in self.module.skills[owner]["slots"]]
+
+            for slot_label in self.module.skills[owner]["slots"]:
+                slot = self.module.slots[slot_label]
+                slot_name = slot["name"]
+
+                # Now we need to select the value from entities
+                # In addition to the true value, the best should be of the same type and
+                # also the occurs in the utterance but not the value.
+                values = set(
+                    ListRecognizer.find_matches(self.patterns, slot_name, utterance)
+                )
+                # Most likely we do not need to add the negatives.
+                # self.add_one_negative(slot_label, values)
+                input_dict = {"utterance": utterance}
+                input_dict.update(slot.to_dict())
+                if slot_name in arguments:
+                    value = arguments[slot_name]
+                    # First without values. We assume that value is
+                    input_dict["values"] = []
+                    ins.append(self.prompt(input_dict))
+                    if len(value) == 1:
+                        outs.append(
+                            self.format_value(slot_name, arguments[slot_name][0])
+                        )
+                    else:
+                        outs.append(self.format_value(slot_name, arguments[slot_name]))
+                    # then with values.
+                    input_dict["values"] = values
+                    ins.append(self.prompt(input_dict))
+                    if len(value) == 1:
+                        outs.append(
+                            self.format_value(slot_name, arguments[slot_name][0])
+                        )
+                    else:
+                        outs.append(self.format_value(slot_name, arguments[slot_name]))
+                else:
+                    input_dict["values"] = []
+                    if self.include_negative:
+                        ins.append(self.prompt(input_dict))
+                        outs.append(self.format_value(slot_name, None))
+
+
+#
+# This is for extractive slot value understanding.
+# For each slot, we create a question for the slot value. For some reason, it is not being used.
+#
+class IsolatedQAExtractor(SlotExtractor):
     def __init__(self, module: Schema, slot_prompt: InstructBuilder, entities):
         self.prompt = slot_prompt
         self.module = module

@@ -6,7 +6,7 @@ from opencui.core.annotation import CamelToSnake, ExactMatcher
 from opencui.core.embedding import EmbeddingStore
 from opencui.core.retriever import (build_nodes_from_skills, create_index, load_context_retrievers)
 from opencui.finetune.commons import build_nodes_from_dataset, JsonDatasetFactory
-from opencui.inference.converter import Converter
+from opencui.inference.parser import Parser
 import sys
 #
 # Converter is a lower level component of inference. This directly use the model.
@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     context_retriever = load_context_retrievers(factory.schema, f"{output}/index")
 
-    converter = Converter(context_retriever)
+    converter = Parser(context_retriever)
 
     counts = {
         "exemplar": [0, 0, 0, 0],

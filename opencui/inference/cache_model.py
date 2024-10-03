@@ -4,7 +4,7 @@
 from sentence_transformers import SentenceTransformer
 
 from opencui.core.config import RauConfig
-from opencui.inference.converter import Generator
+from opencui.inference.parser import Generator
 
 # This script is used to trigger the caching of the models during the docker build to speed up the deployment.
 if __name__ == "__main__":

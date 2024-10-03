@@ -19,7 +19,9 @@ class LabeledMatchingData:
     decision: bool
 
 
+#
 # We assume that batch is LabeledMatchingData in column form, this is what we get from pandas.
+#
 class TrainPhase2Converter(ABC):
     @abc.abstractmethod
     def __call__(self, batch, ins: list[str], outs: list[str]):

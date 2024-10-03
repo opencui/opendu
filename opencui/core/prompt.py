@@ -35,7 +35,6 @@ class InstructBuilder(ABC):
     def build(self, **kwargs):
         pass
 
-
 #
 # For each class of problem, we might have many different prompt template, assumes the same set of variables.
 # eventually, this will be a global manager, so that we can specify prompt template (instruction builder)
@@ -83,8 +82,8 @@ class JinjaPromptBuilder(InstructBuilder, ABC):
         self.template = env.get_template(label)
 
 
-    def __call__(self, **kwargs) -> str:
-        # First we need to create the example.
+    # Assume __call__ takes object, but build take scatter parts.
+    def __call__(self, kwargs) -> str:
         return self.build(**kwargs)
 
     def build(self, **kwargs) -> str:

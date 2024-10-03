@@ -4,12 +4,12 @@ exemplars (utterance, and outputs, as we allow multiple intents), and system ins
 format.
  #}
 Given a incomplete list of skills and their corresponding description, along with some examples, output all the skills
-that was implied by input text, return empty list if there is no skill in the list is implied by input, and output in
+that was implied by input text, return empty list if there is no skill in the list is implied by input. Please output in
 the proper json format.
 
 The skills are:
 {% for skill in skills %}
-{{ skill.name }}:{{ skill.description }}
+{{ skill.name }}: {{ skill.description }}
 {% endfor %}
 
 Here are some examples:
@@ -18,7 +18,7 @@ Input: {{ example.input }}
 Prediction: [ {% for output in example.outputs %} { "implied" : "{{ output }}"  }, {% endfor %} ]
 {% endfor %}
 
-For the given input: {{ utterance }}
+Input: {{ utterance }}
 Prediction:
 
 

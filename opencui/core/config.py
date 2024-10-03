@@ -50,6 +50,9 @@ class InferenceConfig(BaseModel):
     skill_arity: int = 1
     llm_device: str = DEVICE
 
+    # this is used
+    skill_modes: list = ["both"]
+
     skill_prompt: str = "skill-knn-structural"
     skill_desc_prompt: str = "skill-desc-structural"
     slot_prompt: str = "slot-qa-structural"

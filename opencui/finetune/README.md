@@ -37,7 +37,7 @@ For now, we assume that the labeled examples for fine-tuning the generator requi
 3. Target arguments (parameter or slot values)
    Example: {"quantity": 1, "destination": "new york"}
 
-Note that we need utterance template, an normalized version of the original user utterance, for inference. With user utterance and slot values, we can recover corresponding exemplar for most of time. But when some slot value occurs more than one time in the utterance, we will run into trouble. So such case, the label process need to explicitly provider exemplars, or provide span for each value, or risk such labeled example is discarded for RAG inference. 
+Note that we need utterance template, a normalized version of the original user utterance, for inference. With user utterance and slot values, we can recover corresponding exemplar for most of time. But when some slot value occurs more than one time in the utterance, we will run into trouble. So such case, the label process need to explicitly provider exemplars, or provide span for each value, or risk such labeled example is discarded for RAG inference. 
 
 Per standard practices, it will be good if you prepare three datasets, for training, validation and testing. An example raw datasets is [schema-guided dialogue dataset](https://github.com/google-research-datasets/dstc8-schema-guided-dialogue). These raw dataset can be prepared in any format, as long as it also come with the code to generate the dataset in form of AnnotatedExemplars, of course, we also need to generate the information needed for RAG inference (as our fine-tuning dataset will be using the same prompt template as RAG).
 
@@ -53,7 +53,7 @@ Use the following script to determine the hyperparameters for retrieval:
 python3 finetune/find_k_for_prompt.py 
 ```
 
-### Create the fine-tuning dataset
+### Create the fine-tuning dataset (for skills)
 The actual fine-tuning dataset is created based on the following components:
 1. Raw dataset
 2. Retriever
@@ -68,8 +68,11 @@ For some dialog understanding strategies, we need to generate negative examples.
 
 With these assumptions, we can select similar utterances from other functions as negative examples.
 
-Finally, we can place training data we get for each module in the separate directories in coded in: <org>_<bot>_<lang>. 
+It is useful for keep the most relevant skill descriptions and exemplar toward end, to make it easier for LLM to 
+pick up, also, it is useful to add labeled data point without exemplar, and with fewer exemplar, to make the problem 
+a bit more challenging for fine-tuning.
 
+Finally, we can place training data we get for each module in the separate directories in coded in: <org>_<bot>_<lang>. 
 
 ### Fine-tune the generation model
 Regardless we are using full fine-tuning or lora, we will focus on use one model for different tasks. The main reason is that dialog understanding is a form of translation from one representation to another, which is naturally a good fit for language models. We have two example scripts for you to get started.
