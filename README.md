@@ -1,12 +1,18 @@
-# RAU
+# OpenCU
 
-RAU (Retrieval-Augmented Understanding) is an open-source implementation of semantic parsing based on retrieval-augmented generation (RAG) techniques, it is designed to convert natural language into a structured representation for semantic. In addition to dialog understanding for chatbot development, this package can also be used for function calling for agent development, thus can also be referred as RAFC (Retrieval-Augmented Function Calling). As such, we use the following terms interchangeably:
+OpenCU, is an open source dialogue understanding module, that is an agentic Retrieval-Augmented Generation
+(agentic RAG) based implementation for semantic parsing, it is designed to parse natural language into a structured 
+representation for semantic. In addition to dialog understanding for chatbot development, this package can 
+potentially also be used for function calling for agent development. As such, we use the following terms interchangeably:
 
 - 'function', 'skill', and 'intent'
 - 'parameter' and 'slot'
 - 'semantic parsing', 'function calling' and '(dialog) understanding'
 
-It can be used with any LLMs with provided finetune script for both embedding model and generation model. Efficient inference is possible using excellent project like llama.cpp, vllm. With open sourced LLM, you can deploy the entire dialog understanding or function calling API solution anywhere you want. For now, we focus on decoder-only or encoder-decoder models required by text generation.
+It can be used with any LLMs with provided finetune script for both embedding model and generation models. Efficient 
+inference is possible using excellent project like llama.cpp, vllm. With open sourced LLMs, you can deploy the 
+entire dialog understanding or function calling API solution anywhere you want. We focus on decoder-only or 
+encoder-decoder models required by text generation.
 
 There are couple basic goals for this project:
 
