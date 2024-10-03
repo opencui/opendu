@@ -1,6 +1,6 @@
-# OpenCU
+# OpenDU
 
-OpenCU, is an open source dialogue understanding module, that is an agentic Retrieval-Augmented Generation
+OpenDU, is an open source dialogue understanding module, that is an agentic Retrieval-Augmented Generation
 (agentic RAG) based implementation for semantic parsing, it is designed to parse natural language into a structured 
 representation for semantic. In addition to dialog understanding for chatbot development, this package can 
 potentially also be used for function calling for agent development. As such, we use the following terms interchangeably:
@@ -23,7 +23,7 @@ There are couple basic goals for this project:
 
 ## What signal can be used to define conversion?
 
-OpenCU takes three kinds of different signals to shape how conversion is done:
+OpenDU takes three kinds of different signals to shape how conversion is done:
 
 1. Function schema, particularly [OpenAPI](https://spec.openapis.org/oas/latest.html)/[OpenAI](https://platform.openai.com/docs/api-reference/chat/create#chat/create-functions) function schemas.
 2. Expression exemplars: utterance templates associated with specific functions, where the templates are designed to trigger their corresponding functions.
