@@ -1,7 +1,7 @@
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Literal, Optional, TypedDict, Union
+from typing import Dict, List, Literal, Optional, TypedDict, Union, Any
 from typing import Optional
 from dataclasses_json import dataclass_json
 from pydantic import BaseModel, Field
@@ -63,15 +63,9 @@ class FrameId(BaseModel):
 # This name inside the FrameSchema and SlotSchema is semantic bearing.
 # So there should not be overlapping between schema names.
 # the key for skills and slots does not need to be.
-@dataclass_json
-@dataclass
-class Schema:
+class Schema(BaseModel):
     skills: Dict[str, FrameSchema]
     slots: Dict[str, SlotSchema]
-
-    def __init__(self, skills, slots):
-        self.skills = skills
-        self.slots = slots
 
     def get_skill(self, frame_id: FrameId):
         return self.skills[frame_id.name]
