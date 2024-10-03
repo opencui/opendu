@@ -3,7 +3,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Optional, TypedDict, Union, Any
 from typing import Optional
-from dataclasses_json import dataclass_json
 from pydantic import BaseModel, Field
 from enum import Enum
 from llama_index.core.schema import TextNode
@@ -112,24 +111,18 @@ class ExactMatcher:
         return OwnerMode[mode_in_str] == OwnerMode.normal
 
 
-@dataclass_json
-@dataclass
-class FrameValue:
+class FrameValue(BaseModel):
     name: str
     arguments: TypedDict
 
 
-@dataclass_json()
-@dataclass
-class FrameState:
+class FrameState(BaseModel):
     frame: str
     slot: str
     slotType: str
 
 
 # How to present context is strictly state tracking implementation dependent.
-@dataclass_json
-@dataclass
 class DialogExpectation(BaseModel):
     context: list[FrameState]
 

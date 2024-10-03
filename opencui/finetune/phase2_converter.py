@@ -1,14 +1,12 @@
 import abc
 from abc import ABC
-from dataclasses import dataclass
-from dataclasses_json import dataclass_json
+from pydantic import BaseModel
 
 from opencui.core.prompt import (promptManager, Task)
 
 
-@dataclass_json
-@dataclass
-class LabeledMatchingData:
+
+class LabeledMatchingData(BaseModel):
     """
     This is used to encode the labeled matching data
     """
