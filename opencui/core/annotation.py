@@ -29,14 +29,12 @@ class SlotSchema(BaseModel):
                 raise RuntimeError("wrong property.")
 
 
-@dataclass_json
-@dataclass
-class FrameSchema:
-    name: str = field(metadata={"required": True})
-    description: str = field(metadata={"required": True})
-    slots: list[str] = field(default_factory=list)
-    headSlot: str = field(metadata={"required": False}, default=None)
-    type: Optional[str] = None
+class FrameSchema(BaseModel):
+    name: str = Field(..., description="The name of the frame", title="Name", required=True)
+    description: str = Field(..., description="Description of the frame", required=True)
+    slots: List[str] = Field(default_factory=list, description="List of slot names in the frame")
+    headSlot: Optional[str] = Field(None, description="Optional head slot", required=False)
+    type: Optional[str] = Field(None, description="Optional type of the frame")
 
     def __getitem__(self, item):
         match item:
