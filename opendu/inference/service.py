@@ -11,9 +11,9 @@ from lru import LRU
 import traceback as tb
 from aiohttp import web
 import shutil
-from opencui.core.config import RauConfig
-from opencui.inference.parser import Parser, Generator, load_parser
-from opencui.inference.index import indexing
+from opendu.core.config import RauConfig
+from opendu.inference.parser import Parser, Generator, load_parser
+from opendu.inference.index import indexing
 from sentence_transformers import SentenceTransformer
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)

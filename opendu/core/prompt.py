@@ -8,7 +8,7 @@ from pybars import Compiler
 from abc import ABC, abstractmethod
 from typing import Callable
 
-from opencui.core.config import RauConfig
+from opendu.core.config import RauConfig
 from abc import ABC
 from typing import Callable
 from enum import Enum
@@ -78,7 +78,7 @@ class PromptManager(ABC):
 #
 class JinjaPromptBuilder(InstructBuilder, ABC):
     def __init__(self, label: str):
-        env = Environment(loader=FileSystemLoader("opencui/core/templates"))
+        env = Environment(loader=FileSystemLoader("opendu/core/templates"))
         self.template = env.get_template(label)
 
 

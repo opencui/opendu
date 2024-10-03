@@ -20,10 +20,10 @@ from peft import LoraConfig, get_peft_model, TaskType, PrefixTuningConfig
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed,
                           DataCollatorForSeq2Seq, AutoModelForSeq2SeqLM)
 
-from opencui.core.config import RauConfig, ModelType
-from opencui.core.special_tokens import SpecialTokens
-from opencui.finetune.commons import (load_training_dataset)
-from opencui.finetune.datacollator import DataCollatorForCausalLM
+from opendu.core.config import RauConfig, ModelType
+from opendu.core.special_tokens import SpecialTokens
+from opendu.finetune.commons import (load_training_dataset)
+from opendu.finetune.datacollator import DataCollatorForCausalLM
 
 logger = logging.getLogger(__name__)
 
@@ -560,10 +560,10 @@ def train():
 
         # append save the config
         if ModelType[args.model_type] == ModelType.t5:
-            shutil.copy("./opencui/finetune/t5.sh", f"{args.output_dir}/")
+            shutil.copy("./opendu/finetune/t5.sh", f"{args.output_dir}/")
         else:
-            shutil.copy("./opencui/finetune/gpt.sh", f"{args.output_dir}/")
-        shutil.copy("./opencui/core/config.py", f"{args.output_dir}/")
+            shutil.copy("./opendu/finetune/gpt.sh", f"{args.output_dir}/")
+        shutil.copy("./opendu/core/config.py", f"{args.output_dir}/")
 
         with open(os.path.join(args.output_dir, "metrics.json"), "w") as fout:
             fout.write(json.dumps(all_metrics))

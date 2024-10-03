@@ -2,11 +2,11 @@ import json
 import logging
 from collections import defaultdict
 
-from opencui.core.annotation import CamelToSnake, ExactMatcher
-from opencui.core.embedding import EmbeddingStore
-from opencui.core.retriever import (build_nodes_from_skills, create_index, load_context_retrievers)
-from opencui.finetune.commons import build_nodes_from_dataset, JsonDatasetFactory
-from opencui.inference.parser import Parser
+from opendu.core.annotation import CamelToSnake, ExactMatcher
+from opendu.core.embedding import EmbeddingStore
+from opendu.core.retriever import (build_nodes_from_skills, create_index, load_context_retrievers)
+from opendu.finetune.commons import build_nodes_from_dataset, JsonDatasetFactory
+from opendu.inference.parser import Parser
 import sys
 #
 # Converter is a lower level component of inference. This directly use the model.
@@ -22,7 +22,7 @@ if __name__ == "__main__":
     output = "./test"
 
     if len(sys.argv) == 1:
-        print("usage: python3 opencui/finetune/test.pyt test/train")
+        print("usage: python3 opendu/finetune/test.pyt test/train")
         exit()
     else:
         tag = sys.argv[1]

@@ -8,8 +8,8 @@ import torch
 from peft import PeftConfig, PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, AutoModelForSeq2SeqLM, AutoConfig
 
-from opencui import ModelType
-from opencui.core.config import RauConfig
+from opendu import ModelType
+from opendu.core.config import RauConfig
 
 
 # The modes that we will support.

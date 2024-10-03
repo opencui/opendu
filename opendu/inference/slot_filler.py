@@ -9,14 +9,14 @@ from pydantic import BaseModel
 from collections import defaultdict
 from enum import Enum
 
-from opencui import FrameSchema
-from opencui.core.annotation import (CamelToSnake, DialogExpectation, Exemplar, OwnerMode, ExactMatcher)
-from opencui.core.config import RauConfig
-from opencui.core.prompt import (DescriptionPrompts, ExemplarPrompts)
-from opencui.core.retriever import (ContextRetriever)
-from opencui.inference.generator import GenerateMode
+from opendu import FrameSchema
+from opendu.core.annotation import (CamelToSnake, DialogExpectation, Exemplar, OwnerMode, ExactMatcher)
+from opendu.core.config import RauConfig
+from opendu.core.prompt import (DescriptionPrompts, ExemplarPrompts)
+from opendu.core.retriever import (ContextRetriever)
+from opendu.inference.generator import GenerateMode
 
-from opencui.utils.json_tools import parse_json_from_string
+from opendu.utils.json_tools import parse_json_from_string
 
 #
 # There are two levels of the APIs here: a

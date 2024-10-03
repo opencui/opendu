@@ -5,13 +5,13 @@ import json
 from abc import ABC, abstractmethod
 from collections import defaultdict
 
-from opencui.core.annotation import (CamelToSnake, DialogExpectation, Exemplar, OwnerMode, ExactMatcher)
-from opencui.core.config import RauConfig
-from opencui.core.prompt import (promptManager, Task)
-from opencui.core.retriever import (ContextRetriever)
-from opencui.inference.generator import GenerateMode
+from opendu.core.annotation import (CamelToSnake, DialogExpectation, Exemplar, OwnerMode, ExactMatcher)
+from opendu.core.config import RauConfig
+from opendu.core.prompt import (promptManager, Task)
+from opendu.core.retriever import (ContextRetriever)
+from opendu.inference.generator import GenerateMode
 
-from opencui.utils.json_tools import parse_json_from_string
+from opendu.utils.json_tools import parse_json_from_string
 
 #
 # The intent detector try to detect all triggerable intents from user utterance, with respect to

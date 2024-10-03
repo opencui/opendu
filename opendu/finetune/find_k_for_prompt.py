@@ -2,9 +2,9 @@ import logging
 
 from datasets import Dataset
 import numpy as np
-from opencui.core.embedding import EmbeddingStore
-from opencui.core.retriever import (ContextRetriever, build_desc_index, load_context_retrievers)
-from opencui.finetune.commons import build_dataset_index, JsonDatasetFactory
+from opendu.core.embedding import EmbeddingStore
+from opendu.core.retriever import (ContextRetriever, build_desc_index, load_context_retrievers)
+from opendu.finetune.commons import build_dataset_index, JsonDatasetFactory
 
 
 def compute_k(dataset: Dataset, retrieve: ContextRetriever):

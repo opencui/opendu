@@ -137,7 +137,7 @@ To use the converter, you first need to prepare the inputs needed to define the 
 Place three files in one directory: `schema.json`, `exemplars.json`, and `recognizers.json`, one for each input type defined above.
 
 ```bash
-python3 opencui/inference/index.py -s <directory_you_read_schema_from>
+python3 opendu/inference/index.py -s <directory_you_read_schema_from>
 ```
 
 By default, the code won't check the format for function specifications but will verify the format for exemplars and recognizers, raising exceptions if issues are found.
@@ -153,7 +153,7 @@ python3 inference/cmd_test.py -s <directory_you_read_schema_from>
 The entire process can also be accessed via a restful end point. To start the service, simply:
 
 ```bash
-python3 opencui/inference/service.py -s examples/
+python3 opendu/inference/service.py -s examples/
 ```
 
 To make in the index:

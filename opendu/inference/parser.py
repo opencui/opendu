@@ -5,15 +5,15 @@ import json
 import re
 from enum import Enum
 
-from opencui.inference.intent_detector import KnnIntentDetector
-from opencui.core.annotation import (EntityMetas, FrameValue, ListRecognizer, get_value)
-from opencui.core.config import RauConfig
-from opencui.core.prompt import (promptManager, Task)
-from opencui.core.retriever import (ContextRetriever, load_context_retrievers)
-from opencui.inference.schema_parser import load_all_from_directory
-from opencui.inference.generator import GenerateMode, Generator
+from opendu.inference.intent_detector import KnnIntentDetector
+from opendu.core.annotation import (EntityMetas, FrameValue, ListRecognizer, get_value)
+from opendu.core.config import RauConfig
+from opendu.core.prompt import (promptManager, Task)
+from opendu.core.retriever import (ContextRetriever, load_context_retrievers)
+from opendu.inference.schema_parser import load_all_from_directory
+from opendu.inference.generator import GenerateMode, Generator
 
-from opencui.utils.json_tools import parse_json_from_string
+from opendu.utils.json_tools import parse_json_from_string
 
 # The modes that we will support.
 YesNoResult = Enum("YesNoResult", ["Affirmative", "Negative", "Indifferent", "Irrelevant"])
