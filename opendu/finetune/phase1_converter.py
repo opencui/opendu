@@ -15,7 +15,8 @@ from opendu.core.prompt import (Task, promptManager)
 from pydantic import BaseModel, Field
 
 
-class AnnotatedExemplar(BaseModel):
+# This exemplar contains arguments.
+class FullExemplar(BaseModel):
     """
     Expression examples. If the expected_slots is empty, this can be used for both skills and slots.
     """
@@ -59,7 +60,7 @@ class AnnotatedExemplar(BaseModel):
         for key, values in arguments.items():
             for value in values:
                 single_dict[value] = key
-                found, match = AnnotatedExemplar.get_span(value, utterance)
+                found, match = FullExemplar.get_span(value, utterance)
                 if len(found) != 1:
                     return None
                 spans.append(match.span())

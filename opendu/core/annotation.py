@@ -147,7 +147,11 @@ class ListRecognizer:
         return ListRecognizer.find_matches(self.patterns, slot, text)
 
 
-# owner is not needed if exemplars are listed insider function specs.
+#
+# Owner is not needed if exemplars are listed insider function specs.
+# This exemplar is used for intent detection only, as the template
+# already delegate the entity detection out.
+#
 class Exemplar(BaseModel):
     owner: str = Field(description="onwer of this exemplar.")
     template: str = Field(

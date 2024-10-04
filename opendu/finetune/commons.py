@@ -19,7 +19,7 @@ from llama_index.core.schema import TextNode
 from opendu.core.annotation import Schema, MatchReplace, get_value
 from opendu.core.config import RauConfig
 from opendu.core.retriever import create_index, ContextRetriever
-from opendu.finetune.phase1_converter import AnnotatedExemplar, TrainPhase1Converter, YniConverter
+from opendu.finetune.phase1_converter import FullExemplar, TrainPhase1Converter, YniConverter
 from opendu.finetune.phase2_converter import PromptConverter
 
 
@@ -29,7 +29,7 @@ def build_nodes_from_dataset(module: str, dataset: Dataset, nodes):
         arguments = json.loads(item["arguments"].replace("\'", "\""))
         utterance = item["utterance"]
         # Do not trust the original template.
-        template = AnnotatedExemplar.extract_template(utterance=utterance, arguments=arguments)
+        template = FullExemplar.extract_template(utterance=utterance, arguments=arguments)
 
         if template is None:
             template = item["template"]
