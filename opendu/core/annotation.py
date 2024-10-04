@@ -13,6 +13,7 @@ class SlotSchema(BaseModel):
     type: Optional[str] = Field(None, description="The type of the slot")
     label: Optional[str] = Field(None, description="Optional label for the slot")
     examples: Set[str] = Field(set(), description="Example values for the slot.")
+    
     def __getitem__(self, item):
         return self.__dict__[item]
 
