@@ -1,7 +1,6 @@
 import json
 import re
-from dataclasses import dataclass, field
-from typing import Dict, List, Literal, Optional, TypedDict, Union, Any
+from typing import Dict, List, Literal, TypedDict, Set
 from typing import Optional
 from pydantic import BaseModel, Field
 from enum import Enum
@@ -9,20 +8,20 @@ from llama_index.core.schema import TextNode
 
 
 class SlotSchema(BaseModel):
-    name: str = Field(..., description="The name of the slot", title="Name", required=True)
-    description: str = Field(..., description="Description of the slot", required=True)
-    type: Optional[str] = Field(None, description="The type of the slot", required=False)
+    name: str = Field(..., description="The name of the slot", title="Name")
+    description: str = Field(..., description="Description of the slot")
+    type: Optional[str] = Field(None, description="The type of the slot")
     label: Optional[str] = Field(None, description="Optional label for the slot")
-
+    examples: Set[str] = Field(set(), description="Example values for the slot.")
     def __getitem__(self, item):
         return self.__dict__[item]
 
 
 class FrameSchema(BaseModel):
-    name: str = Field(..., description="The name of the frame", title="Name", required=True)
-    description: str = Field(..., description="Description of the frame", required=True)
+    name: str = Field(..., description="The name of the frame", title="Name")
+    description: str = Field(..., description="Description of the frame")
     slots: List[str] = Field(default_factory=list, description="List of slot names in the frame")
-    headSlot: Optional[str] = Field(None, description="Optional head slot", required=False)
+    headSlot: Optional[str] = Field(None, description="Optional head slot")
     type: Optional[str] = Field(None, description="Optional type of the frame")
 
     def __getitem__(self, item):
