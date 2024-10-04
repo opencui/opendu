@@ -15,17 +15,7 @@ class SlotSchema(BaseModel):
     label: Optional[str] = Field(None, description="Optional label for the slot")
 
     def __getitem__(self, item):
-        match item:
-            case "description":
-                return self.description
-            case "name":
-                return self.name
-            case "type":
-                return self.type
-            case "label":
-                return self.label
-            case _:
-                raise RuntimeError("wrong property.")
+        return self.__dict__[item]
 
 
 class FrameSchema(BaseModel):
@@ -36,23 +26,10 @@ class FrameSchema(BaseModel):
     type: Optional[str] = Field(None, description="Optional type of the frame")
 
     def __getitem__(self, item):
-        match item:
-            case "type":
-                self.type
-            case "description":
-                return self.description
-            case "name":
-                return self.name
-            case "slots":
-                return self.slots
-            case _:
-                raise RuntimeError("wrong property.")
+        return self.__dict__[item]
 
     def __setitem__(self, key, value):
-        if key == "name":
-            self.name = value
-        else:
-            raise RuntimeError("wrong property.")
+        self.__dict__[key] = value
 
 
 class FrameId(BaseModel):
