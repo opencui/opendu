@@ -3,7 +3,7 @@ import dataclasses
 
 import torch
 import transformers
-from typing import Dict, Optional, Sequence, List, Tuple
+from typing import Dict, Sequence
 from torch.nn.utils.rnn import pad_sequence
 
 IGNORE_INDEX = -100

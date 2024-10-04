@@ -5,7 +5,6 @@ from pydantic import BaseModel
 from opendu.core.prompt import (promptManager, Task)
 
 
-
 class LabeledMatchingData(BaseModel):
     """
     This is used to encode the labeled matching data
@@ -58,7 +57,3 @@ class PromptConverter(TrainPhase2Converter):
 
             ins.append(self.prompts[mode](input_dict))
             outs.append(self.label(decision))
-
-
-
-

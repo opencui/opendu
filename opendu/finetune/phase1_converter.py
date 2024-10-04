@@ -4,7 +4,6 @@ import random
 import re
 
 from abc import ABC
-from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Dict
 
@@ -15,7 +14,7 @@ from opendu.core.prompt import (Task, promptManager)
 from pydantic import BaseModel, Field
 
 
-# This exemplar contains arguments.
+# This exemplar contains arguments, used for fine-tuning.
 class FullExemplar(BaseModel):
     """
     Expression examples. If the expected_slots is empty, this can be used for both skills and slots.
