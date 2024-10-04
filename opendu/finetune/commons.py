@@ -1,12 +1,10 @@
 import abc
 import json
-import random
 import re
 import glob
 
 from abc import ABC
 from collections import defaultdict
-from dataclasses import dataclass
 from enum import Enum
 from random import sample, seed
 from typing import Optional
@@ -61,7 +59,6 @@ def build_dataset_index(tag: str, dsc: Dataset, output: str, embedding: BaseEmbe
     create_index(output, "exemplar", exemplar_nodes, embedding)
 
 
-@dataclass
 class DatasetFactory(ABC):
     __metaclass__ = abc.ABCMeta
     tag: str
@@ -76,12 +73,11 @@ class DatasetFactory(ABC):
 # This is need to create the different dataset based on prompt templating.
 # We expect the input dataset has utterance field.
 # We need to make sure the output dataset has input/output field,
-@dataclass
 class SchemaDatasetFactory(DatasetFactory, ABC):
     __metaclass__ = abc.ABCMeta
     schema: Schema
 
-@dataclass
+
 class MappedDatasetDict(ABC):
     def __init__(self, ds_dict, train="train", validation="validation"):
         self.dict = ds_dict
@@ -154,7 +150,6 @@ class DatasetFactoryMerger(SchemaDatasetFactory, ABC):
 
 # This inference is needed for cases where users' utterance is response to bot's prompt questions, and
 # needs the abstractive understanding instead of extractive understanding.
-@dataclass
 class ConvertedFactory(DatasetFactory):
     __metaclass__ = abc.ABCMeta
     def __init__(
@@ -180,7 +175,6 @@ class ConvertedFactory(DatasetFactory):
         return dataset.map(self.convert_one, batched=True, remove_columns=self.columns)
 
 
-@dataclass
 class PromptedFactory(DatasetFactory):
     __metaclass__ = abc.ABCMeta
     def __init__(self, file, unused_columns):
