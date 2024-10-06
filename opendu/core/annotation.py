@@ -1,28 +1,33 @@
 import json
 import re
-from dataclasses import dataclass, field
-from typing import Dict, List, Literal, Optional, TypedDict, Union, Any
+from typing import Dict, List, Literal, TypedDict, Set
 from typing import Optional
 from pydantic import BaseModel, Field
 from enum import Enum
 from llama_index.core.schema import TextNode
 
 
+# During the understanding, we do not have concept of multivalued, as even when the slot
+# is the single valued, user can still say multiple values.
 class SlotSchema(BaseModel):
-    name: str = Field(..., description="The name of the slot", title="Name", required=True)
-    description: str = Field(..., description="Description of the slot", required=True)
-    type: Optional[str] = Field(None, description="The type of the slot", required=False)
+    name: str = Field(..., description="The name of the slot", title="Name")
+    description: str = Field(..., description="Description of the slot")
+    type: Optional[str] = Field(None, description="The type of the slot")
     label: Optional[str] = Field(None, description="Optional label for the slot")
+    examples: Set[str] = Field(set(), description="Example values for the slot.")
 
     def __getitem__(self, item):
         return self.__dict__[item]
 
+    def to_description_dict(self):
+        return {field: self.model_field[field].field_info.description for field in self.model_fields}
+
 
 class FrameSchema(BaseModel):
-    name: str = Field(..., description="The name of the frame", title="Name", required=True)
-    description: str = Field(..., description="Description of the frame", required=True)
+    name: str = Field(..., description="The name of the frame", title="Name")
+    description: str = Field(..., description="Description of the frame")
     slots: List[str] = Field(default_factory=list, description="List of slot names in the frame")
-    headSlot: Optional[str] = Field(None, description="Optional head slot", required=False)
+    headSlot: Optional[str] = Field(None, description="Optional head slot")
     type: Optional[str] = Field(None, description="Optional type of the frame")
 
     def __getitem__(self, item):
@@ -49,16 +54,30 @@ class Schema(BaseModel):
     def has_skill(self, frame_id: FrameId):
         return frame_id.name in self.skills
 
-    def get_slots_in_dict(self, frame_name: str) -> dict:
+    def get_slots_descriptions_in_dict(self, frame_name: str) -> dict:
         res = {}
         frame = self.skills[frame_name]
         for slot in frame.slots:
             slot_schema = self.slots[slot]
             if slot_schema.type not in self.skills:
-                res[slot_schema.name] = vars(slot_schema)
+                print(f"slot_schema.type: {slot_schema.type} is not a skill")
+                res[slot_schema.name] = slot_schema.description
             else:
-                res[slot_schema.name] = self.get_slots_in_dict(slot_schema.type)
+                print(f"slot_schema.type: {slot_schema.type} is a skill")
+                res[slot_schema.name] = self.get_slots_descriptions_in_dict(slot_schema.type)
         return res
+
+    def get_slots_examples_in_dict(self, frame_name: str) -> dict:
+        res = {}
+        frame = self.skills[frame_name]
+        for slot in frame.slots:
+            slot_schema = self.slots[slot]
+            if slot_schema.type not in self.skills:
+                res[slot_schema.name] = list(slot_schema.examples)[:1]
+            else:
+                res[slot_schema.name] = self.get_slots_examples_in_dict(slot_schema.type)
+        return res
+
 
 
 OwnerMode = Enum('OwnerMode', ["normal", "extended"])
@@ -147,7 +166,11 @@ class ListRecognizer:
         return ListRecognizer.find_matches(self.patterns, slot, text)
 
 
-# owner is not needed if exemplars are listed insider function specs.
+#
+# Owner is not needed if exemplars are listed insider function specs.
+# This exemplar is used for intent detection only, as the template
+# already delegate the entity detection out.
+#
 class Exemplar(BaseModel):
     owner: str = Field(description="onwer of this exemplar.")
     template: str = Field(
