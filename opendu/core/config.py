@@ -55,7 +55,7 @@ class InferenceConfig(BaseModel):
 
     skill_prompt: str = "skill-knn-structural"
     skill_desc_prompt: str = "skill-desc-structural"
-    slot_prompt: str = "slot-qa-structural"
+    slot_prompt: str = "sf_se_full"
     yni_prompt: str = "yni-default"
     bool_prompt: str = "plain"
 
