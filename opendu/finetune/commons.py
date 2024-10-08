@@ -108,7 +108,7 @@ class JsonDatasetFactory(SchemaDatasetFactory, ABC):
     def __init__(self, path, tag=None, prefix=""):
         self.path = path
         schema_dict = json.load(open(f"{path}/schema.json"))
-        self.schema = Schema.from_dict(schema_dict)
+        self.schema = Schema(**schema_dict)
         files = {
             "train": f"{self.path}/{prefix}train.jsonl",
             "test": f"{self.path}/{prefix}test.jsonl",

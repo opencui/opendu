@@ -2,7 +2,7 @@ import abc
 from abc import ABC
 from pydantic import BaseModel
 
-from opendu.core.prompt import (promptManager, Task)
+from opendu.core.prompt import (promptManager0, Task)
 
 
 class LabeledMatchingData(BaseModel):
@@ -28,14 +28,14 @@ class TrainPhase2Converter(ABC):
 class PromptConverter(TrainPhase2Converter):
     def __init__(self):
         self.prompts = {
-            "desc": promptManager.get_builder(Task.SKILL_DESC),
-            "exemplar": promptManager.get_builder(Task.SKILL)
+            "desc": promptManager0.get_builder(Task.SKILL_DESC),
+            "exemplar": promptManager0.get_builder(Task.SKILL)
         }
 
     @staticmethod
     def label(value):
         label_dict = {"label": "true" if value else "false"}
-        return promptManager.get_builder(Task.BOOL_VALUE)(label_dict)
+        return promptManager0.get_builder(Task.BOOL_VALUE)(label_dict)
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         for idx, mode in enumerate(batch["matchType"]):
