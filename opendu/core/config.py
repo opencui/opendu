@@ -52,10 +52,9 @@ class InferenceConfig(BaseModel):
 
     # this is used
     skill_modes: list = ["both"]
-
-    skill_prompt: str = "id_mc_full"
+    skill_prompt: str = "skill-knn-structural"
     skill_desc_prompt: str = "skill-desc-structural"
-    slot_prompt: str = "sf_se_full"
+    slot_prompt: str = "slot-qa-structural"
     yni_prompt: str = "yni-default"
     bool_prompt: str = "plain"
 
