@@ -7,10 +7,10 @@ from abc import ABC
 from enum import Enum
 from typing import Optional, Dict
 
-from opendu import InstructBuilder
+from opendu import InstructBuilder, IOMode
 from opendu.core.retriever import create_index, ContextRetriever
 from opendu.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher
-from opendu.core.prompt import (Task, promptManager)
+from opendu.core.prompt import (Task, promptManager0, promptManager1)
 from pydantic import BaseModel, Field
 
 
@@ -93,9 +93,9 @@ class TrainPhase1Converter(ABC):
 
 class MultiClassSkillConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever):
-        label = promptManager.get_task_label(Task.SKILL)
+        label = promptManager0.get_task_label(Task.SKILL)
         assert label.startswith("skill-mc"), "need to be skill-mc prefix"
-        self.prompt = promptManager.get_builder(Task.SKILL)
+        self.prompt = promptManager0.get_builder(Task.SKILL)
         self.context_retrieve = retriever
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
@@ -177,9 +177,9 @@ class MultiClassSkillConverter(TrainPhase1Converter):
 
 class SingleClassSkillConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever):
-        label = promptManager.get_task_label(Task.SKILL)
+        label = promptManager0.get_task_label(Task.SKILL)
         assert label.startswith("skill-sc"), "need to be skill-sc prefix"
-        self.prompt = promptManager.get_builder(Task.SKILL)
+        self.prompt = promptManager0.get_builder(Task.SKILL)
         self.context_retrieve = retriever
         self.neg_k = 1
         self.match_mode = "normal"
@@ -249,8 +249,8 @@ def skill_converter(retriever: ContextRetriever, skill_mode):
         return DescExemplarConverter(retriever, InstanceMode.desc)
     if skill_mode == "exemplar":
         return DescExemplarConverter(retriever, InstanceMode.example)
-    if skill_mode == "multi-class":
-        return MultiClassSkillConverter(retriever)
+    if skill_mode == "rag":
+        return RagSkillConverter(retriever)
 
 def suffix_sublists_with_empty(lst):
     return [lst[i:] for i in range(len(lst) + 1)]
@@ -262,9 +262,10 @@ def suffix_sublists_with_empty(lst):
 class RagSkillConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever, mode=InstanceMode.both):
         # Make sure that we have the same key for Desc and exemplar prompt.
-        label = promptManager.get_task_label(Task.SKILL)
-        assert label.startswith("skill-rag"), "need to be skill-rag prefix"
-        self.prompt = promptManager.get_builder(Task.SKILL)
+        label = promptManager1.get_task_label(Task.SKILL)
+        assert label.startswith("id_mc_full"), f"need to be skill-rag prefix: {label}"
+        self.input_prompt = promptManager1.get_builder(Task.SKILL, IOMode.INPUT)
+        self.output_prompt = promptManager1.get_builder(Task.SKILL, IOMode.OUTPUT)
         self.context_retrieve = retriever
         self.neg_k = 1
         self.mode = mode
@@ -293,28 +294,30 @@ class RagSkillConverter(TrainPhase1Converter):
             skills.reverse()
             exemplars.reverse()
 
+            print(f"input = {self.input_prompt}")
+            print(f"outpout = {self.output_prompt}")
+
             # First positive.
             # We always have all the skills and descriptions, but remove exemplars one at a time.
             sublists = suffix_sublists_with_empty(exemplars)
             for sublist in sublists:
-                ins.append(self.prompt.build(utterance=utterance,skills=skills, exemplars=sublist))
-                outs.append(f"""["{owner}"]""")
+                ins.append(self.input_prompt.build(utterance=utterance,skills=skills, exemplars=sublist))
+                outs.append(self.output_prompt.build(outputs=[owner]))
 
             neg_skills = filter(lambda x: x["name"] != owner, skills)
             neg_exemplars = filter(lambda x: x["owner"] != owner, exemplars)
             neg_sublists = suffix_sublists_with_empty(list(neg_exemplars))
             for sublist in neg_sublists:
-                ins.append(self.prompt.build(utterance=utterance,skills=skills, exemplars=sublist))
-                outs.append(f"""["{owner}"]""")
-
+                ins.append(self.input_prompt.build(utterance=utterance,skills=skills, exemplars=sublist))
+                outs.append(self.output_prompt.build(outputs=[]))
 
 
 # For this one, we first use example based prediction, and then description based prediction.
 class DescExemplarConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever, mode=InstanceMode.both):
         # Make sure that we have the same key for Desc and exemplar prompt.
-        self.desc_prompt = promptManager.get_builder(Task.SKILL_DESC)
-        self.example_prompt = promptManager.get_builder(Task.SKILL)
+        self.desc_prompt = promptManager0.get_builder(Task.SKILL_DESC)
+        self.example_prompt = promptManager0.get_builder(Task.SKILL)
         self.context_retrieve = retriever
         self.neg_k = 1
         self.mode = mode
@@ -323,7 +326,7 @@ class DescExemplarConverter(TrainPhase1Converter):
     @staticmethod
     def label(value):
         label_dict = {"label": "true" if value else "false"}
-        return promptManager.get_builder(Task.BOOL_VALUE)(label_dict)
+        return promptManager0.get_builder(Task.BOOL_VALUE)(label_dict)
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # Working on the batched dataset, with first dimension is column then index.
@@ -392,7 +395,7 @@ class NliConverter(TrainPhase1Converter, ABC):
 #
 class YniConverter(TrainPhase1Converter, ABC):
     def __init__(self):
-        self.prompt = promptManager.get_builder(Task.YNI)
+        self.prompt = promptManager0.get_builder(Task.YNI)
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # We assume the input is dict version of AnnotatedExemplar
@@ -418,7 +421,7 @@ class SlotConverter(TrainPhase1Converter, ABC):
 # One of the issue is how do we handle nested structures, while we still separate from
 # how we prompt.
 #
-class RagStructConverter(SlotConverter):
+class RagStructExtractConverter(SlotConverter):
     def __init__(self, module: Schema, slot_prompt: InstructBuilder, entities):
         self.prompt = slot_prompt
         self.module = module

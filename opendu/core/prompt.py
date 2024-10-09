@@ -24,6 +24,9 @@ class Task(Enum):
     HAS_MORE = 5,
     SKILL_DESC = 6
 
+class IOMode(Enum):
+    INPUT = "input",
+    OUTPUT = "output"
 
 # Let's setup instruction builder
 class InstructBuilder(ABC):
@@ -41,14 +44,23 @@ class InstructBuilder(ABC):
 # by it's label.
 #
 class PromptManager(ABC):
-    @abstractmethod
     def __getitem__(self, label) -> InstructBuilder:
+        return self.get(label)
+
+    @abstractmethod
+    def get(self, label):
         pass
 
-    def get_builder(self, task: Task):
+    def get_builder(self, task: Task, mode: IOMode = None):
+        print(f"**************************** {task}")
         match task:
             case Task.SKILL:
-                return self[RauConfig.get().skill_prompt]
+                if mode is None:
+                    return self[RauConfig.get().skill_prompt]
+                elif mode == IOMode.INPUT:
+                    return self[f"{RauConfig.get().skill_prompt}.input"]
+                else:
+                    return self[f"{RauConfig.get().skill_prompt}.output"]
             case Task.SKILL_DESC:
                 return self[RauConfig.get().skill_desc_prompt]
             case Task.SLOT:
@@ -91,11 +103,13 @@ class JinjaPromptBuilder(InstructBuilder, ABC):
 
 
 # Notice this manager does not need to
-class JingaPromptManager(PromptManager, ABC):
-    def __getitem__(self, label):
+class JinjaPromptManager(PromptManager, ABC):
+    def get(self, label):
         return JinjaPromptBuilder(label)
 
 
+# We should be able to switch to different manager later.
+promptManager1 = JinjaPromptManager()
 
 #
 # We will use eos: </s> automatically in both train and decode. Prompt can decide whether
@@ -211,12 +225,12 @@ class PybarsPromptManager(PromptManager):
 
     }
 
-    def __getitem__(self, label) -> InstructBuilder:
+    def get(self, label) -> InstructBuilder:
         return self.collections[label]
 
 
 # We should be able to switch to different manager later.
-promptManager = PybarsPromptManager()
+promptManager0 = PybarsPromptManager()
 
 #
 # LugPrompts assumes the following prompt template in pybars depending on the following information:
@@ -358,8 +372,6 @@ BoolPrompts = {
 
 if __name__ == "__main__":
 
-
-
     examples = [
         {"response": "April 2st", "label": "related"},
         {"response": "April 3st", "label": "unrelated"}
@@ -373,7 +385,7 @@ if __name__ == "__main__":
 
     print(YniPrompts["default"](x))
 
-    print(promptManager["yni-default"](x))
+    print(promptManager0["yni-default"](x))
 
     examples = [
         {"template": "April 2st", "label": "related"},
@@ -386,6 +398,6 @@ if __name__ == "__main__":
         "examples": examples
     }
     print(ExemplarPrompts["structural"](x))
-    print(promptManager["skill-knn-structural"](x))
+    print(promptManager0["skill-knn-structural"](x))
 
      # print(promptManager.get_builder(Task.SKILL))

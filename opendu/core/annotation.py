@@ -189,6 +189,8 @@ class Exemplar(BaseModel):
         default=None
     )
 
+    def __getitem__(self, key):
+        return self.__dict__[key]
 
 # There are two different use cases for exemplars:
 # During fine-turning, we need both utterance and exemplars.
