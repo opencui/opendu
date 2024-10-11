@@ -198,11 +198,11 @@ class PromptedFactory(DatasetFactory):
 
 
 # Here we create the dataset factory for skills
-def load_skill_factory(skill_modes, factories):
+def load_skill_factory(skill_modes, factories, suffix=""):
     # make sure run build_skill_dataset first.
     for skill_mode in skill_modes:
         factories.append(
-            JsonDatasetFactory("./dugsets/sgd/", "sgd", f"{skill_mode}-{RauConfig.get().skill_prompt}.")
+            JsonDatasetFactory("./dugsets/sgd/", "sgd", f"{RauConfig.get().skill_prompt}{suffix}")
         )
 
 def load_extractive_slot_factory(converted_factories):
@@ -235,17 +235,21 @@ def load_bot_factory(converted_factories):
 # Load training set, based on what is inside the --training_mode desc-exemplar-extractive-slot
 def load_training_dataset(args):
     converted_factories = []
-    load_bot_factory(converted_factories)
-    if "desc" in args.training_mode:
+    # load_bot_factory(converted_factories)
+    training_mode = set(args.training_mode.split(","))
+    print(training_mode)
+    if "id_mc" in training_mode:
+        load_skill_factory(["desc"], converted_factories)
+    if "desc" in training_mode:
         print("load desc dataset")
         load_skill_factory(["desc"], converted_factories)
-    if "exemplar" in args.training_mode:
+    if "exemplar" in training_mode:
         print("load exemplar dataset")
         load_skill_factory(["exemplar"], converted_factories)
-    if "extractive_slot" in args.training_mode:
+    if "extractive_slot" in training_mode:
         print("load slot dataset")
         load_extractive_slot_factory(converted_factories)
-    if "nli" in args.training_mode:
+    if "nli" in training_mode:
         print("load nli dataset")
         load_nli_factory(converted_factories)
 

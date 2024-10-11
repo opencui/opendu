@@ -243,7 +243,8 @@ class ContextRetriever:
             slot_nodes.extend(filter(match, nodes))
         return slot_nodes
 
-    def __call__(self, query):
+    # The node_id is only used during training dataset generation where it skips the node that was identical.
+    def __call__(self, query, same_node_id: str = None):
         # The goal here is to find the combined descriptions and exemplars.
         if self.desc_retriever is not None:
             desc_nodes = [
@@ -255,6 +256,9 @@ class ContextRetriever:
         if self.exemplar_retriever is not None:
             exemplar_nodes = self.exemplar_retriever.retrieve(query)
             original_size = len(exemplar_nodes)
+
+            # We need to filter the identical node first before dedup.
+            exemplar_nodes = [node for node in exemplar_nodes if node.id_ != same_node_id]
 
             slot_nodes = []
             exemplar_nodes = [

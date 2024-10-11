@@ -242,7 +242,11 @@ class SingleClassSkillConverter(TrainPhase1Converter):
 # This is needed to determine the intention, intended function or skill
 # https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/
 # This only works with simple use case where we only match in normal/exact/literal sense.
-InstanceMode = Enum("InstanceMode", ["desc", "example", "both"])
+class InstanceMode(Enum):
+    desc = "desc"
+    example = "example"
+    both = "both"
+
 
 def skill_converter(retriever: ContextRetriever, skill_mode):
     if skill_mode == "desc":
@@ -250,7 +254,8 @@ def skill_converter(retriever: ContextRetriever, skill_mode):
     if skill_mode == "exemplar":
         return DescExemplarConverter(retriever, InstanceMode.example)
     if skill_mode == "rag":
-        return RagSkillConverter(retriever)
+        return RagSkillConverter(retriever, InstanceMode.both)
+
 
 def suffix_sublists_with_empty(lst):
     return [lst[i:] for i in range(len(lst) + 1)]
@@ -267,7 +272,6 @@ class RagSkillConverter(TrainPhase1Converter):
         self.input_prompt = promptManager1.get_builder(Task.SKILL, IOMode.INPUT)
         self.output_prompt = promptManager1.get_builder(Task.SKILL, IOMode.OUTPUT)
         self.context_retrieve = retriever
-        self.neg_k = 1
         self.mode = mode
         self.matcher = ExactMatcher
 
@@ -278,10 +282,7 @@ class RagSkillConverter(TrainPhase1Converter):
         # Working on the batched dataset, with first dimension is column then index.
         for idx, utterance in enumerate(batch["utterance"]):
             # We assume the input is dict version of AnnotatedExemplar
-            skills, nodes = self.context_retrieve(utterance)
-
-            # remove the identical exemplar
-            nodes = [node for node in nodes if node.id_ != batch["id"][idx]]
+            skills, nodes = self.context_retrieve(utterance, batch["id"][idx])
 
             exemplars = [
                 Exemplar(owner=node.metadata["owner"], template=node.text, owner_mode=node.metadata["owner_mode"])
@@ -294,11 +295,13 @@ class RagSkillConverter(TrainPhase1Converter):
             skills.reverse()
             exemplars.reverse()
 
-            print(f"input = {self.input_prompt}")
-            print(f"outpout = {self.output_prompt}")
+            print(f"skill = {skills}")
+            print(f"exemplars = {exemplars}")
+            print(f"utterance = {utterance}")
 
             # First positive.
-            # We always have all the skills and descriptions, but remove exemplars one at a time.
+            # We always have all the skills and descriptions, but remove exemplars one at a time to simulate
+            # the cases where there are not exemplars.
             sublists = suffix_sublists_with_empty(exemplars)
             for sublist in sublists:
                 ins.append(self.input_prompt.build(utterance=utterance,skills=skills, exemplars=sublist))
@@ -308,7 +311,7 @@ class RagSkillConverter(TrainPhase1Converter):
             neg_exemplars = filter(lambda x: x["owner"] != owner, exemplars)
             neg_sublists = suffix_sublists_with_empty(list(neg_exemplars))
             for sublist in neg_sublists:
-                ins.append(self.input_prompt.build(utterance=utterance,skills=skills, exemplars=sublist))
+                ins.append(self.input_prompt.build(utterance=utterance,skills=neg_skills, exemplars=sublist))
                 outs.append(self.output_prompt.build(outputs=[]))
 
 

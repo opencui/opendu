@@ -171,10 +171,10 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
         },
     )
     fp16: bool = field(
-        default=False, metadata={"help": "Whether or not use fp16 during training."}
+        default=True, metadata={"help": "Whether or not use fp16 during training."}
     ),
     bf16: bool = field(
-        default=True, metadata={"help": "Whether or not use bf16 during training."}
+        default=False, metadata={"help": "Whether or not use bf16 during training."}
     ),
     debug_dataset: bool = field(
         default=False, metadata={"help": "print out dataset instead"}
@@ -433,7 +433,7 @@ def preprocess_logits_for_metrics(logits, labels):
 
 
 def train():
-    # Turn of the evaluation mode.
+    # Turn off the evaluation mode, but why?
     RauConfig.get().eval_mode = False
 
     hfparser = transformers.HfArgumentParser(
