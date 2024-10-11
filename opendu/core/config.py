@@ -45,16 +45,20 @@ class InferenceConfig(BaseModel):
     # We might not want to touch this, without rerun find_k
     desc_retrieve_topk: int = 8
     exemplar_retrieve_topk: int = 8
-    exemplar_retrieve_arity: int = 8
+    exemplar_retrieve_arity: int = 1
 
     skill_arity: int = 1
     llm_device: str = DEVICE
 
-    # this is used
+    # The correct decomposition is type (skill, slot, yni), task, and prompt.
     skill_modes: list = ["both"]
-    skill_prompt: str = "skill-knn-structural"
+    skill_task: str =  "id_mc"
+    slot_task: str = "sf_se"
     skill_desc_prompt: str = "skill-desc-structural"
+    skill_prompt: str = "skill-knn-structural"
     slot_prompt: str = "slot-qa-structural"
+    #skill_prompt: str = "id_mc_full"
+    #slot_prompt: str = "sf_se_full"
     yni_prompt: str = "yni-default"
     bool_prompt: str = "plain"
 
