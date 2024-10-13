@@ -45,7 +45,7 @@ class InferenceConfig(BaseModel):
     # We might not want to touch this, without rerun find_k
     desc_retrieve_topk: int = 8
     exemplar_retrieve_topk: int = 8
-    exemplar_retrieve_arity: int = 1
+    exemplar_retrieve_arity: int = 8
 
     skill_arity: int = 1
     llm_device: str = DEVICE
