@@ -95,7 +95,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
     )
 
     report_to: str = field(
-        default="none",
+        default=None,
         metadata={"help": "To use wandb or something else for reporting."},
     )
     output_dir: str = field(
@@ -171,10 +171,10 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
         },
     )
     fp16: bool = field(
-        default=False, metadata={"help": "Whether or not use fp16 during training."}
+        default=True, metadata={"help": "Whether or not use fp16 during training."}
     ),
     bf16: bool = field(
-        default=True, metadata={"help": "Whether or not use bf16 during training."}
+        default=False, metadata={"help": "Whether or not use bf16 during training."}
     ),
     debug_dataset: bool = field(
         default=False, metadata={"help": "print out dataset instead"}
@@ -273,6 +273,11 @@ def get_model(args, peft_config=None):
     #smart_tokenizer_and_embedding_resize(
     #    special_tokens_dict=special_tokens_dict, tokenizer=tokenizer, model=model
     #)
+
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+    if model.config.pad_token_id is None:
+        model.config.pad_token_id = model.config.eos_token_id
 
     return model, tokenizer
 
@@ -433,7 +438,7 @@ def preprocess_logits_for_metrics(logits, labels):
 
 
 def train():
-    # Turn of the evaluation mode.
+    # Turn off the evaluation mode, but why?
     RauConfig.get().eval_mode = False
 
     hfparser = transformers.HfArgumentParser(
@@ -466,6 +471,8 @@ def train():
 
     # For now, just use the fix path.
     output = "../output"
+
+    training_args.report_to = []
 
     # Save the things to disk first, for training we keep each module separate.
     # Down the road, we might

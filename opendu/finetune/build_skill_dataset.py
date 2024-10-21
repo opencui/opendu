@@ -2,7 +2,7 @@ import json
 from opendu.core.embedding import EmbeddingStore
 from opendu import ConvertedFactory, build_dataset_index, JsonDatasetFactory, skill_converter
 from opendu.core.retriever import build_desc_index, load_context_retrievers
-from opendu.core.prompt import promptManager0, Task
+from opendu.core.prompt import promptManager1, Task
 
 
 #
@@ -50,11 +50,11 @@ def build_skill_dataset(output, factory, modes, index=True):
 
     print("Now we create dataset.")
     for skill_mode in modes:
-        prompted_factory = build_skill_factory(path, factory, mode=skill_mode)
+        prompted_factory = build_skill_factory(output, factory, mode=skill_mode)
         tags = ["train"] #, "test", "validation"]
         for tag in tags:
             examples = prompted_factory[tag]
-            with open(f"{path}/{promptManager0.get_task_label(Task.SKILL)}.jsonl", "w") as file:
+            with open(f"{output}/{promptManager1.get_task_label(Task.SKILL)}.jsonl", "w") as file:
                 print(f"there are {len(examples)} examples left for {tag}.")
                 for example in examples:
                     file.write(f"{json.dumps(example)}\n")
@@ -63,13 +63,13 @@ def build_skill_dataset(output, factory, modes, index=True):
 
 if __name__ == "__main__":
     # This showes how we create skill dataset from
-    path = "./dugsets/sgd"
+    ds_path = "./dugsets/sgd"
     tag = "sgd"
 
-    factory = JsonDatasetFactory(path, tag)
+    factory = JsonDatasetFactory(ds_path, tag)
 
     # this should build both desc and exemplar dataset
     skill_modes = ["rag"]
     #skill_modes = ["both"]
-    build_skill_dataset(path, factory, skill_modes, index=False)
+    build_skill_dataset(ds_path, factory, skill_modes, index=False)
 
