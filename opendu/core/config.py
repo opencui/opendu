@@ -53,6 +53,9 @@ class InferenceConfig(BaseModel):
     # The correct decomposition is type (skill, slot, yni), task, and prompt.
     skill_modes: list = ["both"]
 
+    skill_task: str =  "id_mc"
+    slot_task: str = "sf_se"
+
     skill_desc_prompt: str = "skill-desc-structural"
     skill_prompt: str = "skill-knn-structural"
     slot_prompt: str = "slot-qa-structural"
