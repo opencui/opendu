@@ -121,6 +121,22 @@ class JsonDatasetFactory(SchemaDatasetFactory, ABC):
         return self.datasets[item]
 
 
+class RawJsonDatasetFactory(SchemaDatasetFactory, ABC):
+    def __init__(self, path, tag=None, prefix=""):
+        self.path = path
+        schema_dict = json.load(open(f"{path}/schema.json"))
+        self.schema = Schema(**schema_dict)
+        self.files = {
+            "train": f"{self.path}/{prefix}.jsonl",
+            "validation": f"{self.path}/{prefix}.jsonl",
+        }
+        self.datasets = load_dataset('json', data_files=self.files)
+        self.tag = tag
+
+    def __getitem__(self, item):
+        return self.datasets[item] if item in self.files else None
+
+
 class JsonBareDatasetFactory(SchemaDatasetFactory, ABC):
     def __init__(self, path, tag=None, prefix=""):
         self.path = path
@@ -205,6 +221,14 @@ def load_skill_factory(skill_modes, factories, suffix=""):
             JsonDatasetFactory("./dugsets/sgd/", "sgd", f"{RauConfig.get().skill_prompt}{suffix}")
         )
 
+# Here we create the dataset factory for skills
+def load_jijia_skill_factory(mode, factories, suffix=""):
+    # make sure run build_skill_dataset first.
+    factories.append(
+        RawJsonDatasetFactory("./dugsets/sgd/", "sgd", f"{mode}")
+    )
+
+
 def load_extractive_slot_factory(converted_factories):
     converted_factories.append(
         DatasetFactoryMerger([
@@ -236,22 +260,23 @@ def load_bot_factory(converted_factories):
 def load_training_dataset(args):
     converted_factories = []
     # load_bot_factory(converted_factories)
-    training_mode = set(args.training_mode.split(","))
-    print(training_mode)
-    if "id_mc" in training_mode:
-        load_skill_factory(["desc"], converted_factories)
-    if "desc" in training_mode:
-        print("load desc dataset")
-        load_skill_factory(["desc"], converted_factories)
-    if "exemplar" in training_mode:
-        print("load exemplar dataset")
-        load_skill_factory(["exemplar"], converted_factories)
-    if "extractive_slot" in training_mode:
-        print("load slot dataset")
-        load_extractive_slot_factory(converted_factories)
-    if "nli" in training_mode:
-        print("load nli dataset")
-        load_nli_factory(converted_factories)
+    training_modes = set(args.training_mode.split(","))
+    for training_mode in training_modes:
+        print(training_mode)
+        if "id_mc" in training_mode:
+            load_jijia_skill_factory(training_mode, converted_factories)
+        if "desc" in training_mode:
+            print("load desc dataset")
+            load_skill_factory(["desc"], converted_factories)
+        if "exemplar" in training_mode:
+            print("load exemplar dataset")
+            load_skill_factory(["exemplar"], converted_factories)
+        if "extractive_slot" in training_mode:
+            print("load slot dataset")
+            load_extractive_slot_factory(converted_factories)
+        if "nli" in training_mode:
+            print("load nli dataset")
+            load_nli_factory(converted_factories)
 
     assert len(converted_factories) != 0
 
