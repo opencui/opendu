@@ -59,17 +59,3 @@ def build_skill_dataset(output, factory, modes, index=True):
                 for example in examples:
                     file.write(f"{json.dumps(example)}\n")
 
-
-
-if __name__ == "__main__":
-    # This showes how we create skill dataset from
-    ds_path = "./dugsets/sgd"
-    tag = "sgd"
-
-    factory = JsonDatasetFactory(ds_path, tag)
-
-    # this should build both desc and exemplar dataset
-    skill_modes = ["rag"]
-    #skill_modes = ["both"]
-    build_skill_dataset(ds_path, factory, skill_modes, index=False)
-

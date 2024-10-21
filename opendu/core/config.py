@@ -56,12 +56,12 @@ class InferenceConfig(BaseModel):
     skill_task: str =  "id_mc"
     slot_task: str = "sf_se"
 
+    trn_skill_prompt: str = "id_mc_full"
+    trn_slot_prompt: str = "sf_se_full"
+
     skill_desc_prompt: str = "skill-desc-structural"
     skill_prompt: str = "skill-knn-structural"
     slot_prompt: str = "slot-qa-structural"
-
-    #skill_prompt: str = "id_mc_full"
-    #slot_prompt: str = "sf_se_full"
     yni_prompt: str = "yni-default"
     bool_prompt: str = "plain"
 
