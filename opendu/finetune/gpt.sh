@@ -43,5 +43,4 @@ accelerate launch opendu/finetune/t2t.py \
     --training_mode id_mc_full  \
     --peft_mode lora \
     --model_type gpt \
-    --trust_remote_code \
-    --report_to wandb
+    --trust_remote_code
