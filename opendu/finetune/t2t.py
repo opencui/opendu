@@ -589,9 +589,12 @@ def train():
         os.symlink(check_name, last_path)
 
         # fix the generate_config.json
+        os.makedirs(last_path, exist_ok=True)
         generation_config = os.path.join(last_path, "generation_config.json")
+
         with open(generation_config, 'r') as json_file:
             config = json.load(json_file)
+
         # this is what is missing.
         config['decoder_start_token_id'] = 0
 
