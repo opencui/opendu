@@ -10,7 +10,7 @@ from typing import Optional, Dict
 from opendu import InstructBuilder, IOMode
 from opendu.core.retriever import create_index, ContextRetriever
 from opendu.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher
-from opendu.core.prompt import (Task, promptManager0, promptManager1)
+from opendu.core.prompt import (Task, promptManager1)
 from pydantic import BaseModel, Field
 
 
