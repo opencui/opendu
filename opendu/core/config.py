@@ -39,8 +39,9 @@ class RauConfig:
 class InferenceConfig(BaseModel):
     embedding_device: str = DEVICE
     #embedding_model: str = "BAAI/bge-base-en-v1.5"
-    embedding_model: str = "dunzhang/stella_en_400M_v5"
-
+    #embedding_model: str = "dunzhang/stella_en_400M_v5"
+    embedding_model: str = "intfloat/multilingual-e5-large-instruct"
+    #embedding_model: str = "HIT-TMG/KaLM-embedding-multilingual-mini-instruct-v1.5"
 
     # We might not want to touch this, without rerun find_k
     desc_retrieve_topk: int = 8

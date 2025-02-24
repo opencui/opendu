@@ -119,6 +119,7 @@ async def understand(request: web.Request):
     if mode == "SKILL":
         try:
             expectations = req.get("expectations")
+            candidates = req.get("candidates")
             results = l_converter.detect_triggerables(utterance, expectations)
         except Exception as e:
             traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
@@ -161,6 +162,7 @@ def reload(key, app):
         index_path = f"{bot_path}/index/"
         converters[key] = load_parser(bot_path, index_path)
         logging.info(f"bot {key} is ready.")
+
 
 def init_app(schema_root, size):
     app = web.Application()

@@ -385,7 +385,7 @@ if __name__ == "__main__":
 
     print(YniPrompts["default"](x))
 
-    print(promptManager0["yni-default"](x))
+    print(promptManager1["yni-default"](x))
 
     examples = [
         {"template": "April 2st", "label": "related"},
