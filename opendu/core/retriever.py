@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import logging
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
+
 import shutil
 from collections import defaultdict
-from typing import Callable, List, Optional, cast
-
 from llama_index.core import Settings
 from llama_index.core.schema import QueryBundle
 from llama_index.core import VectorStoreIndex

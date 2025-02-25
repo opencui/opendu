@@ -1,12 +1,15 @@
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
+
 import math
 from typing import Any, ClassVar, List
-from enum import Enum
-
 import numpy as np
 from llama_index.core.bridge.pydantic import PrivateAttr
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from sentence_transformers import SentenceTransformer
-
 from opendu.core.config import RauConfig
 from jinja2 import Template
 

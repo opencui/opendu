@@ -5,10 +5,7 @@ import glob
 
 from abc import ABC
 from collections import defaultdict
-from enum import Enum
 from random import sample, seed
-from typing import Optional
-
 from datasets import Dataset, load_dataset, concatenate_datasets
 from llama_index.core.embeddings import BaseEmbedding
 from llama_index.core.schema import TextNode
@@ -16,8 +13,8 @@ from llama_index.core.schema import TextNode
 
 from opendu.core.annotation import Schema, MatchReplace, get_value
 from opendu.core.config import RauConfig
-from opendu.core.retriever import create_index, ContextRetriever
-from opendu.finetune.phase1_converter import FullExemplar, TrainPhase1Converter, YniConverter
+from opendu.core.retriever import create_index
+from opendu.finetune.phase1_converter import FullExemplar, YniConverter
 from opendu.finetune.phase2_converter import PromptConverter
 
 

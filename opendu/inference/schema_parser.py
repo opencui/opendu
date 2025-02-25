@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
 
 import json
 import os
