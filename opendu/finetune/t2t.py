@@ -15,9 +15,10 @@ import numpy as np
 import torch
 import transformers
 from datasets import Dataset, interleave_datasets
-from peft import LoraConfig, get_peft_model, TaskType, PrefixTuningConfig
+from peft import LoraConfig,  get_peft_model, TaskType, PrefixTuningConfig
 
-from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed,
+from transformers import (GenerationConfig, BitsAndBytesConfig, AutoModelForCausalLM,
+                          AutoTokenizer, Seq2SeqTrainer, set_seed,
                           DataCollatorForSeq2Seq, AutoModelForSeq2SeqLM)
 
 from opendu.core.config import RauConfig, ModelType
@@ -179,8 +180,10 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
     debug_dataset: bool = field(
         default=False, metadata={"help": "print out dataset instead"}
     )
+
     training_mode: str = field(default="skill", metadata={"help": "skill or slot"})
     peft_mode: str = field(default="null", metadata={"help": "lora or prompt-tuning"})
+    qlora_mode: bool = field(default=False, metadata={"help": "whether or not to use qlora"})
     model_type: str = field(default="gpt", metadata={"help": "gpt or t5, just need to be t2t"})
 
 
@@ -218,7 +221,7 @@ class GenerationArguments:
     no_repeat_ngram_size: Optional[int] = field(default=0)
 
 
-def get_model(args, peft_config=None):
+def get_model(args, peft_config=None, qlora_config=None):
     device_map = "auto"
 
     # if we are in a distributed setting, we need to set the device map and max memory per device
@@ -233,6 +236,7 @@ def get_model(args, peft_config=None):
             args.model_name_or_path,
             device_map=device_map,
             trust_remote_code=args.trust_remote_code,
+            quantization_config=qlora_config,
             torch_dtype=torch.bfloat16,
         )
 
@@ -460,6 +464,10 @@ def train():
         **vars(model_args), **vars(data_args), **vars(training_args)
     )
 
+    qlora_config = None
+    if args.qlora_mode == True:
+        qlora_config = get_bnb_config()
+
     peft_config = None
     if args.peft_mode == "lora":
         peft_config = get_lora_config()
@@ -485,7 +493,7 @@ def train():
     print("loaded model")
     set_seed(args.seed)
     data_collator = None
-    model, tokenizer = get_model(args, peft_config)
+    model, tokenizer = get_model(args, peft_config, qlora_config)
 
     if ModelType[args.model_type] == ModelType.gpt:
         data_collator = DataCollatorForCausalLM(
@@ -591,17 +599,26 @@ def train():
         # fix the generate_config.json
         os.makedirs(last_path, exist_ok=True)
         generation_config = os.path.join(last_path, "generation_config.json")
-
-        with open(generation_config, 'r') as json_file:
-            config = json.load(json_file)
-
-        # this is what is missing.
-        config['decoder_start_token_id'] = 0
-
-        with open(generation_config, 'w') as json_file:
-            json.dump(config, json_file, indent=2)
+        update_generation_config(generation_config, args)
 
 
+def update_generation_config(generation_config_path, args):
+    config = GenerationConfig.from_pretrained(args.model_name_or_path)
+    # this is what is missing.
+    config['decoder_start_token_id'] = 0
+
+    with open(generation_config_path, 'w') as json_file:
+        json.dump(config, json_file, indent=2)
+
+
+# Get ready for Qlora so that we can fine tune the 7B.
+def get_bnb_config():
+    return BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.bfloat16
+    )
 
 def get_lora_config():
     lora_alpha = 16  # 16

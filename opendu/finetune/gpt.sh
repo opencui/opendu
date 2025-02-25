@@ -10,8 +10,8 @@ accelerate launch opendu/finetune/t2t.py \
     --mixed_precision=fp16 \
     --fp16=True \
     --bf16=False \
-    --model_name_or_path meta-llama/Llama-3.2-3B \
-    --output_dir  ./output/llama3b3.2 \
+    --model_name_or_path Qwen/Qwen2.5-7B-Instruct \
+    --output_dir  ./output/qwen2.5b7i \
     --logging_steps 50 \
     --save_strategy epoch \
     --data_seed 42 \
@@ -42,5 +42,6 @@ accelerate launch opendu/finetune/t2t.py \
     --debug_dataset False \
     --training_mode id_mc_full  \
     --peft_mode lora \
+    --qlora_mdoe True \
     --model_type gpt \
     --trust_remote_code
