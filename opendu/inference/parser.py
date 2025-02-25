@@ -1,6 +1,8 @@
-# Copyright 2024, OpenCUI
-# Licensed under the Apache License, Version 2.0.
-
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
 import json
 import re
 from enum import Enum
@@ -8,7 +10,7 @@ from enum import Enum
 from opendu.inference.intent_detector import KnnIntentDetector
 from opendu.core.annotation import (EntityMetas, FrameValue, ListRecognizer, get_value)
 from opendu.core.config import RauConfig
-from opendu.core.prompt import (promptManager1, Task)
+from opendu.core.prompt import (promptManager, Task)
 from opendu.core.retriever import (ContextRetriever, load_context_retrievers)
 from opendu.inference.schema_parser import load_all_from_directory
 from opendu.inference.generator import GenerateMode, Generator
@@ -38,8 +40,8 @@ class Parser:
             self.recognizer = ListRecognizer(entity_metas)
 
         self.generator = Generator.build()
-        self.slot_prompt = promptManager1.get_builder(Task.SLOT)
-        self.yni_prompt = promptManager1.get_builder(Task.YNI)
+        self.slot_prompt = promptManager.get_builder(Task.SLOT)
+        self.yni_prompt = promptManager.get_builder(Task.YNI)
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r"\[([^]]*)\]")
 

@@ -1,3 +1,8 @@
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
 import abc
 import json
 import random
@@ -8,9 +13,9 @@ from enum import Enum
 from typing import Optional, Dict
 
 from opendu import InstructBuilder, IOMode
-from opendu.core.retriever import create_index, ContextRetriever
+from opendu.core.retriever import ContextRetriever
 from opendu.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher
-from opendu.core.prompt import (Task, promptManager1)
+from opendu.core.prompt import (Task, promptManager)
 from pydantic import BaseModel, Field
 
 
@@ -93,9 +98,9 @@ class TrainPhase1Converter(ABC):
 
 class MultiClassSkillConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever):
-        label = promptManager0.get_task_label(Task.SKILL)
+        label = promptManager.get_task_label(Task.SKILL)
         assert label.startswith("skill-mc"), "need to be skill-mc prefix"
-        self.prompt = promptManager0.get_builder(Task.SKILL)
+        self.prompt = promptManager.get_builder(Task.SKILL)
         self.context_retrieve = retriever
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
@@ -177,9 +182,9 @@ class MultiClassSkillConverter(TrainPhase1Converter):
 
 class SingleClassSkillConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever):
-        label = promptManager0.get_task_label(Task.SKILL)
+        label = promptManager.get_task_label(Task.SKILL)
         assert label.startswith("skill-sc"), "need to be skill-sc prefix"
-        self.prompt = promptManager0.get_builder(Task.SKILL)
+        self.prompt = promptManager.get_builder(Task.SKILL)
         self.context_retrieve = retriever
         self.neg_k = 1
         self.match_mode = "normal"
@@ -267,10 +272,10 @@ def suffix_sublists_with_empty(lst):
 class RagSkillConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever, mode=InstanceMode.both):
         # Make sure that we have the same key for Desc and exemplar prompt.
-        label = promptManager1.get_task_label(Task.SKILL)
+        label = promptManager.get_task_label(Task.SKILL)
         assert label.startswith("id_mc_full"), f"need to be skill-rag prefix: {label}"
-        self.input_prompt = promptManager1.get_builder(Task.SKILL, IOMode.INPUT)
-        self.output_prompt = promptManager1.get_builder(Task.SKILL, IOMode.OUTPUT)
+        self.input_prompt = promptManager.get_builder(Task.SKILL, IOMode.INPUT)
+        self.output_prompt = promptManager.get_builder(Task.SKILL, IOMode.OUTPUT)
         self.context_retrieve = retriever
         self.mode = mode
         self.matcher = ExactMatcher
@@ -319,8 +324,8 @@ class RagSkillConverter(TrainPhase1Converter):
 class DescExemplarConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever, mode=InstanceMode.both):
         # Make sure that we have the same key for Desc and exemplar prompt.
-        self.desc_prompt = promptManager0.get_builder(Task.SKILL_DESC)
-        self.example_prompt = promptManager0.get_builder(Task.SKILL)
+        self.desc_prompt = promptManager.get_builder(Task.SKILL_DESC)
+        self.example_prompt = promptManager.get_builder(Task.SKILL)
         self.context_retrieve = retriever
         self.neg_k = 1
         self.mode = mode
@@ -329,7 +334,7 @@ class DescExemplarConverter(TrainPhase1Converter):
     @staticmethod
     def label(value):
         label_dict = {"label": "true" if value else "false"}
-        return promptManager0.get_builder(Task.BOOL_VALUE)(label_dict)
+        return promptManager.get_builder(Task.BOOL_VALUE)(label_dict)
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # Working on the batched dataset, with first dimension is column then index.
@@ -398,7 +403,7 @@ class NliConverter(TrainPhase1Converter, ABC):
 #
 class YniConverter(TrainPhase1Converter, ABC):
     def __init__(self):
-        self.prompt = promptManager0.get_builder(Task.YNI)
+        self.prompt = promptManager.get_builder(Task.YNI)
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # We assume the input is dict version of AnnotatedExemplar

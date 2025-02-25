@@ -5,7 +5,6 @@ sentence_transformers
 xformers
 huggingface_hub
 langchain~=0.0.315
-pybars3~=0.9.7
 datasets~=2.14.4
 pydantic~=2.7.0
 transformers~=4.43.0
@@ -21,3 +20,4 @@ rank-bm25
 peft~=0.5.0
 accelerate==1.0.1
 wandb
+Jinja2==3.1.5

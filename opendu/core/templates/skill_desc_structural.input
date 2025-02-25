@@ -1,0 +1,4 @@
+Decide whether the input fit this function description: {{skill.description}}
+
+Input: {{utterance}}
+Decision:'

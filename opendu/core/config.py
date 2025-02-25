@@ -1,5 +1,9 @@
-# Copyright 2024, OpenCUI
-# Licensed under the Apache License, Version 2.0.
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
+from dataclasses import field
 
 from pydantic import BaseModel
 from enum import Enum
@@ -52,7 +56,7 @@ class InferenceConfig(BaseModel):
     llm_device: str = DEVICE
 
     # The correct decomposition is type (skill, slot, yni), task, and prompt.
-    skill_modes: list = ["both"]
+    skill_modes: list = field(default_factory=lambda: ["both"])
 
     skill_task: str =  "id_mc"
     slot_task: str = "sf_se"
@@ -62,7 +66,7 @@ class InferenceConfig(BaseModel):
 
     skill_desc_prompt: str = "skill-desc-structural"
     skill_prompt: str = "skill-knn-structural"
-    slot_prompt: str = "slot-qa-structural"
+    slot_prompt: str = "slot_qa_structural"
     yni_prompt: str = "yni-default"
     bool_prompt: str = "plain"
 

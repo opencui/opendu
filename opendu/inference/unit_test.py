@@ -1,18 +1,22 @@
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
 import unittest
-import shutil
 
+from opendu.inference.parser import load_parser
 from opendu.inference.index import indexing
-from opendu.inference.serve import load_converter_from_meta
 
 class AgentTest(unittest.TestCase):
     converter = None
 
     @classmethod
     def setUpClass(clsc):
-        root = "./examples/agent"
-        #indexing(root)
-
-        AgentTest.converter = load_converter_from_meta(root)
+        bot_path = "./examples/agent"
+        indexing(bot_path)
+        index_path = f"{bot_path}/index/"
+        AgentTest.converter = load_parser(bot_path, index_path)
 
     @classmethod
     def tearDownClass(cls):\
