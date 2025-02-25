@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
 import getopt
-import json
 import logging
-import os.path
 import shutil
 import sys
 import traceback

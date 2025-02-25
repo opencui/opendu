@@ -1,8 +1,12 @@
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
 import abc
 from abc import ABC
 from pydantic import BaseModel
-
-from opendu.core.prompt import (promptManager1, Task)
+from opendu.core.prompt import (promptManager, Task)
 
 
 class LabeledMatchingData(BaseModel):
@@ -28,15 +32,15 @@ class TrainPhase2Converter(ABC):
 class PromptConverter(TrainPhase2Converter):
     def __init__(self):
         self.prompts = {
-            "desc": promptManager1.get_builder(Task.SKILL_DESC
+            "desc": promptManager.get_builder(Task.SKILL_DESC
                                                ),
-            "exemplar": promptManager1.get_builder(Task.SKILL)
+            "exemplar": promptManager.get_builder(Task.SKILL)
         }
 
     @staticmethod
     def label(value):
         label_dict = {"label": "true" if value else "false"}
-        return promptManager1.get_builder(Task.BOOL_VALUE)(label_dict)
+        return promptManager.get_builder(Task.BOOL_VALUE)(label_dict)
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         for idx, mode in enumerate(batch["matchType"]):

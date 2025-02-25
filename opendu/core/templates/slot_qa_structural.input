@@ -1,0 +1,11 @@
+Mark the value for {{name}} in utterance.
+
+{#  we assume we have a list of examples #}
+Here some examples:
+{% for example in examples %}
+Utterance: {{utterance}}
+Output:{{example.label}}
+{% endfor %}
+
+Template: {{utterance}}
+Output:

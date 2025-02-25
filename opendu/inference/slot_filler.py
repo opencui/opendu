@@ -1,22 +1,16 @@
 # Copyright 2024, OpenCUI
 # Licensed under the Apache License, Version 2.0.
-
-import json
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
 from abc import ABC, abstractmethod
 from typing import Dict
 
 from pydantic import BaseModel
-from collections import defaultdict
-from enum import Enum
-
 from opendu import FrameSchema
-from opendu.core.annotation import (CamelToSnake, DialogExpectation, Exemplar, OwnerMode, ExactMatcher)
-from opendu.core.config import RauConfig
-from opendu.core.prompt import (DescriptionPrompts, ExemplarPrompts)
-from opendu.core.retriever import (ContextRetriever)
-from opendu.inference.generator import GenerateMode
 
-from opendu.utils.json_tools import parse_json_from_string
 
 #
 # There are two levels of the APIs here: a

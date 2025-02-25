@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "opencui"
+name = "opendu"
 version = "0.0.1"
-description = "LUG, OpenCUI Language Understanding and Generation"
+description = "OpenDu, OpenCUI Language Understanding and Generation"
 authors = ["Xiaoyun Wu <xiaoyun.wu@gmail.com>"]
 readme = "README.md"
 
@@ -11,6 +11,7 @@ llama-index = "^0.9.13"
 sentence-transformers = "^2.2.2"
 langchain = ">=0.0.315,<0.1.0"
 pybars3 = ">=0.9.7,<0.10.0"
+Jinja2 = "^3.1.5"
 datasets = ">=2.14.4,<2.15.0"
 pydantic = ">=2.4.2,<2.5.0"
 transformers = "==4.35.*"

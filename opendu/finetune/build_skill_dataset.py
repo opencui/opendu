@@ -1,8 +1,14 @@
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
+
 import json
 from opendu.core.embedding import EmbeddingStore
-from opendu import ConvertedFactory, build_dataset_index, JsonDatasetFactory, skill_converter
+from opendu import ConvertedFactory, build_dataset_index, skill_converter
 from opendu.core.retriever import build_desc_index, load_context_retrievers
-from opendu.core.prompt import promptManager1, Task
+from opendu.core.prompt import promptManager, Task
 
 
 #
@@ -14,7 +20,6 @@ from opendu.core.prompt import promptManager1, Task
 # The separate indexing for desc and exemplars are useful for many strategies: multi-class, single class
 # and KNN based. We already have the T5/KNN based solutions, we will look at Llama 8B/multiclass based solutions.
 #
-
 # This creates factory
 def build_skill_factory(output, factory, mode):
     context_retriever = load_context_retrievers(factory.schema, f"{output}/index/")
@@ -54,7 +59,7 @@ def build_skill_dataset(output, factory, modes, index=True):
         tags = ["train"] #, "test", "validation"]
         for tag in tags:
             examples = prompted_factory[tag]
-            with open(f"{output}/{promptManager1.get_task_label(Task.SKILL)}.jsonl", "w") as file:
+            with open(f"{output}/{promptManager.get_task_label(Task.SKILL)}.jsonl", "w") as file:
                 print(f"there are {len(examples)} examples left for {tag}.")
                 for example in examples:
                     file.write(f"{json.dumps(example)}\n")

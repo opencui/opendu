@@ -1,5 +1,8 @@
-# Copyright 2024, OpenCUI
-# Licensed under the Apache License, Version 2.0.
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
 
 from sentence_transformers import SentenceTransformer
 
