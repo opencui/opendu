@@ -93,7 +93,6 @@ class JinjaPromptBuilder(InstructBuilder, ABC):
         env = Environment(loader=FileSystemLoader("opendu/core/templates"))
         self.template = env.get_template(label)
 
-
     # Assume __call__ takes object, but build take scatter parts.
     def __call__(self, kwargs) -> str:
         return self.build(**kwargs)
@@ -385,7 +384,7 @@ if __name__ == "__main__":
 
     print(YniPrompts["default"](x))
 
-    print(promptManager0["yni-default"](x))
+    print(promptManager1["yn-default"](x))
 
     examples = [
         {"template": "April 2st", "label": "related"},

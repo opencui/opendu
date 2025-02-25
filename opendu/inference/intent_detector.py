@@ -7,7 +7,7 @@ from collections import defaultdict
 
 from opendu.core.annotation import (CamelToSnake, DialogExpectation, Exemplar, OwnerMode, ExactMatcher)
 from opendu.core.config import RauConfig
-from opendu.core.prompt import (promptManager0, Task)
+from opendu.core.prompt import (promptManager1, Task)
 from opendu.core.retriever import (ContextRetriever)
 from opendu.inference.generator import GenerateMode
 
@@ -72,12 +72,12 @@ class KnnIntentDetector(IntentDetector, ABC):
     def __init__(self, retriever: ContextRetriever, generator):
         self.retrieve = retriever
         self.generator = generator
-        self.desc_prompt = promptManager0.get_builder(Task.SKILL_DESC)
-        self.example_prompt = promptManager0.get_builder(Task.SKILL)
+        self.desc_prompt = promptManager1.get_builder(Task.SKILL_DESC)
+        self.example_prompt = promptManager1.get_builder(Task.SKILL)
         self.use_exemplar = True
         self.use_desc = True
         assert self.use_desc or self.use_exemplar
-        self.matcher = ExactMatcher
+        self.matcher = ExactMatcher                
 
     def build_prompts_by_examples(self, text, nodes):
         skill_prompts = []
@@ -95,6 +95,7 @@ class KnnIntentDetector(IntentDetector, ABC):
         ]
 
         for exemplar in exemplars:
+            print(f"process template: {exemplar.template}")
             input_dict = {"utterance": text, "template": exemplar.template}
             skill_prompts.append(self.example_prompt(input_dict))
             owners.append(exemplar.owner)
@@ -109,6 +110,7 @@ class KnnIntentDetector(IntentDetector, ABC):
         # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
         # for now, we process it once.
         for skill in skills:
+            print(f"process skill: {skill}")
             input_dict = {"utterance": text, "skill": skill}
             skill_prompts.append(self.desc_prompt(input_dict))
             owners.append(skill["name"])
@@ -151,10 +153,11 @@ class KnnIntentDetector(IntentDetector, ABC):
             }
             infos.append(item)
 
-    def detect_intents(self, text, expectations, debug=False):
-        print(f"parse for skill: {text} with {expectations}")
+    def detect_intents(self, text, expectations, candidates, debug=False):
+        print(f"parse for skill: {text} with {expectations} and {candidates}")
         # For now, we only pick one skill
         picker = SingleOwnerKnnPicker(expectations)
+        # TODO: try to use candidates. 
         skills, exemplar_nodes = self.retrieve(text)
         print(f"get_skills for {text} with {len(exemplar_nodes)} nodes\n")
 
@@ -162,16 +165,17 @@ class KnnIntentDetector(IntentDetector, ABC):
 
         # for exemplar
         if self.use_exemplar:
-            exemplar_prompts, owners, owner_modes = self.build_prompts_by_examples(text, exemplar_nodes)
+            exemplar_prompts, owners, _ = self.build_prompts_by_examples(text, exemplar_nodes)
             exemplar_outputs = self.generator.generate(exemplar_prompts, GenerateMode.exemplar)
 
             exemplar_preds = [
                 parse_json_from_string(raw_flag, raw_flag)
-                for index, raw_flag in enumerate(exemplar_outputs)
+                for _, raw_flag in enumerate(exemplar_outputs)
             ]
-            print(exemplar_prompts)
-            print(exemplar_preds)
+
             if debug:
+                print(exemplar_prompts)
+                print(exemplar_preds)
                 self.accumulate_debug_for_exemplars(exemplar_preds, exemplar_nodes, debug_infos)
 
             picker.accumulate(exemplar_preds, owners, 1)
@@ -188,9 +192,10 @@ class KnnIntentDetector(IntentDetector, ABC):
                 parse_json_from_string(raw_flag, None)
                 for index, raw_flag in enumerate(desc_outputs)
             ]
-            print(desc_prompts)
-            print(desc_preds)
+
             if debug:
+                print(desc_prompts)
+                print(desc_preds)
                 self.accumulate_debug_for_skills(desc_preds, skills, debug_infos)
 
             picker.accumulate(desc_preds, owners, 1)

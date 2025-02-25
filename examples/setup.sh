@@ -1,20 +1,22 @@
 #!/bin/bash
-
+set -x
 #
 # This shell can expand the tar ball, and copy the extracted dumeta to right place, and run curl to index it.
 # Check if a filename is provided
 if [ $# -eq 0 ]; then
-    echo "Please provide a tar.gz filename as an argument."
+    echo "Please provide, prefix (me.text/ai.bethere) and  a tar.gz filename as an argument."
     exit 1
 fi
 
 # Create a temporary directory
 temp_dir=$(mktemp -d)
 
-# Extract the tar.gz file to the temporary directory
-tar -xzf "$1" -C "$temp_dir"
 
-files=$(find "$temp_dir/en" -name "me_test*" -type f -exec grep -l "IChatbot()" {} +)
+# Extract the tar.gz file to the temporary directory
+prefix="$1"
+tar -xzf "$2" -C "$temp_dir"
+
+files=$(find "$temp_dir/en" -type f -exec grep -l "IChatbot()" {} +)
 
 echo "Files found (simple method):"
 echo "$files"
@@ -33,7 +35,7 @@ IFS='_' read -ra parts1 <<< "$filename"
 last_element="${parts1[@]: -1}"
 filename_without_ext="${last_element%.kt}"
 
-path="me.test_${filename_without_ext}_en_746395988637257728"
+path="${prefix}_${filename_without_ext}_en_746395988637257728"
 
 mkdir -p "$path"
 
