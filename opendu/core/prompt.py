@@ -7,7 +7,7 @@ from pybars import Compiler
 from abc import ABC, abstractmethod
 from opendu.core.config import RauConfig
 from enum import Enum
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, Template
 
 
 # We only work with well-defined task.
@@ -24,15 +24,17 @@ class IOMode(Enum):
     INPUT = "input",
     OUTPUT = "output"
 
+#
+# Assume the source have examples, slots, skills, values as well as utterance.
+# This prompt template is designed to address template for full skill.
+#
+class PromptBuilder:
+    def __init__(self, template):
+        self.template = template
 
-# Let's setup instruction builder
-class InstructBuilder(ABC):
-    def __call__(self, **kwargs):
-        return self.build(**kwargs)
-
-    @abstractmethod
-    def build(self, **kwargs):
-        pass
+    # Assume __call__ takes object, but build take scatter parts.
+    def __call__(self, kwargs) -> str:
+        return self.template.render(**kwargs)
 
 
 #
@@ -41,33 +43,30 @@ class InstructBuilder(ABC):
 # by it's label.
 #
 class PromptManager(ABC):
-    def __getitem__(self, label) -> InstructBuilder:
-        return self.get(label)
+    @staticmethod
+    def get(label, input_flag: bool = True):
+        env = Environment(loader=FileSystemLoader("./opendu/core/templates/"))
+        task = "input" if input_flag else "output"
+        label = label.replace('-', '_')
+        return PromptBuilder(env.get_template(f"{label}.{task}"))
 
-    @abstractmethod
-    def get(self, label):
-        pass
-
-    def get_builder(self, task: Task, mode: IOMode = None):
+    @staticmethod
+    def get_builder(task: Task, input: bool = True):
         print(f"**************************** {task}")
         match task:
             case Task.SKILL:
-                if mode is None:
-                    return self[RauConfig.get().skill_prompt]
-                elif mode == IOMode.INPUT:
-                    return self[f"{RauConfig.get().skill_prompt}.input"]
-                else:
-                    return self[f"{RauConfig.get().skill_prompt}.output"]
+                return PromptManager.get(RauConfig.get().skill_prompt, input)
             case Task.SKILL_DESC:
-                return self[RauConfig.get().skill_desc_prompt]
+                return PromptManager.get(RauConfig.get().skill_desc_prompt, input)
             case Task.SLOT:
-                return self[RauConfig.get().slot_prompt]
+                return PromptManager.get(RauConfig.get().slot_prompt, input)
             case Task.YNI:
-                return self[RauConfig.get().yni_prompt]
+                return PromptManager.get(RauConfig.get().yni_prompt, input)
             case Task.BOOL_VALUE:
-                return self[RauConfig.get().bool_prompt]
+                return PromptManager.get(RauConfig.get().bool_prompt, input)
 
-    def get_task_label(self, task: Task):
+    @staticmethod
+    def get_task_label(task: Task):
         match task:
             case Task.SKILL:
                 return RauConfig.get().skill_prompt.split(".")[0]
@@ -81,32 +80,8 @@ class PromptManager(ABC):
                 return RauConfig.get().bool_prompt.split(".")[0]
 
 
-#
-# Assume the source have examples, slots, skills, values as well as utterance.
-# This prompt template is designed to address template for full skill.
-#
-class JinjaPromptBuilder(InstructBuilder, ABC):
-    def __init__(self, label: str):
-        env = Environment(loader=FileSystemLoader("./opendu/core/templates/"))
-        self.template = env.get_template(label)
-
-    # Assume __call__ takes object, but build take scatter parts.
-    def __call__(self, kwargs) -> str:
-        return self.build(**kwargs)
-
-    def build(self, **kwargs) -> str:
-        return self.template.render(**kwargs)
-
-
-# Notice this manager does not need to
-class JinjaPromptManager(PromptManager, ABC):
-    def get(self, label, task="input"):
-        label = label.replace('-', '_')
-        return JinjaPromptBuilder(f"{label}.{task}")
-
-
 # We should be able to switch to different manager later.
-promptManager = JinjaPromptManager()
+PromptManager = PromptManager
 
 
 if __name__ == "__main__":
@@ -121,7 +96,7 @@ if __name__ == "__main__":
         "examples": examples
     }
 
-    print(promptManager["yn_default"](x))
+    print(PromptManager.get("yni_default")(x))
 
     examples = [
         {"template": "April 2st", "label": "related"},
@@ -134,4 +109,4 @@ if __name__ == "__main__":
         "examples": examples
     }
 
-    print(promptManager["id_knn_structural"](x))
+    print(PromptManager.get("skill_knn_structural")(x))

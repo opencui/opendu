@@ -8,7 +8,7 @@ import json
 from opendu.core.embedding import EmbeddingStore
 from opendu import ConvertedFactory, build_dataset_index, skill_converter
 from opendu.core.retriever import build_desc_index, load_context_retrievers
-from opendu.core.prompt import promptManager, Task
+from opendu.core.prompt import PromptManager, Task
 
 
 #
@@ -56,10 +56,10 @@ def build_skill_dataset(output, factory, modes, index=True):
     print("Now we create dataset.")
     for skill_mode in modes:
         prompted_factory = build_skill_factory(output, factory, mode=skill_mode)
-        tags = ["train"] #, "test", "validation"]
+        tags = ["train", "test", "validation"]
         for tag in tags:
             examples = prompted_factory[tag]
-            with open(f"{output}/{promptManager.get_task_label(Task.SKILL)}.jsonl", "w") as file:
+            with open(f"{output}/{PromptManager.get_task_label()}.jsonl", "w") as file:
                 print(f"there are {len(examples)} examples left for {tag}.")
                 for example in examples:
                     file.write(f"{json.dumps(example)}\n")

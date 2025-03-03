@@ -10,7 +10,7 @@ from collections import defaultdict
 
 from opendu.core.annotation import (CamelToSnake, DialogExpectation, Exemplar, OwnerMode, ExactMatcher)
 from opendu.core.config import RauConfig
-from opendu.core.prompt import (promptManager, Task)
+from opendu.core.prompt import (PromptManager, Task)
 from opendu.core.retriever import (ContextRetriever)
 from opendu.inference.generator import GenerateMode
 
@@ -75,8 +75,8 @@ class KnnIntentDetector(IntentDetector, ABC):
     def __init__(self, retriever: ContextRetriever, generator):
         self.retrieve = retriever
         self.generator = generator
-        self.desc_prompt = promptManager.get_builder(Task.SKILL_DESC)
-        self.example_prompt = promptManager.get_builder(Task.SKILL)
+        self.desc_prompt = PromptManager.get_builder(Task.SKILL_DESC)
+        self.example_prompt = PromptManager.get_builder(Task.SKILL)
         self.use_exemplar = True
         self.use_desc = True
         assert self.use_desc or self.use_exemplar

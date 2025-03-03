@@ -10,7 +10,7 @@ from enum import Enum
 from opendu.inference.intent_detector import KnnIntentDetector
 from opendu.core.annotation import (EntityMetas, FrameValue, ListRecognizer, get_value)
 from opendu.core.config import RauConfig
-from opendu.core.prompt import (promptManager, Task)
+from opendu.core.prompt import (PromptManager, Task)
 from opendu.core.retriever import (ContextRetriever, load_context_retrievers)
 from opendu.inference.schema_parser import load_all_from_directory
 from opendu.inference.generator import GenerateMode, Generator
@@ -40,8 +40,8 @@ class Parser:
             self.recognizer = ListRecognizer(entity_metas)
 
         self.generator = Generator.build()
-        self.slot_prompt = promptManager.get_builder(Task.SLOT)
-        self.yni_prompt = promptManager.get_builder(Task.YNI)
+        self.slot_prompt = PromptManager.get_builder(Task.SLOT)
+        self.yni_prompt = PromptManager.get_builder(Task.YNI)
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r"\[([^]]*)\]")
 
