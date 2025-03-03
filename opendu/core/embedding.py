@@ -10,6 +10,8 @@ import numpy as np
 from llama_index.core.bridge.pydantic import PrivateAttr
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from sentence_transformers import SentenceTransformer
+from torch import Tensor
+
 from opendu.core.config import RauConfig
 from jinja2 import Template
 
@@ -113,16 +115,16 @@ class InstructedEmbeddings(BaseEmbedding):
     def expand_for_query(self, query):
         return f"{self._instructions['query']} {query}"
 
-    async def _aget_query_embedding(self, query: str) -> List[float]:
+    async def _aget_query_embedding(self, query: str) -> Tensor:
         return self._get_query_embedding(query)
 
-    async def _aget_text_embedding(self, text: str) -> List[float]:
+    async def _aget_text_embedding(self, text: str) -> Tensor:
         return self._get_text_embedding(text)
 
-    def _get_query_embedding(self, query: str) -> List[float]:
+    def _get_query_embedding(self, query: str) -> Tensor:
         return self._model.encode(self.expand_for_query(query), normalize_embeddings=True, show_progress_bar=False)
 
-    def _get_text_embedding(self, text: str) -> List[float]:
+    def _get_text_embedding(self, text: str) -> Tensor:
         return self._model.encode(self.expand_for_content(text), normalize_embeddings=True, show_progress_bar=False)
 
     def _get_text_embeddings(self, texts: List[str]) -> List[List[float]]:
@@ -144,6 +146,33 @@ class KalmEmbeddings(InstructedEmbeddings):
         EXEMPLAR : {
             "query": "Instruct: Given a query, retrieve the related intent.\n Query:",
             "key": "Instruct: Given a query, Retrieve the related intent.\n Query:",
+        }
+    }
+
+    def __init__(
+        self,
+        model: SentenceTransformer,
+        kind: str,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        self._model = model
+        self._instructions = KalmEmbeddings.prompts[kind]
+
+
+class PairEmbeddings(InstructedEmbeddings):
+    _instructions: dict[str, str] = PrivateAttr()
+    _model: SentenceTransformer = PrivateAttr()
+
+    # We need different instruction pairs for different use cases.
+    prompts: ClassVar[dict[str, dict[str, str]]] = {
+        DESC : {
+            "query": "Instruct: Given a query, retrieve the related intent.\n Query:",
+            "key": ""
+        },
+        EXEMPLAR : {
+            "query": "Instruct: evaluate the response to the yes/no question\n Query:",
+            "key": "Instruct: evaluate the response to the yes/no question\n Query:",
         }
     }
 
@@ -360,4 +389,25 @@ if __name__ == "__main__":
 
     u0 = "newValue : drink\noldValue : drink\nchange to drink."
     t0 = 'change to < newValue >.'
+    compare(u0, t0)
+
+    u0 = "newValue : drink\noldValue : drink\nchange to drink."
+    t0 = 'newValue : red\nold Value: drink\nchange to red.'
+    compare(u0, t0)
+
+    u0 = "drink: newValue\ndrink: oldValue\nchange to drink."
+    t0 = 'red: newValue\nred: old Value\nchange to red.'
+    compare(u0, t0)
+
+    u0 = "drink can be newValue\ndrink can be oldValue\nchange to drink."
+    t0 = 'red can be newValue\nred can be old Value\nchange to red.'
+    compare(u0, t0)
+
+
+    u0 = "Question: are you ok with this?\nAnswer: I love it."
+    t0 = 'Question: can you eat all of this?\nAnswer: I can eat a cow.'
+    compare(u0, t0)
+
+    u0 = "Question: are you ok with this?\nAnswer: that is too much."
+    t0 = 'Question: can you eat all of this?\nAnswer: I can eat a cow.'
     compare(u0, t0)

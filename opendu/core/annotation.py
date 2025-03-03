@@ -85,8 +85,7 @@ class Schema(BaseModel):
         return res
 
 
-
-OwnerMode = Enum('OwnerMode', ["normal", "extended"])
+OwnerMode = Enum('OwnerMode', ["normal", "extended", "negative"])
 
 
 # This considers the match under the exact sense.
