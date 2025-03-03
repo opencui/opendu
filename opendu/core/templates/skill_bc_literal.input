@@ -1,0 +1,10 @@
+Determine whether the given utterance means "{{skill.name}}": {{skill.description}}, output true or false.\n'
+{% if examples %}
+Here some examples:
+{% for example in examples %}
+Utterance template: {{example.template}}
+Decision:{{example.label}}
+{% endfor %}
+{% endif %}
+Utterance: {{ arguments.items() | map('join', ': ') | join(' \n ') }} \n {{utterance}}
+Decision:

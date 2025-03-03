@@ -29,7 +29,7 @@ from transformers import (GenerationConfig, BitsAndBytesConfig, AutoModelForCaus
 
 from opendu.core.config import RauConfig, ModelType
 from opendu.core.special_tokens import SpecialTokens
-from opendu.finetune.commons import (load_training_dataset)
+from opendu.finetune.load_dataset import load_training_dataset
 from opendu.finetune.datacollator import DataCollatorForCausalLM
 
 logger = logging.getLogger(__name__)

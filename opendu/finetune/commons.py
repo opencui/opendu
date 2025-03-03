@@ -14,8 +14,21 @@ from llama_index.core.schema import TextNode
 from opendu.core.annotation import Schema, MatchReplace, get_value
 from opendu.core.config import RauConfig
 from opendu.core.retriever import create_index
-from opendu.finetune.phase1_converter import FullExemplar, YniConverter
-from opendu.finetune.phase2_converter import PromptConverter
+from opendu.finetune.structure_converter import FullExemplar, YniConverter
+from opendu.finetune.prompt_converter import SkillBcPromptConverter
+
+#
+# We will have more than one task need to be handled.
+# We assume the following steps in prepare the fine tuning datasets.
+# 1. Convert the original dataset into some common format so that we can handle different dataset, including create
+#    the schema.
+# 2. Decide what task we will support, some time, we can use the side tasks.
+# 3. Decide what retrieval we need for each task.
+# 4. Decide want prompting we need for that task.
+# 5. Generate the datasets for fine-tuning, make sure the label is meaningful.
+#
+# In there, we will have 1-3 as the phrase #1, and 4 as phrase #2, so that we can change prompt without
+# change phase #1.
 
 
 def build_nodes_from_dataset(module: str, dataset: Dataset, nodes):
@@ -61,9 +74,8 @@ class DatasetFactory(ABC):
     tag: str
 
     @abc.abstractmethod
-    def __getitem__(self, split: str = "train") -> Dataset:
+    def __getitem__(self, split: str) -> Dataset:
         """This return the domain meta needed."""
-        return
 
 
 #
@@ -114,8 +126,8 @@ class JsonDatasetFactory(SchemaDatasetFactory, ABC):
         self.datasets = load_dataset('json', data_files=files)
         self.tag = tag
 
-    def __getitem__(self, item):
-        return self.datasets[item]
+    def __getitem__(self, split: str = "train") -> Dataset:
+        return self.datasets[split]
 
 
 class RawJsonDatasetFactory(SchemaDatasetFactory, ABC):
@@ -130,8 +142,8 @@ class RawJsonDatasetFactory(SchemaDatasetFactory, ABC):
         self.datasets = load_dataset('json', data_files=self.files)
         self.tag = tag
 
-    def __getitem__(self, item):
-        return self.datasets[item] if item in self.files else None
+    def __getitem__(self, split: str = "train") -> Dataset:
+        return self.datasets[split] if item in self.files else None
 
 
 class JsonBareDatasetFactory(SchemaDatasetFactory, ABC):
@@ -145,8 +157,8 @@ class JsonBareDatasetFactory(SchemaDatasetFactory, ABC):
         self.datasets = load_dataset('json', data_files=files)
         self.tag = tag
 
-    def __getitem__(self, item):
-        return self.datasets[item]
+    def __getitem__(self, split: str) -> Dataset:
+        return self.datasets[split]
 
 
 
@@ -154,7 +166,7 @@ class DatasetFactoryMerger(SchemaDatasetFactory, ABC):
     def __init__(self, factories):
         self.factories = factories
 
-    def __getitem__(self, split):
+    def __getitem__(self, split: str) -> Dataset:
         datasets = []
         for factory in self.factories:
             datasets.append(factory[split])
@@ -192,7 +204,7 @@ class PromptedFactory(DatasetFactory):
     __metaclass__ = abc.ABCMeta
     def __init__(self, file, unused_columns):
         self.file = file
-        self.converters = [PromptConverter()]
+        self.converters = [SkillBcPromptConverter()]
         self.columns = unused_columns
         self.tag = file.split("/")[3]
 
@@ -205,89 +217,8 @@ class PromptedFactory(DatasetFactory):
         return {"input": ins, "output": outs}
 
     def __getitem__(self, split: str) -> Dataset:
-        if split != "train": return None
         dataset = load_dataset('json', data_files=self.file)[split]
         return dataset.map(self.convert_one, batched=True, remove_columns=self.columns)
-
-
-# Here we create the dataset factory for skills
-def load_skill_factory(skill_modes, factories, suffix=""):
-    # make sure run build_skill_dataset first.
-    for skill_mode in skill_modes:
-        factories.append(
-            JsonDatasetFactory("./dugsets/sgd/", "sgd", f"{RauConfig.get().skill_prompt}{suffix}")
-        )
-
-# Here we create the dataset factory for skills
-def load_jijia_skill_factory(mode, factories, suffix=""):
-    # make sure run build_skill_dataset first.
-    factories.append(
-        RawJsonDatasetFactory("./dugsets/sgd/", "sgd", f"{mode}")
-    )
-
-
-def load_extractive_slot_factory(converted_factories):
-    converted_factories.append(
-        DatasetFactoryMerger([
-            JsonBareDatasetFactory("./dugsets/sgd/", "sgd", "slots-"),
-            JsonBareDatasetFactory("./dugsets/conll03/", "ner"),
-        ])
-    )
-
-def load_nli_factory(converted_factories):
-    # Here we assume the raw input is sentence, focus and label (positive, negative and neutral)
-    converter = YniConverter()
-    columns = ["question", "response", "label"]
-    converted_factories.append(
-        ConvertedFactory(JsonBareDatasetFactory("./dugsets/yni/", "yni"), [converter], columns)
-    )
-
-
-def load_bot_factory(converted_factories):
-    # this is used to extract all the datasets from labeling process and make it available.
-    # We assume that there are botsets/{lang}/{bots}/
-    matching_data_directories = glob.glob("./botsets/en/*/MatchLabeledData.json")
-    columns = ['_created_at', '_id', 'bot', 'context', 'decision', 'lang', 'matchType', 'owner', 'reference', 'userId', 'userOrg', 'utterance']
-    for directory in matching_data_directories:
-        # Add prompt to it.
-        converted_factories.append(PromptedFactory(directory, columns))
-
-
-# Load training set, based on what is inside the --training_mode desc-exemplar-extractive-slot
-def load_training_dataset(args):
-    converted_factories = []
-    # load_bot_factory(converted_factories)
-    training_modes = set(args.training_mode.split(","))
-    for training_mode in training_modes:
-        print(training_mode)
-        if "id_mc" in training_mode:
-            load_jijia_skill_factory(training_mode, converted_factories)
-        if "desc" in training_mode:
-            print("load desc dataset")
-            load_skill_factory(["desc"], converted_factories)
-        if "exemplar" in training_mode:
-            print("load exemplar dataset")
-            load_skill_factory(["exemplar"], converted_factories)
-        if "extractive_slot" in training_mode:
-            print("load slot dataset")
-            load_extractive_slot_factory(converted_factories)
-        if "nli" in training_mode:
-            print("load nli dataset")
-            load_nli_factory(converted_factories)
-
-    assert len(converted_factories) != 0
-
-    # If we debug dataset, we do not train.
-    if args.debug_dataset:
-        count = 0
-        for factory in converted_factories:
-            ds = factory["train"]
-            for item in ds:
-                print(json.dumps(item, indent=2))
-                count += 1
-        print(count)
-        exit(0)
-    return converted_factories
 
 
 def print_factories(factories):
@@ -340,6 +271,7 @@ class SlotFinalizer:
         matches = self.extract(text)
         payloads = list(map(lambda x: x.split("|")[0].strip(), matches))
         return " ".join(payloads)
+
 
 if __name__ == "__main__":
     factories = []

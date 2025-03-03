@@ -60,3 +60,16 @@ reduce the possibility of prefix being cached.
   {% endfor %}
 }
 {% endmacro %}
+
+{#
+This micro is design to render the arguments, kind like thinking, but based recognizer.
+#}
+{% macro ml_render_dict(data) -%}
+    {%- for key, values in data.items() %}
+        {{ key }}: {{ values | join(", ") }}
+    {% endfor %}
+{%- endmacro %}
+
+{% macro sl_render_dict(data) -%}
+    {{ data.items() | map(attribute=0) | join(", ") }}: {{ data.values() | map('join', ', ') | join(" | ") }}
+{%- endmacro %}
