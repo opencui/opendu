@@ -287,6 +287,21 @@ class ContextRetriever:
         return skills, exemplar_nodes
 
 
+#
+# To support in context learning, we need to have retriever to find the related examples.
+#
+class RetrieverManager:
+    retriever_dict : dict[str, ContextRetriever]
+
+    @staticmethod
+    def get_retriever(label: str) -> ContextRetriever:
+        return RetrieverManager.retriever_dict[label]
+
+    @staticmethod
+    def put_retriever(label: str, retriever: ContextRetriever):
+        RetrieverManager.retriever_dict[label] = retriever
+
+
 def load_context_retrievers(module: Schema, path: str):
     return ContextRetriever(
         module,
