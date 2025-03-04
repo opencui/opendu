@@ -4,8 +4,7 @@
 # This source code is licensed under the BeThere AI license.
 # See LICENSE file in the project root for full license information.
 from dataclasses import field
-
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from enum import Enum
 
 
@@ -56,7 +55,7 @@ class BaseConfig(BaseModel):
     skill_arity: int = 1
     llm_device: str = DEVICE
 
-    # The correct decomposition is type (skill, slot, yni-bethere), task, and prompt.
+    # The correct decomposition is type (skill, slot, yni), task, and prompt.
     skill_modes: list = field(default_factory=lambda: ["both"])
 
     skill_task: str =  "id_mc"
@@ -68,7 +67,7 @@ class BaseConfig(BaseModel):
     skill_desc_prompt: str = "skill-desc-structural"
     skill_prompt: str = "skill-knn-structural"
     slot_prompt: str = "slot_qa_structural"
-    yni_prompt: str = "yni-bethere-default"
+    yni_prompt: str = "yni-default"
     bool_prompt: str = "plain"
 
     eval_mode: bool = True
@@ -86,6 +85,8 @@ class BaseConfig(BaseModel):
 
 
 class BcSsYniConfig(BaseModel):
+
+
     embedding_device: str = DEVICE
     #embedding_model: str = "BAAI/bge-base-en-v1.5"
     #embedding_model: str = "dunzhang/stella_en_400M_v5"
@@ -106,10 +107,7 @@ class BcSsYniConfig(BaseModel):
     # sf -> slot filling, ss -> single slot (could be frame or multi slots).
     # yni-bethere -> boolean gate, yes/no/irrelevant
     # the last part is to identify prompt template.
-    id_bc_prompt: str = "literal"
-    sf_ss_prompt: str = "default"
-    yni_prompt: str = "default"
-
+    prompt: dict = Field(default_factory=lambda: {"id_bc": "id_bc_literal", "yni": "yni_default"})
 
     # All task should share the same base model
     base_model: str = "Qwen/Qwen2.5-7B-Instruct"

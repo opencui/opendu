@@ -489,8 +489,8 @@ def train():
     training_args.report_to = []
 
     # Save the things to disk first, for training we keep each module separate.
-    # Down the road, we might
-    converted_factories = load_training_dataset(args)
+    training_mode = args.training_mode
+    converted_factories = load_training_dataset(training_mode)
 
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:

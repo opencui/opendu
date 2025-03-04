@@ -44,40 +44,21 @@ class PromptBuilder:
 #
 class PromptManager(ABC):
     @staticmethod
-    def get(label, input_flag: bool = True):
+    def get(label, input_mode: bool = True):
         env = Environment(loader=FileSystemLoader("./opendu/core/templates/"))
-        task = "input" if input_flag else "output"
+        task = "input" if input_mode else "output"
         label = label.replace('-', '_')
         return PromptBuilder(env.get_template(f"{label}.{task}"))
 
     @staticmethod
-    def get_builder(task: Task, input: bool = True):
+    def get_builder(task: Task, input_mode: bool = True):
         print(f"**************************** {task}")
-        match task:
-            case Task.SKILL:
-                return PromptManager.get(RauConfig.get().skill_prompt, input)
-            case Task.SKILL_DESC:
-                return PromptManager.get(RauConfig.get().skill_desc_prompt, input)
-            case Task.SLOT:
-                return PromptManager.get(RauConfig.get().slot_prompt, input)
-            case Task.YNI:
-                return PromptManager.get(RauConfig.get().yni_prompt, input)
-            case Task.BOOL_VALUE:
-                return PromptManager.get(RauConfig.get().bool_prompt, input)
+        return PromptManager.get(RauConfig.get().prompt[task], input_mode)
+
 
     @staticmethod
     def get_task_label(task: Task):
-        match task:
-            case Task.SKILL:
-                return RauConfig.get().skill_prompt.split(".")[0]
-            case Task.SKILL_DESC:
-                return RauConfig.get().skill_desc_prompt.split(".")[0]
-            case Task.SLOT:
-                return RauConfig.get().slot_prompt.split(".")[0]
-            case Task.YNI:
-                return RauConfig.get().yni_prompt.split(".")[0]
-            case Task.BOOL_VALUE:
-                return RauConfig.get().bool_prompt.split(".")[0]
+        return RauConfig.get().prompt[task].split(".")[0]
 
 
 # We should be able to switch to different manager later.
