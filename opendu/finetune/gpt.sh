@@ -40,7 +40,7 @@ accelerate launch opendu/finetune/t2t.py \
     --weight_decay 0.0 \
     --seed 0 \
     --debug_dataset False \
-    --training_mode id_mc_full  \
+    --training_mode yni  \
     --peft_mode lora \
     --qlora_mdoe True \
     --model_type gpt \

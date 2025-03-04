@@ -133,6 +133,79 @@ class LoraGenerator(Generator, ABC):
         return Generator.process_return(results, input_texts)
 
 
+#
+# This is the triple task version, with binary class for intent detection, single slot for slot filling
+# and yes/no/irrelevant for boolean gate, multi value and explicit confirmation.
+#
+class BcSsYniLoraGenerator(Generator, ABC):
+    def __init__(self):
+        parts = RauConfig.get().skill_model.split("/")
+
+        desc_model = f"{parts[0]}/desc-{parts[1]}"
+        exemplar_model = f"{parts[0]}/exemplar-{parts[1]}"
+
+        skill_config = PeftConfig.from_pretrained(desc_model)
+
+        model_path = skill_config.base_model_name_or_path
+
+        # Is this the right place to clean cache.
+        torch.cuda.empty_cache()
+
+        base_model = Generator.from_pretrained(
+            skill_config.base_model_name_or_path,
+            return_dict=True,
+            device_map=RauConfig.get().llm_device,
+            trust_remote_code=True,
+            torch_dtype=torch.bfloat16
+        )
+
+        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.tokenizer.padding_side = "left"
+        self.models = {}
+
+        self.lora_model = PeftModel.from_pretrained(
+            base_model, desc_model, adapter_name=GenerateMode.desc.name)
+
+        self.lora_model.load_adapter(
+            exemplar_model, adapter_name=GenerateMode.exemplar.name)
+
+        self.lora_model.load_adapter(
+            RauConfig.get().extractive_slot_model, adapter_name=GenerateMode.extractive.name)
+
+        if RauConfig.get().nli_model != "":
+            self.lora_model.load_adapter(RauConfig.get().nli_model, adapter_name=GenerateMode.nli.name)
+
+        # Move to device
+        self.lora_model.to(RauConfig.get().llm_device)
+        self.lora_model.eval()
+
+    def generate(self, input_texts: list[str], mode: GenerateMode):
+        self.lora_model.set_adapter(mode.name)
+        encoding = self.tokenizer(
+            input_texts, padding=True, return_tensors="pt"
+        ).to(RauConfig.get().llm_device)
+
+        with torch.no_grad():
+            peft_outputs = self.lora_model.generate(
+                input_ids=encoding.input_ids,
+                generation_config=GenerationConfig(
+                    max_new_tokens=32,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                    eos_token_id=self.tokenizer.eos_token_id,
+                    attention_mask=encoding.attention_mask,
+                    do_sample=False,
+                    repetition_penalty=1.2,
+                    num_return_sequences=1,
+                ),
+            )
+
+        results = self.tokenizer.batch_decode(peft_outputs, skip_special_tokens=True)
+        return Generator.process_return(results, input_texts)
+
+
+
+
 # Full finetuned generator
 class FftGenerator(Generator, ABC):
     def __init__(self):
