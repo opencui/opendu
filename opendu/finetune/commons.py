@@ -218,37 +218,6 @@ class ConvertedFactory(DatasetFactory):
         return dataset.map(self.convert_one, batched=True, remove_columns=self.columns)
 
 
-class PromptedFactory(DatasetFactory):
-    __metaclass__ = abc.ABCMeta
-    def __init__(self, file, unused_columns):
-        self.file = file
-        self.converters = [SkillBcPromptConverter()]
-        self.columns = unused_columns
-        self.tag = file.split("/")[3]
-
-    def convert_one(self, item):
-        ins = []
-        outs = []
-        for convert in self.converters:
-            convert(item, ins, outs)
-        assert len(ins) == len(outs)
-        return {"input": ins, "output": outs}
-
-    def __getitem__(self, split: str) -> Dataset:
-        dataset = load_dataset('json', data_files=self.file)[split]
-        return dataset.map(self.convert_one, batched=True, remove_columns=self.columns)
-
-
-def print_factories(factories):
-    for factory in factories:
-        ds = factory.__getitem__("train")
-        count = 0
-        for item in ds:
-            print(item)
-            count += 1
-        print(f"There are {count} instances")
-
-
 def purge_dataset(dataset, k=32, extract=lambda x: x["tag"]):
     # make it somewhat repeatable
     seed(42)

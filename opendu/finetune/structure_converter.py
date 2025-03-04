@@ -286,7 +286,7 @@ class SfSsConverter(SlotConverter):
 #
 class YniConverter(TrainPhase1Converter, ABC):
     def __init__(self):
-        self.prompt = PromptManager.get_builder(Task.YNI)
+        self.prompt = PromptManager.get_builder("yni")
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # We assume the input is dict version of AnnotatedExemplar
