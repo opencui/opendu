@@ -2,17 +2,27 @@ import json
 
 from opendu.finetune.structure_converter import YniConverter
 from opendu.core.config import RauConfig
-from opendu.finetune.commons import (MergedDatasetFactory, FtDatasetFactory, ConvertedFactory)
+from opendu.finetune.commons import (MergedDatasetFactory, FtDatasetFactory, DatasetFactory)
 
 
-def load_merged_factories(paths, mode, converters, columns)-> ConvertedFactory:
+def build_converter(mode, path):
+    converter = None
+    columns = None
+    if mode == "yni":
+        converter = YniConverter()
+        columns = ["context", "question", "response", "label"]
+    return converter, columns
+
+
+def load_merged_factories(paths, mode)-> DatasetFactory:
     factories = []
     prompt = RauConfig.get().prompt[mode]
     for path in paths:
         print(f"processing {path}")
-        ds = FtDatasetFactory(path, prompt)
+        converter, columns = build_converter(mode, path)
+        ds = FtDatasetFactory(path, prompt, [converter], columns)
         factories.append(ds)
-    return ConvertedFactory(MergedDatasetFactory(factories), converters, columns)
+    return MergedDatasetFactory(factories)
 
 
 def print_ds(ds):
@@ -29,11 +39,9 @@ def load_training_dataset(training_mode, debug=False):
     # load_bot_factory(converted_factories)
     print(training_mode)
     if training_mode == "yni":
-        converter = YniConverter()
-        columns = ["context", "question", "response", "label"]
         datasets = ["ftds/yni/circa/", "ftds/yni/ludwig", "ftds/yni/chang"]
         print(f"load yni datasets: {datasets}")
-        factory = load_merged_factories(datasets, training_mode, [converter], columns)
+        factory = load_merged_factories(datasets, training_mode)
     if training_mode == "sf_ss":
         print(f"load sf_ss datasets")
 

@@ -197,6 +197,7 @@ class Exemplar(BaseModel):
     def __getitem__(self, key):
         return self.__dict__[key]
 
+
 # There are two different use cases for exemplars:
 # During fine-turning, we need both utterance and exemplars.
 # During index, we only need exemplars.
@@ -210,6 +211,7 @@ def get_value(item, key, value=None):
         return item[key]
     except:
         return value
+
 
 #
 # This is need to convert the camel casing to snake casing.

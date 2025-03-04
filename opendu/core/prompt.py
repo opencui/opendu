@@ -2,22 +2,17 @@
 # Examples assumes that we have potentially more than one example, the goal
 # is to create a block for examples.
 #
-import html
-from pybars import Compiler
-from abc import ABC, abstractmethod
+from abc import ABC
 from opendu.core.config import RauConfig
 from enum import Enum
-from jinja2 import Environment, FileSystemLoader, Template
+from jinja2 import Environment, FileSystemLoader
 
 
 # We only work with well-defined task.
 class Task(Enum):
-    SKILL = 1,
-    SLOT = 2,
-    YNI = 3,
-    BOOL_VALUE = 4,
-    HAS_MORE = 5,
-    SKILL_DESC = 6
+    IdBc = "id_bc",
+    SfSs = "sf_ss",
+    Yni = "yni"
 
 
 class IOMode(Enum):
@@ -51,21 +46,18 @@ class PromptManager(ABC):
         return PromptBuilder(env.get_template(f"{label}.{task}"))
 
     @staticmethod
-    def get_builder(task: Task, input_mode: bool = True):
+    def get_builder(task: str, input_mode: bool = True):
         print(f"**************************** {task}")
         return PromptManager.get(RauConfig.get().prompt[task], input_mode)
 
-
     @staticmethod
-    def get_task_label(task: Task):
+    def get_task_label(task: str):
         return RauConfig.get().prompt[task].split(".")[0]
 
 
-# We should be able to switch to different manager later.
-PromptManager = PromptManager
-
-
 if __name__ == "__main__":
+    print(Task.IdBc.value[0])
+
     examples = [
         {"response": "April 2st", "label": "related"},
         {"response": "April 3st", "label": "unrelated"}
