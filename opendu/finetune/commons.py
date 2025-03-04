@@ -189,13 +189,9 @@ class MergedDatasetFactory(SchemaDatasetFactory, ABC):
         return concatenate_datasets(datasets).shuffle(seed=42) if len(datasets) != 0 else None
 
 
-
-
-
-
 # This inference is needed for cases where users' utterance is response to bot's prompt questions, and
 # needs the abstractive understanding instead of extractive understanding.
-class ConvertedBatchFactory(DatasetFactory):
+class BatchConvertedFactory(DatasetFactory):
     __metaclass__ = abc.ABCMeta
     def __init__(
         self,
