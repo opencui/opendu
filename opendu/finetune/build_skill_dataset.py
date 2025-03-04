@@ -6,7 +6,7 @@
 
 import json
 from opendu.core.embedding import EmbeddingStore
-from opendu import ConvertedFactory, build_dataset_index, skill_converter
+from opendu import ConvertedBatchFactory, build_dataset_index, skill_converter
 from opendu.core.retriever import build_desc_index, load_context_retrievers
 from opendu.core.prompt import PromptManager, Task
 
@@ -32,7 +32,7 @@ def build_skill_factory(output, factory, mode):
         "arguments",
         "expectations",
     ]
-    return ConvertedFactory(factory, [skill_converter(context_retriever, mode)], skill_columns)
+    return ConvertedBatchFactory(factory, [skill_converter(context_retriever, mode)], skill_columns)
 
 
 # This is how we create the skill dataset given exemplars dataset.

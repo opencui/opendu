@@ -131,29 +131,16 @@ class JsonDatasetFactory(SchemaDatasetFactory, ABC):
         return self.datasets[split]
 
 
-# BareDataset are these that does not
-class JsonBareDatasetFactory(SchemaDatasetFactory, ABC):
-    def __init__(self, path, tag=None, prefix=""):
-        self.path = path
-        files = {
-            "train": f"{self.path}/{prefix}train.jsonl",
-            "test": f"{self.path}/{prefix}test.jsonl",
-            "validation": f"{self.path}/{prefix}validation.jsonl",
-        }
-        self.datasets = load_dataset('json', data_files=files)
-        self.tag = tag
-
-    def __getitem__(self, split: str) -> Dataset:
-        return self.datasets[split]
-
 #
 # FineTuneDataset can be readily used for finetuning, they share the same structure, and
 # can be used with different prompt.
 class FtDatasetFactory(SchemaDatasetFactory, ABC):
-    def __init__(self, path, suffix=""):
+    def __init__(self, path, suffix="", converters=[], columns=[]):
         # When the schema.json exist.
         schema_path = f"{path}/schema.json"
         self.schema = json.load(open(schema_path)) if os.path.exists(schema_path) else None
+        self.converters = converters
+        self.unused_columns = columns
 
         # We assume that {train|test|dev}*.jsonl under path, and schema.json
         json_files = glob.glob(os.path.join(path, "*.jsonl"), recursive=True)
@@ -162,6 +149,14 @@ class FtDatasetFactory(SchemaDatasetFactory, ABC):
         for prefix in ["train", "dev", "test"]:
             self.datasets[prefix] = self.load_dataset(json_files, prefix)
 
+    def convert_one(self, item):
+        ins = []
+        outs = []
+        for convert in self.converters:
+            convert(item, ins, outs)
+        assert len(ins) == len(outs)
+        return {"input": ins, "output": outs}
+
     def load_dataset(self, json_files, prefix: str):
         datasets = []
         for json_file in json_files:
@@ -169,7 +164,10 @@ class FtDatasetFactory(SchemaDatasetFactory, ABC):
             if filename.startswith(prefix):
                 # Check if the key starts with "train"
                 dataset_dict = load_dataset('json', data_files=json_file)
-                datasets.append(dataset_dict["train"])
+                # by the default, the dataset is loaded under the key train.
+                dataset = dataset_dict["train"]
+                dataset.map(self.convert_one, batched=True, remove_columns=self.unused_columns)
+                datasets.append(dataset)
             print(f"process {json_file} with {prefix}")
         return concatenate_datasets(datasets) if len(datasets) != 0 else None
 
@@ -191,9 +189,13 @@ class MergedDatasetFactory(SchemaDatasetFactory, ABC):
         return concatenate_datasets(datasets).shuffle(seed=42) if len(datasets) != 0 else None
 
 
+
+
+
+
 # This inference is needed for cases where users' utterance is response to bot's prompt questions, and
 # needs the abstractive understanding instead of extractive understanding.
-class ConvertedFactory(DatasetFactory):
+class ConvertedBatchFactory(DatasetFactory):
     __metaclass__ = abc.ABCMeta
     def __init__(
         self,

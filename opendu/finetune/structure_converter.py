@@ -98,6 +98,9 @@ class TrainPhase1Converter(ABC):
     def __call__(self, batch, ins: list[str], outs: list[str]):
         return
 
+    @abc.abstractmethod
+    def transform(self, x: Dict[str, any]):
+        return
 
 # take Dict[str, List[str]], change it to.
 def swap_key_values(original_json):
@@ -128,8 +131,8 @@ def filter_the_first_k(items, k, key_func=lambda x: x):
 # the utterance means (or implies when we have enough examples).
 class IdBcConverter(TrainPhase1Converter):
     def __init__(self, retriever: ContextRetriever):
-        label = PromptManager.get_task_label()
-        assert label.startswith("id-bc"), "need to be skill-bc prefix"
+        label = PromptManager.get_task_label("id_bc")
+        assert label.startswith("id_bc"), "need to be id-bc prefix"
         self.prompt = PromptManager.get_builder(Task.SKILL)
         self.context_retrieve = retriever
         self.k_per_type = 2
@@ -142,12 +145,15 @@ class IdBcConverter(TrainPhase1Converter):
         # Working on the batched dataset, with first dimension is column then index.
         for idx, utterance in enumerate(batch["utterance"]):
             # We assume the input is dict version of AnnotatedExemplar
-            skills, nodes = self.context_retrieve(utterance)
-
-            supported_skills = set([node.metadata["owner"] for node in nodes])
             owner = batch["owner"][idx]
             arguments = batch["arguments"][idx]
             owner_mode = batch["owner_mode"][idx]
+            node_id = batch["id"][idx]
+
+            skills, nodes = self.context_retrieve(utterance)
+
+            supported_skills = set([node.metadata["owner"] for node in nodes])
+
 
             skill_map = {}
 
@@ -162,7 +168,7 @@ class IdBcConverter(TrainPhase1Converter):
 
             # Add the examples for each example.
             # remove the identical exemplar
-            nodes = [node for node in nodes if node.id_ != batch["id"][idx]]
+            nodes = [node for node in nodes if node.id_ != node_id]
 
             for skill in skills:
                 # Need to project each examples in the view of this skill.
@@ -191,6 +197,8 @@ class IdBcConverter(TrainPhase1Converter):
                 }
                 ins.append(self.prompt(input_dict))
                 outs.append(f"{owner == target and OwnerMode[owner_mode] != OwnerMode.negative}</s>")
+
+
 
 
 # This is for slot.
@@ -297,7 +305,11 @@ class YniConverter(TrainPhase1Converter, ABC):
             ins.append(self.prompt(input_dict))
             outs.append(f"{label}</s>")
 
-
+    def transform(self, x: Dict[str, any]):
+        question = x["question"]
+        response = x["response"]
+        input_dict = {"question": question, "response": response}
+        return self.prompt(input_dict)
 
 
 # This is needed to determine the intention, intended function or skill
