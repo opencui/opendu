@@ -1,6 +1,6 @@
 Decide whether the response is Affirmative, Negative or Irrelevant to the yes/no question:\n
 
-{% if examples is not none %}
+{% if examples %}
 Here some examples:
 {% for example in examples %}
 Question: {{example.question}}
