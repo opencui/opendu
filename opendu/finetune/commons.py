@@ -1,18 +1,19 @@
 import abc
 import json
+import os
 import re
 import glob
 
 from abc import ABC
 from collections import defaultdict
 from random import sample, seed
+
 from datasets import Dataset, load_dataset, concatenate_datasets
 from llama_index.core.embeddings import BaseEmbedding
 from llama_index.core.schema import TextNode
 
 
 from opendu.core.annotation import Schema, MatchReplace, get_value
-from opendu.core.config import RauConfig
 from opendu.core.retriever import create_index
 from opendu.finetune.structure_converter import FullExemplar, YniConverter
 from opendu.finetune.prompt_converter import SkillBcPromptConverter
@@ -130,22 +131,7 @@ class JsonDatasetFactory(SchemaDatasetFactory, ABC):
         return self.datasets[split]
 
 
-class RawJsonDatasetFactory(SchemaDatasetFactory, ABC):
-    def __init__(self, path, tag=None, prefix=""):
-        self.path = path
-        schema_dict = json.load(open(f"{path}/schema.json"))
-        self.schema = Schema(**schema_dict)
-        self.files = {
-            "train": f"{self.path}/{prefix}.jsonl",
-            "validation": f"{self.path}/{prefix}.jsonl",
-        }
-        self.datasets = load_dataset('json', data_files=self.files)
-        self.tag = tag
-
-    def __getitem__(self, split: str = "train") -> Dataset:
-        return self.datasets[split] if item in self.files else None
-
-
+# BareDataset are these that does not
 class JsonBareDatasetFactory(SchemaDatasetFactory, ABC):
     def __init__(self, path, tag=None, prefix=""):
         self.path = path
@@ -160,17 +146,49 @@ class JsonBareDatasetFactory(SchemaDatasetFactory, ABC):
     def __getitem__(self, split: str) -> Dataset:
         return self.datasets[split]
 
+#
+# FineTuneDataset can be readily used for finetuning, they share the same structure, and
+# can be used with different prompt.
+class FtDatasetFactory(SchemaDatasetFactory, ABC):
+    def __init__(self, path, suffix=""):
+        # When the schema.json exist.
+        schema_path = f"{path}/schema.json"
+        self.schema = json.load(open(schema_path)) if os.path.exists(schema_path) else None
+
+        # We assume that {train|test|dev}*.jsonl under path, and schema.json
+        json_files = glob.glob(os.path.join(path, "*.jsonl"), recursive=True)
+        print(f"json_files = {json_files}")
+        self.datasets = {}
+        for prefix in ["train", "dev", "test"]:
+            self.datasets[prefix] = self.load_dataset(json_files, prefix)
+
+    def load_dataset(self, json_files, prefix: str):
+        datasets = []
+        for json_file in json_files:
+            filename = os.path.basename(json_file)
+            if filename.startswith(prefix):
+                # Check if the key starts with "train"
+                dataset_dict = load_dataset('json', data_files=json_file)
+                datasets.append(dataset_dict["train"])
+            print(f"process {json_file} with {prefix}")
+        return concatenate_datasets(datasets) if len(datasets) != 0 else None
+
+    def __getitem__(self, split: str) -> Dataset:
+        return self.datasets[split]
 
 
-class DatasetFactoryMerger(SchemaDatasetFactory, ABC):
+# We use this to merge multiple factory into one.
+class MergedDatasetFactory(SchemaDatasetFactory, ABC):
     def __init__(self, factories):
         self.factories = factories
 
     def __getitem__(self, split: str) -> Dataset:
         datasets = []
         for factory in self.factories:
-            datasets.append(factory[split])
-        return concatenate_datasets(datasets).shuffle(seed=42)
+            dataset = factory[split]
+            if dataset != None:
+                datasets.append(factory[split])
+        return concatenate_datasets(datasets).shuffle(seed=42) if len(datasets) != 0 else None
 
 
 # This inference is needed for cases where users' utterance is response to bot's prompt questions, and
@@ -271,13 +289,3 @@ class SlotFinalizer:
         matches = self.extract(text)
         payloads = list(map(lambda x: x.split("|")[0].strip(), matches))
         return " ".join(payloads)
-
-
-if __name__ == "__main__":
-    factories = []
-    load_bot_factory(factories)
-    factory = factories[0]
-    print(factory)
-    trainset = factory["train"]
-    for item in trainset:
-        print(item)
