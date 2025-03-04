@@ -2,7 +2,7 @@ import json
 
 from opendu.finetune.structure_converter import YniConverter
 from opendu.core.config import RauConfig
-from opendu.finetune.commons import (MergedDatasetFactory, FtDatasetFactory, ConvertedBatchFactory, DatasetFactory)
+from opendu.finetune.commons import (MergedDatasetFactory, FtDatasetFactory, DatasetFactory)
 
 
 def build_converter(mode, path):
