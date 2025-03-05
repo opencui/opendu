@@ -1,2 +1,0 @@
-{% from 'sf_se_full.base' import render_dict %}
-{{ render_dict(values) }}
