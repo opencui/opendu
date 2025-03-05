@@ -26,7 +26,6 @@ class DataCollatorForCausalLM(object):
 
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
         # Extract elements
-        [print(example) for example in instances]
         sources = [f"{example['input']}" for example in instances]
         targets = [
             f"{example['output']} {self.tokenizer.eos_token}" for example in instances
