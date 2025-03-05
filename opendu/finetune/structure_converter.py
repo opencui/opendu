@@ -302,7 +302,9 @@ class YniConverter(TrainPhase1Converter, ABC):
             response = batch["response"][idx]
             label = batch["label"][idx]
             input_dict = {"question": question, "response": response}
-            ins.append(self.prompt(input_dict))
+            prompted_input = self.prompt(input_dict)
+            print(prompted_input)
+            ins.append(prompted_input)
             outs.append(f"{label}</s>")
 
     def transform(self, x: Dict[str, any]):

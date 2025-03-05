@@ -520,8 +520,8 @@ def train():
 
     # this creates a dict.
     # Split train/eval, reduce size
-    eval_dataset = merge_created_datasets(converted_factories, "validation")
-    train_dataset = merge_created_datasets(converted_factories, "train")
+    eval_dataset = converted_factories.get("dev")
+    train_dataset = converted_factories["train"]
 
     if ModelType[args.model_type] == ModelType.t5:
         preprocess = DatasetAdaptor(tokenizer, args.source_max_len, args.target_max_len)

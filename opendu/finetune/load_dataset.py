@@ -20,7 +20,7 @@ def load_merged_factories(paths, mode)-> DatasetFactory:
     for path in paths:
         print(f"processing {path}")
         converter, columns = build_converter(mode, path)
-        ds = FtDatasetFactory(path, prompt, [converter], columns)
+        ds = FtDatasetFactory(path,[converter], columns)
         factories.append(ds)
     return MergedDatasetFactory(factories)
 
