@@ -1,0 +1,18 @@
+{% from 'sf.base' import render_slot, render_dict %}
+Given the json representation of schemas for skill: {{skill}} and its dependency data structures, extract values
+from the input text for skill: {{skill}}:
+
+{{ render_dict(schema) }}
+
+{# example should be emitted if there is no example. #}
+
+{% if examples %}
+ Here are some examples:
+  {% for example in examples %}
+    Input: {{example.input}}
+    Output: {{example.output}}
+  {% endfor %}
+{% endif %}
+
+Input: {{utterance}}
+Output:

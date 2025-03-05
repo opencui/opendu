@@ -37,38 +37,32 @@ version, one with the candidate (if we have one), and one with random example.
 For multi valued slot, we add candidate to the end. Unfortunately, this will
 reduce the possibility of prefix being cached.
 #}
-{% macro render_dict(d) %}
+
+{% macro render_dict(d, indent=0) -%}
 {
-  {% for key, value in d.items() %}
-    "{{ key }}": {% if value is mapping %}
-      {{ render_dict(value) }}
-    {% elif value is iterable and value is not string %}
-      [
-        {% for item in value %}
-          {% if item is mapping %}
-            {{ render_dict(item) }}
-          {% else %}
-            "{{ item }}"
-          {% endif %}
-          {% if not loop.last %},{% endif %}
-        {% endfor %}
-      ]
-    {% else %}
-      "{{ value }}"
-    {% endif %}
-    {% if not loop.last %},{% endif %}
-  {% endfor %}
-}
-{% endmacro %}
+{%- for key, value in d.items() %}
+{{ '  ' * (indent+1) }}"{{ key }}": {% if value is mapping %}{
+{{ render_dict_content(value, indent+1) }}
+{{ '  ' * (indent+1) }}}{% elif value is iterable and value is not string %}[{% for item in value %}{% if not loop.first %}, {% endif %}"{{ item }}"{% endfor %}]{% else %}"{{ value }}"{% endif %}{% if not loop.last %},
+{% endif %}{% endfor %}
+{%- endmacro %}
+
+{%- macro render_dict_content(d, indent=0) -%}
+{%- for key, value in d.items() -%}
+{{ '  ' * (indent+1) }}"{{ key }}": {% if value is mapping %}{
+{{ render_dict_content(value, indent+1) }}
+{{ '  ' * (indent+1) }}}{% elif value is iterable and value is not string %}[{% for item in value %}{% if not loop.first %}, {% endif %}"{{ item }}"{% endfor %}]{% else %}"{{ value }}"{% endif %}{% if not loop.last %},
+{% endif %}{% endfor %}
+{%- endmacro %}
 
 {#
 This micro is design to render the arguments, kind like thinking, but based recognizer.
 #}
-{% macro ml_render_dict(data) -%}
-    {%- for key, values in data.items() %}
+{% macro ml_render_dict(data) %}
+    {%- for key, values in data.items() -%}
         {{ key }}: {{ values | join(", ") }}
-    {% endfor %}
-{%- endmacro %}
+    {%- endfor -%}
+{% endmacro %}
 
 {% macro sl_render_dict(data) -%}
     {{ data.items() | map(attribute=0) | join(", ") }}: {{ data.values() | map('join', ', ') | join(" | ") }}
