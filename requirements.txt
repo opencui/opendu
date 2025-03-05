@@ -21,3 +21,4 @@ peft~=0.5.0
 accelerate==1.0.1
 wandb
 Jinja2==3.1.5
+bitsandbytes
