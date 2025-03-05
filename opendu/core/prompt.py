@@ -2,6 +2,7 @@
 # Examples assumes that we have potentially more than one example, the goal
 # is to create a block for examples.
 #
+import json
 from abc import ABC
 from opendu.core.config import RauConfig
 from enum import Enum
@@ -83,3 +84,50 @@ if __name__ == "__main__":
     }
 
     print(PromptManager.get("skill_knn_structural")(x))
+    utterance = "I can not do it on Wednesday"
+    schema_str = """{
+        "LocalDate": {
+            "description": "type used to capture the date without time zone attached.",
+            "candidates": ["Tuesday", "July 4th"]
+        },
+        "book_dental_visit": {
+            "schema": {
+                "start_date":  {
+                    "type" : "LocalDate",
+                    "description": "the date when the reservation starts"
+                },
+                "number_of_reservations": {
+                    "type": "integer",
+                    "description": "how many times the reservation has to repeat."
+                }
+            },
+            "description": "the semantic frame needed for booking the repeated reservations"
+        }
+    }"""
+
+    examples_str = """[
+        {
+            "input": "I like to book a 5 times reservation starting on tuesday.",
+            "output": {
+                "start_data": {
+                    "=": "tuesday"
+                },
+                "number_of_reservations": {
+                    "=": 5
+                }
+            }
+        }
+    ]"""
+
+    schema = json.loads(schema_str)
+    examples = json.loads(examples_str)
+
+    x = {
+        "skill": "book_dental_visit",
+        "utterance": utterance,
+        "schema": schema,
+        "examples": examples
+    }
+
+    print(PromptManager.get("sf_se_default")(x))
+    #print(examples)
