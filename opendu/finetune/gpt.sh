@@ -42,6 +42,6 @@ accelerate launch opendu/finetune/t2t.py \
     --debug_dataset False \
     --training_mode yni  \
     --peft_mode lora \
-    --qlora_mdoe True \
+    --qlora_mode True \
     --model_type gpt \
     --trust_remote_code

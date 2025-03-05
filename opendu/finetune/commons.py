@@ -15,8 +15,8 @@ from llama_index.core.schema import TextNode
 
 from opendu.core.annotation import Schema, MatchReplace, get_value
 from opendu.core.retriever import create_index
-from opendu.finetune.structure_converter import FullExemplar, YniConverter
-from opendu.finetune.prompt_converter import SkillBcPromptConverter
+from opendu.finetune.structure_converter import FullExemplar
+
 
 #
 # We will have more than one task need to be handled.
@@ -135,7 +135,7 @@ class JsonDatasetFactory(SchemaDatasetFactory, ABC):
 # FineTuneDataset can be readily used for finetuning, they share the same structure, and
 # can be used with different prompt.
 class FtDatasetFactory(SchemaDatasetFactory, ABC):
-    def __init__(self, path, suffix="", converters=[], columns=[]):
+    def __init__(self, path, converters=[], columns=[]):
         # When the schema.json exist.
         schema_path = f"{path}/schema.json"
         self.schema = json.load(open(schema_path)) if os.path.exists(schema_path) else None
@@ -166,9 +166,9 @@ class FtDatasetFactory(SchemaDatasetFactory, ABC):
                 dataset_dict = load_dataset('json', data_files=json_file)
                 # by the default, the dataset is loaded under the key train.
                 dataset = dataset_dict["train"]
-                dataset.map(self.convert_one, batched=True, remove_columns=self.unused_columns)
+                dataset = dataset.map(self.convert_one, batched=True, remove_columns=self.unused_columns)
                 datasets.append(dataset)
-            print(f"process {json_file} with {prefix}")
+            print(f"process {json_file} with {prefix} with {self.converters}")
         return concatenate_datasets(datasets) if len(datasets) != 0 else None
 
     def __getitem__(self, split: str) -> Dataset:
@@ -188,6 +188,8 @@ class MergedDatasetFactory(SchemaDatasetFactory, ABC):
                 datasets.append(factory[split])
         return concatenate_datasets(datasets).shuffle(seed=42) if len(datasets) != 0 else None
 
+    def get(self, split:str) -> Dataset:
+        return self[split]
 
 # This inference is needed for cases where users' utterance is response to bot's prompt questions, and
 # needs the abstractive understanding instead of extractive understanding.
