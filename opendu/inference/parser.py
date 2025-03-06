@@ -8,7 +8,7 @@ import re
 from enum import Enum
 
 from opendu.inference.intent_detector import KnnIntentDetector
-from opendu.core.annotation import (EntityMetas, FrameValue, ListRecognizer, get_value)
+from opendu.core.annotation import (FrameValue, ListRecognizer, get_value, EntityStore)
 from opendu.core.config import RauConfig
 from opendu.core.prompt import (PromptManager, Task)
 from opendu.core.retriever import (ContextRetriever, load_context_retrievers)
@@ -31,7 +31,7 @@ class Parser:
     def __init__(
             self,
             retriever: ContextRetriever,
-            entity_metas: EntityMetas = None,
+            entity_metas: EntityStore = None,
             with_arguments=True,
     ):
         self.retrieve = retriever
