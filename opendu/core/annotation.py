@@ -6,7 +6,7 @@
 
 import json
 import re
-from typing import Dict, List, Literal, TypedDict, Set
+from typing import Dict, List, Literal, TypedDict, Set, Any
 from typing import Optional
 from pydantic import BaseModel, Field
 from enum import Enum
@@ -135,24 +135,18 @@ class EntityInstance(BaseModel):
     )
 
 
-class ListEntityInfo(BaseModel):
-    rec_type: Literal["list"]
-    name: str = Field(description="language dependent name")
-    description: Optional[str] = Field(description="define what is this type for.")
+class EntityType(BaseModel):
+    name: Optional[str]= Field(None, description="language dependent name")
+    description: Optional[str] = Field(None, description="define what is this type for.")
     instances: List[EntityInstance]
 
-
-# For now, we only worry about list entity in the python side, as it is mainly designed for function calling.
-class EntityMetas(BaseModel):
-    slots: Dict[str, str] = Field(
-        description="the mapping from slot name to entity name"
-    )
-    recognizers: Dict[str, ListEntityInfo] = Field(description="the name to recognizer")
+# EntityStore just need to be:  Dict[str, List[EntityInstance]]
+EntityStore = Dict[str, EntityType]
 
 
 # For now, we do not handle normalization in understanding.
 class ListRecognizer:
-    def __init__(self, infos: Dict[str, ListEntityInfo]):
+    def __init__(self, infos: Dict[str, EntityType]):
         self.infos = infos
         self.patterns = {}
         for key, info in infos.items():
@@ -181,29 +175,23 @@ class Exemplar(BaseModel):
     template: str = Field(
         description="the example utterance that should trigger the given skill"
     )
-    owner_mode: Optional[str] = Field(
+    owner_mode: Optional[str] = Field(None,
         description="the matching mode between template and owner",
-        default=None
     )
-    context_frame: Optional[str] = Field(
+    context_frame: Optional[str] = Field(None,
         description="the context slot under which this exemplar works.",
-        default=None
     )
-    context_slot: Optional[str] = Field(
+    context_slot: Optional[str] = Field(None,
         description="the context slot under which this exemplar works.",
-        default=None
     )
+    arguments: Optional[Dict[str, Any]] = Field(None)
 
     def __getitem__(self, key):
         return self.__dict__[key]
 
 
-# There are two different use cases for exemplars:
-# During fine-turning, we need both utterance and exemplars.
-# During index, we only need exemplars.
-class ExemplarStore(TypedDict):
-    name: str
-    exemplars: List[Exemplar]
+# The exemplar store should simply just be a dict.
+ExemplarStore = Dict[str, list[Exemplar]]
 
 
 def get_value(item, key, value=None):
@@ -250,7 +238,7 @@ class MatchReplace:
         return f"< {slot_name} >"
 
 
-def build_nodes_from_exemplar_store(module_schema: Schema, store: ExemplarStore, nodes: List[TextNode]):
+def build_nodes_from_exemplar_store(module_schema: Schema, store: Dict[str, List[Exemplar]], nodes: List[TextNode]):
     pattern = re.compile(r"<(.+?)>")
     for label, exemplars in store.items():
         label_to_name = MatchReplace(ToSlotName(module_schema, label))
@@ -279,7 +267,5 @@ def build_nodes_from_exemplar_store(module_schema: Schema, store: ExemplarStore,
                 )
             )
 
-if __name__ == "__main__":
-    print(json.dumps(ExemplarStore.model_json_schema(), indent=2))
 
 

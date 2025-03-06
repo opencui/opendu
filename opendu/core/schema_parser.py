@@ -6,8 +6,7 @@
 
 import json
 import os
-from opendu.core.annotation import (
-    CamelToSnake, EntityMetas, ExemplarStore, FrameSchema, Schema, SlotSchema, get_value)
+from opendu.core.annotation import (CamelToSnake, EntityType, FrameSchema, Schema, SlotSchema, get_value)
 
 
 #
@@ -79,9 +78,9 @@ def load_schema_from_directory(path):
 
 def load_all_from_directory(input_path):
     module_schema = load_schema_from_directory(f"{input_path}/schemas.json")
-    exemplars = ExemplarStore(**json.load(open(f"{input_path}/exemplars.json")))
+    exemplars = json.load(open(f"{input_path}/exemplars.json"))
     if os.path.exists(f"{input_path}/recognizers.json"):
-        recognizers = EntityMetas(**json.load(open(f"{input_path}/recognizers.json")))
+        recognizers = json.load(open(f"{input_path}/recognizers.json"))
     else:
         recognizers = None
     return module_schema, exemplars, recognizers
@@ -89,7 +88,7 @@ def load_all_from_directory(input_path):
 
 def load_specs_and_recognizers_from_directory(input_path):
     module_schema = load_schema_from_directory(f"{input_path}/schemas.json")
-    recognizers = EntityMetas(**json.load(open(f"{input_path}/recognizers.json")))
+    recognizers = json.load(open(f"{input_path}/recognizers.json"))
     return module_schema, recognizers
 
 
@@ -102,11 +101,11 @@ if __name__ == "__main__":
     print(schema)
     print("\n")
 
-    recognizer = EntityMetas(**json.load(open("./examples/openai/recognizers.json")))
+    recognizer = json.load(open("./examples/openai/recognizers.json"))
     print(recognizer)
     print("\n")
 
-    exemplars = ExemplarStore(**json.load(open("./examples/openai/exemplars.json")))
+    exemplars = json.load(open("./examples/openai/exemplars.json"))
     print(exemplars)
     print("\n")
 
