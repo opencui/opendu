@@ -16,7 +16,7 @@ from aiohttp import web
 import shutil
 from opendu.core.config import RauConfig
 from opendu.inference.parser import Parser, Generator, load_parser
-from opendu.inference.index import indexing
+from opendu.core.index import indexing
 from sentence_transformers import SentenceTransformer
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)

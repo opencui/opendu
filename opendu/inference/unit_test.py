@@ -6,7 +6,7 @@
 import unittest
 
 from opendu.inference.parser import load_parser
-from opendu.inference.index import indexing
+from opendu.core.index import indexing
 
 class AgentTest(unittest.TestCase):
     converter = None
