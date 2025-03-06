@@ -14,7 +14,7 @@ import traceback
 from opendu.core.annotation import (Exemplar, FrameSchema, build_nodes_from_exemplar_store)
 from opendu.core.embedding import EmbeddingStore
 from opendu.core.retriever import (build_nodes_from_skills, create_index)
-from opendu.inference.schema_parser import load_all_from_directory
+from opendu.core.schema_parser import load_all_from_directory
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
@@ -37,10 +37,10 @@ def indexing(module):
     output_path = f"{module}/index/"
 
     print(f"Loading {module}")
-    module_schema, examplers, recognizers = load_all_from_directory(module)
+    module_schema, exemplars, recognizers = load_all_from_directory(module)
     print(module_schema)
     build_nodes_from_skills(module, module_schema.skills, desc_nodes)
-    build_nodes_from_exemplar_store(module_schema, examplers, exemplar_nodes)
+    build_nodes_from_exemplar_store(module_schema, exemplars, exemplar_nodes)
     schemas[module] = module_schema
 
 
@@ -59,7 +59,6 @@ def indexing(module):
 # python lug-index path_for_store_index module_specs_paths_intr
 if __name__ == "__main__":
     argv = sys.argv[1:]
-    input_paths = ''
     opts, args = getopt.getopt(argv, "hs:")
 
     for opt, arg in opts:
@@ -76,4 +75,4 @@ if __name__ == "__main__":
 
     except:
         traceback.print_exc()
-        shutil.rmtree(output_path, ignore_errors=True)
+        shutil.rmtree(f"{schema_path}/index", ignore_errors=True)
