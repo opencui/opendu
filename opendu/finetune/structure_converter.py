@@ -11,7 +11,7 @@ import re
 from abc import ABC
 from collections import defaultdict
 from enum import Enum
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 from opendu.core.retriever import ContextRetriever
 from opendu.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher
@@ -28,7 +28,7 @@ class FullExemplar(BaseModel):
     id: str
     owner: str
     utterance: str  # useful for slot model
-    arguments: Dict[str, str]  # Specify the type of the values in the dictionary if needed
+    arguments: Dict[str, Any]  # Specify the type of the values in the dictionary if needed
     owner_mode: Optional[str] = Field("normal", description="The label for owner mode: literal, implied and negative.")
     template: Optional[str] = Field(None, description="Template for the exemplar.")
     context_frame: Optional[str] = Field(None, description="Context frame associated with the exemplar.")
@@ -200,7 +200,6 @@ class IdBcConverter(TrainPhase1Converter):
 
 
 
-
 # This is for slot.
 # The slot converter need to have access to entities.
 class SlotConverter(TrainPhase1Converter, ABC):
@@ -209,12 +208,16 @@ class SlotConverter(TrainPhase1Converter, ABC):
 
 #
 # This is for extractive slot value understanding.
-# For each slot, we create a question for the slot value. For some reason, it is not being used.
-# Slot filling single slot version.
+# Given an utterance, we create one structure extraction problem for target or expected strong skill,
+# We assume this will output: skill, schema, examples.
+# There are two separate decisions:
+# 1. How many examples we include, and how we select them: with examples, and without examples.
+# 2. How many candidates we include, and how we select: no candidates, and not used candidates (only for open type),
+#    and used candidates.
 #
-class SfSsConverter(SlotConverter):
+class SfSeConverter(SlotConverter):
     def __init__(self, module: Schema, entities):
-        self.prompt = PromptManager.get_builder(Task.YNI)
+        self.prompt = PromptManager.get_builder("sf_se_default")
         self.module = module
         self.include_negative = True
         # First try to be efficient.
@@ -244,6 +247,8 @@ class SfSsConverter(SlotConverter):
 
     def __call__(self, batch, ins: list[str], outs: list[str]):
         # We assume the input is dict version of AnnotatedExemplar
+        # We assume the following input: skill (can be None), utterance, argument, examples (from strong utterance).
+        # We assume this converter will add: schema, examples (weak utterances).
         for idx, sarguments in enumerate(batch["arguments"]):
             arguments = eval(sarguments)
             utterance = batch["utterance"][idx]
@@ -268,18 +273,14 @@ class SfSsConverter(SlotConverter):
                     input_dict["values"] = []
                     ins.append(self.prompt(input_dict))
                     if len(value) == 1:
-                        outs.append(
-                            self.format_value(slot_name, arguments[slot_name][0])
-                        )
+                        outs.append(self.format_value(slot_name, arguments[slot_name][0]))
                     else:
                         outs.append(self.format_value(slot_name, arguments[slot_name]))
                     # then with values.
                     input_dict["values"] = values
                     ins.append(self.prompt(input_dict))
                     if len(value) == 1:
-                        outs.append(
-                            self.format_value(slot_name, arguments[slot_name][0])
-                        )
+                        outs.append(self.format_value(slot_name, arguments[slot_name][0]))
                     else:
                         outs.append(self.format_value(slot_name, arguments[slot_name]))
                 else:
@@ -291,6 +292,7 @@ class SfSsConverter(SlotConverter):
 
 #
 # For the yes/no question, what does response imply: yes, not, don't care or not related.
+# This should produce: context, question, response, examples, which is what prompt will expect.
 #
 class YniConverter(TrainPhase1Converter, ABC):
     def __init__(self):

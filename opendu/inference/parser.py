@@ -12,7 +12,7 @@ from opendu.core.annotation import (EntityMetas, FrameValue, ListRecognizer, get
 from opendu.core.config import RauConfig
 from opendu.core.prompt import (PromptManager, Task)
 from opendu.core.retriever import (ContextRetriever, load_context_retrievers)
-from opendu.inference.schema_parser import load_all_from_directory
+from opendu.core.schema_parser import load_all_from_directory
 from opendu.inference.generator import GenerateMode, Generator
 
 from opendu.utils.json_tools import parse_json_from_string
