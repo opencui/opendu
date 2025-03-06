@@ -4,9 +4,8 @@
 # This source code is licensed under the BeThere AI license.
 # See LICENSE file in the project root for full license information.
 
-import json
 import re
-from typing import Dict, List, Literal, TypedDict, Set, Any
+from typing import Dict, List, TypedDict, Set, Any
 from typing import Optional
 from pydantic import BaseModel, Field
 from enum import Enum
@@ -43,10 +42,6 @@ class FrameSchema(BaseModel):
         self.__dict__[key] = value
 
 
-class FrameId(BaseModel):
-    name: str
-
-
 # This name inside the FrameSchema and SlotSchema is semantic bearing.
 # So there should not be overlapping between schema names.
 # the key for skills and slots does not need to be.
@@ -54,11 +49,11 @@ class Schema(BaseModel):
     skills: Dict[str, FrameSchema]
     slots: Dict[str, SlotSchema]
 
-    def get_skill(self, frame_id: FrameId):
-        return self.skills[frame_id.name]
+    def get_skill(self, frame_id: str):
+        return self.skills[frame_id]
 
-    def has_skill(self, frame_id: FrameId):
-        return frame_id.name in self.skills
+    def has_skill(self, frame_id: str):
+        return frame_id in self.skills
 
     def get_slots_descriptions_in_dict(self, frame_name: str) -> dict:
         res = {}
@@ -143,28 +138,6 @@ class EntityType(BaseModel):
 # EntityStore just need to be:  Dict[str, List[EntityInstance]]
 EntityStore = Dict[str, EntityType]
 
-
-# For now, we do not handle normalization in understanding.
-class ListRecognizer:
-    def __init__(self, infos: Dict[str, EntityType]):
-        self.infos = infos
-        self.patterns = {}
-        for key, info in infos.items():
-            instances = [item for instance in info for item in instance.expressions]
-            self.patterns[key] = re.compile("|".join(map(re.escape, instances)))
-
-    @staticmethod
-    def find_matches(patterns, slot, utterance):
-        if slot not in patterns:
-            return []
-
-        pattern = patterns[slot]
-        return pattern.findall(utterance)
-
-    def extract_values(self, slot, text):
-        return ListRecognizer.find_matches(self.patterns, slot, text)
-
-
 #
 # Owner is not needed if exemplars are listed insider function specs.
 # This exemplar is used for intent detection only, as the template
@@ -192,6 +165,27 @@ class Exemplar(BaseModel):
 
 # The exemplar store should simply just be a dict.
 ExemplarStore = Dict[str, list[Exemplar]]
+
+
+# For now, we do not handle normalization in understanding.
+class ListRecognizer:
+    def __init__(self, infos: Dict[str, EntityType]):
+        self.infos = infos
+        self.patterns = {}
+        for key, info in infos.items():
+            instances = [item for instance in info for item in instance.expressions]
+            self.patterns[key] = re.compile("|".join(map(re.escape, instances)))
+
+    @staticmethod
+    def find_matches(patterns, slot, utterance):
+        if slot not in patterns:
+            return []
+
+        pattern = patterns[slot]
+        return pattern.findall(utterance)
+
+    def extract_values(self, slot, text):
+        return ListRecognizer.find_matches(self.patterns, slot, text)
 
 
 def get_value(item, key, value=None):
