@@ -7,14 +7,28 @@
 import json
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from pydantic import BaseModel
 
-from opendu.core.annotation import (CamelToSnake, DialogExpectation, Exemplar, OwnerMode, ExactMatcher)
+from opendu.core.annotation import (CamelToSnake, Exemplar)
 from opendu.core.config import RauConfig
+from opendu.core.matcher import OwnerMode, ExactMatcher
 from opendu.core.prompt import (PromptManager, Task)
 from opendu.core.retriever import (ContextRetriever)
 from opendu.inference.generator import GenerateMode
 
 from opendu.utils.json_tools import parse_json_from_string
+
+
+class FrameState(BaseModel):
+    frame: str
+    slot: str
+    slotType: str
+
+
+# How to present context is strictly state tracking implementation dependent.
+class DialogExpectation(BaseModel):
+    context: list[FrameState]
+
 
 #
 # The intent detector try to detect all triggerable intents from user utterance, with respect to

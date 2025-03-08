@@ -6,9 +6,11 @@
 import json
 import re
 from enum import Enum
+from typing import Dict, Any
 
+from pydantic import BaseModel
 from opendu.inference.intent_detector import KnnIntentDetector
-from opendu.core.annotation import (FrameValue, ListRecognizer, get_value, EntityStore)
+from opendu.core.annotation import (ListRecognizer, get_value, EntityStore)
 from opendu.core.config import RauConfig
 from opendu.core.prompt import (PromptManager, Task)
 from opendu.core.retriever import (ContextRetriever, load_context_retrievers)
@@ -20,6 +22,11 @@ from opendu.utils.json_tools import parse_json_from_string
 # The modes that we will support.
 YesNoResult = Enum("YesNoResult", ["Affirmative", "Negative", "Indifferent", "Irrelevant"])
 
+
+# Used for serving function calling API.
+class FrameValue(BaseModel):
+    name: str
+    arguments: Dict[str, Any]
 
 #
 # This is the parser is used to convert natural language text into its semantic representation.
