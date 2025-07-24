@@ -30,12 +30,12 @@ class RauConfig:
 
     @classmethod
     def init(cls, jsonobj):
-        RauConfig._instance = BcSsYniConfig(**jsonobj)
+        RauConfig._instance = BaseConfig(**jsonobj)
 
     @classmethod
     def get(cls):
         if RauConfig._instance is None:
-            RauConfig._instance = BcSsYniConfig()
+            RauConfig._instance = BaseConfig()
         return RauConfig._instance
 
 
