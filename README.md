@@ -1,17 +1,17 @@
 # OpenDU
 
 OpenDU, is an open source dialogue understanding module, that is an agentic Retrieval-Augmented Generation
-(agentic RAG) based implementation for semantic parsing, it is designed to parse natural language into a structured 
-representation for semantic. In addition to dialog understanding for chatbot development, this package can 
+(agentic RAG) based implementation for semantic parsing, it is designed to parse natural language into a structured
+representation for semantic. In addition to dialog understanding for chatbot development, this package can
 potentially also be used for function calling for agent development. As such, we use the following terms interchangeably:
 
 - 'function', 'skill', and 'intent'
 - 'parameter' and 'slot'
 - 'semantic parsing', 'function calling' and '(dialog) understanding'
 
-It can be used with any LLMs with provided finetune script for both embedding model and generation models. Efficient 
-inference is possible using excellent project like llama.cpp, vllm. With open sourced LLMs, you can deploy the 
-entire dialog understanding or function calling API solution anywhere you want. We focus on decoder-only or 
+It can be used with any LLMs with provided finetune script for both embedding model and generation models. Efficient
+inference is possible using excellent project like llama.cpp, vllm. With open sourced LLMs, you can deploy the
+entire dialog understanding or function calling API solution anywhere you want. We focus on decoder-only or
 encoder-decoder models required by text generation.
 
 There are couple basic goals for this project:
@@ -43,23 +43,23 @@ An example in OpenAI format is as follows:
 
 ```json
 {
-    "name": "get_current_weather",
-    "description": "Get the current weather",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "location": {
-                "type": "string",
-                "description": "The city and state, e.g. San Francisco, CA"
-            },
-            "format": {
-                "type": "string",
-                "enum": ["celsius", "fahrenheit"],
-                "description": "The temperature unit to use. Infer this from the users location."
-            }
-        },
-        "required": ["location", "format"]
-    }
+  "name": "get_current_weather",
+  "description": "Get the current weather",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "location": {
+        "type": "string",
+        "description": "The city and state, e.g. San Francisco, CA"
+      },
+      "format": {
+        "type": "string",
+        "enum": ["celsius", "fahrenheit"],
+        "description": "The temperature unit to use. Infer this from the users location."
+      }
+    },
+    "required": ["location", "format"]
+  }
 }
 ```
 
@@ -71,13 +71,13 @@ An example in the json format is as follows:
 
 ```json
 {
-  "get_current_weather" : [
+  "get_current_weather": [
     {
       "template": "what is template in <location> in <format>?"
-    }, 
+    },
     {
       "template": "How cold is there?"
-    } 
+    }
   ]
 }
 ```
@@ -91,12 +91,12 @@ An example in the json format is as follows:
 ```json
 {
   "recognizers": {
-    "city" : {
+    "city": {
       "name": "city",
       "rec_type": "list",
       "description": "the place where people live",
       "instances": [
-        {"label": "seattle", "expressions" :  ["seattle", "evergreen"]}
+        { "label": "seattle", "expressions": ["seattle", "evergreen"] }
       ]
     }
   },
@@ -177,11 +177,12 @@ Todo: more detailed documentation for service.
 Retrieval methods differ for descriptions and exemplars:
 
 1. Descriptions:
-   
+
    - Use embedding-only retrieval
    - Employ asymmetrical dual embedding for vector search
+
 2. Exemplars:
-   
+
    - Use hybrid retrieval (combining embedding and keyword search)
    - Use symmetrical embedding for vector search
    - Apply the same model for both user utterances and exemplars
@@ -201,4 +202,3 @@ This project is relying on many impactful open source projects, we list the most
 
 1. [LlamaIndex](https://github.com/run-llama/llama_index) for RAG implementation.
 2. [huggingface.ai](https://huggingface.ai) for dataset, fine-tuning
-
