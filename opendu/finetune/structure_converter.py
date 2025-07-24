@@ -14,7 +14,8 @@ from enum import Enum
 from typing import Optional, Dict, Any
 
 from opendu.core.retriever import ContextRetriever
-from opendu.core.annotation import Schema, Exemplar, ListRecognizer, OwnerMode, ExactMatcher
+from opendu.core.annotation import Schema, Exemplar, ListRecognizer
+from opendu.core.matcher import OwnerMode, ExactMatcher
 from opendu.core.prompt import (Task, PromptManager)
 from pydantic import BaseModel, Field
 
