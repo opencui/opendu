@@ -61,6 +61,16 @@ class BcIntentDetector(IntentDetector, ABC):
         self.generator = generator
 
     def build_skill_prompts(self, text, skills, exemplar_nodes):
+        # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
+        exemplars = [
+            Exemplar(
+                owner=node.metadata["owner"],
+                template=node.text,
+                owner_mode=node.metadata["owner_mode"]
+            )
+            for node in exemplar_nodes
+        ]
+
         skill_metas = []
         for skill in skills:
             skill_metas.append({
@@ -68,7 +78,7 @@ class BcIntentDetector(IntentDetector, ABC):
                 "description": skill.description,
                 "examples": skill.slots
             })
-
+    
     def build_prompts_by_examples(self, text, nodes):
         skill_prompts = []
         owners = []
