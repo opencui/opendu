@@ -13,9 +13,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, 
 from opendu import ModelType
 from opendu.core.config import RauConfig
 from vllm import LLM, SamplingParams
-from vllm.sampling_params import GuidedDecodingParams
-from lmformatenforcer import Enforcer, AllowedTokensGuidance
-
+from pydantic import BaseModel, Field
 
 # The modes that we will support.
 # GeneratorType = Enum("Generator", ["FftGenerator", "LoraGenerator"])
