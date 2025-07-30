@@ -59,7 +59,7 @@ class FftVllmGenerator(Generator, ABC):
             repetition_penalty=expectation.repetition_penalty if expectation else 1.0,
         )
 
-        if (len(expectation.choices) > 0):
+        if (expectation.choices is not None and len(expectation.choices) > 0):
             samplingParams = SamplingParams(
                 **samplingParams.model_dump(),
                 guided_choice=["Yes", "No"],
