@@ -20,11 +20,11 @@ from pydantic import BaseModel, Field
 GenerateMode = Enum("GenerateMode", ["desc", "exemplar", "extractive", "nli"])
 
 class OutputExpectation(BaseModel):
-    temperature: Float = Field(default=0.0, description="Temperature for the decoding process.")
-    top_p: Float = Field(default=0.9, description="Top-p, e.g., 'The answer is {answer}'.")
+    temperature: float = Field(default=0.0, description="Temperature for the decoding process.")
+    top_p: float = Field(default=0.9, description="Top-p, e.g., 'The answer is {answer}'.")
     top_k: int = Field(default=50, description="Top-k, e.g., 'The answer is {answer}'.")
     max_new_tokens: int = Field(default=256, description="Maximum number of new tokens to generate.")
-    repetition_penalty: Float = Field(default=1.0, description="Repetition penalty for the decoding process.")
+    repetition_penalty: float = Field(default=1.0, description="Repetition penalty for the decoding process.")
     choices: list[str] = Field(default=[], description="List of expected outputs from the model.")
 
 # In case you are curious about decoding: https://huggingface.co/blog/how-to-generate
