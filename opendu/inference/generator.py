@@ -14,11 +14,20 @@ from opendu import ModelType
 from opendu.core.config import RauConfig
 from vllm import LLM, SamplingParams
 from vllm.sampling_params import GuidedDecodingParams
+from lmformatenforcer import Enforcer, AllowedTokensGuidance
 
 
 # The modes that we will support.
 # GeneratorType = Enum("Generator", ["FftGenerator", "LoraGenerator"])
 GenerateMode = Enum("GenerateMode", ["desc", "exemplar", "extractive", "nli"])
+
+class OutputExpectation(BaseModel):
+    temperature: Float = Field(default=0.0, description="Temperature for the decoding process.")
+    top_p: Float = Field(default=0.9, description="Top-p, e.g., 'The answer is {answer}'.")
+    top_k: int = Field(default=50, description="Top-k, e.g., 'The answer is {answer}'.")
+    max_new_tokens: int = Field(default=256, description="Maximum number of new tokens to generate.")
+    repetition_penalty: Float = Field(default=1.0, description="Repetition penalty for the decoding process.")
+    choices: list[str] = Field(default=[], description="List of expected outputs from the model.")
 
 # In case you are curious about decoding: https://huggingface.co/blog/how-to-generate
 # We are not interested in the variance, so we do not do sampling not beam search.
@@ -32,7 +41,7 @@ GenerateMode = Enum("GenerateMode", ["desc", "exemplar", "extractive", "nli"])
 # local/s-lora. Converter is built on top of generator.
 class Generator(ABC):
     @abstractmethod
-    def generate(self, input_texts: list[str]):
+    def generate(self, input_texts: list[str], expectation: OutputExpectation = OutputExpectation):
         pass
 
     def process_return(self, outputs: list[str], input_texts: list[str]):
@@ -43,8 +52,23 @@ class FftVllmGenerator(Generator, ABC):
     def __init__(self, model: str):
         self.model = LLM(model=model, enable_prefix_caching=True)
 
-    def generate(self, input_texts: list[str]):
-        outputs = self.model.generate(input_texts)
+    def generate(self, input_texts: list[str], expectation: OutputExpectation = None):
+        samplingParams = SamplingParams(
+            temperature=expectation.temperature if expectation else 0.0,
+            top_p=expectation.top_p if expectation else 0.9,
+            top_k=expectation.top_k if expectation else 50,
+            max_tokens=expectation.max_new_tokens if expectation else 256,
+            repetition_penalty=expectation.repetition_penalty if expectation else 1.0,
+        )
+
+        if (len(expectation.choices) > 0):
+            samplingParams = SamplingParams(
+                **samplingParams.model_dump(),
+                guided_choice=["Yes", "No"],
+                guided_decoding_backend="lm-format-enforcer"
+            )
+
+        outputs = self.model.generate(input_texts, sampling_params=samplingParams)
         return self.process_return(outputs, input_texts)
 
 
