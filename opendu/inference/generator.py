@@ -39,30 +39,30 @@ class OutputExpectation(BaseModel):
 # local/s-lora. Converter is built on top of generator.
 class Generator(ABC):
     @abstractmethod
-    def generate(self, input_texts: list[str], expectation: OutputExpectation = OutputExpectation):
+    def generate(self, input_texts: list[str], expectation: OutputExpectation):
         pass
 
     def process_return(self, outputs: list[str], input_texts: list[str]):
         return outputs
 
 
-class FftVllmGenerator(Generator, ABC):
+class FftVllmGenerator(Generator):
     def __init__(self, model: str):
         self.model = LLM(model=model, enable_prefix_caching=True)
 
-    def generate(self, input_texts: list[str], expectation: OutputExpectation):
+    def generate(self, input_texts: list[str], expectation: OutputExpectation=OutputExpectation()):
         samplingParams = SamplingParams(
-            temperature=expectation.temperature if expectation else 0.0,
-            top_p=expectation.top_p if expectation else 0.9,
-            top_k=expectation.top_k if expectation else 50,
-            max_tokens=expectation.max_new_tokens if expectation else 256,
-            repetition_penalty=expectation.repetition_penalty if expectation else 1.0,
+            temperature=expectation.temperature,
+            top_p=expectation.top_p,
+            top_k=expectation.top_k,
+            max_tokens=expectation.max_new_tokens,
+            repetition_penalty=expectation.repetition_penalty,
         )
 
         if (expectation.choices is not None and len(expectation.choices) > 0):
             samplingParams = SamplingParams(
                 **samplingParams.model_dump(),
-                guided_choice=["Yes", "No"],
+                guided_choice=expectation.choices,
                 guided_decoding_backend="lm-format-enforcer"
             )
 
