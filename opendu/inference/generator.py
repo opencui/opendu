@@ -25,7 +25,7 @@ class OutputExpectation(BaseModel):
     top_k: int = Field(default=50, description="Top-k, e.g., 'The answer is {answer}'.")
     max_new_tokens: int = Field(default=256, description="Maximum number of new tokens to generate.")
     repetition_penalty: float = Field(default=1.0, description="Repetition penalty for the decoding process.")
-    choices: list[str] = Field(default=[], description="List of expected outputs from the model.")
+    choices: list[str] = Field(default_factory=list, description="List of expected outputs from the model.")
 
 # In case you are curious about decoding: https://huggingface.co/blog/how-to-generate
 # We are not interested in the variance, so we do not do sampling not beam search.
