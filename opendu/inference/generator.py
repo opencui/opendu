@@ -12,6 +12,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, 
 
 from opendu import ModelType
 from opendu.core.config import RauConfig
+from vllm import LLM, SamplingParams, GuidedDecodingParams
+
 
 
 # The modes that we will support.
@@ -254,3 +256,9 @@ class FftGenerator(Generator, ABC):
         results = self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
         return self.process_return(results, input_texts)
 
+
+if __name__ == "__main__":
+    llm = LLM(model="Qwen/Qwen3-4B", enable_prefix_caching=True)
+    sampling_params = SamplingParams(guided_decoding=GuidedDecodingParams(json_schema={"type": "object", "properties": {"summary": {"type": "string"}}}))
+    prompt = "System: Summarize in JSON. Dialog: User: Help with order. Assistant: What's the issue?"
+    output = llm.generate(prompt, sampling_params)
