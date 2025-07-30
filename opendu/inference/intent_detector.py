@@ -30,6 +30,13 @@ class DialogExpectation(BaseModel):
     context: list[FrameState]
 
 
+class SkillDemonstration(BaseModel):
+    owner: str
+    owner_mode: str = "normal"
+    description: str = ""
+    exemplars: list[Exemplar] = []
+
+
 #
 # The intent detector try to detect all triggerable intents from user utterance, with respect to
 # existing conversational history, summarized in expectations. However, expectations are only used
@@ -45,56 +52,22 @@ class IntentDetector(ABC):
         pass
 
 
-# This is used to pick the owner by first accumulate on the exemplars by weight 2
-# then accumulate on desc by weight 1.
-class SingleOwnerKnnPicker:
-    def __init__(self, expected):
-        self.counts = defaultdict(int)
-        # This we make sure that
-        self.modes = [OwnerMode.normal]
-        self.expectedTypes = SingleOwnerKnnPicker.get_types(expected)
-        self.weightForExpected = 0.0
-        
-    def accumulate(self, flags: list[bool], owners: list[str], weight=2):
-        assert len(flags) == len(owners)
-        for index, flag in enumerate(flags):
-            if flag:
-                self.counts[owners[index]] += weight
-
-    @staticmethod
-    def get_types(expected: list[DialogExpectation]):
-        types = set()
-        for expectation in expected:
-            type = expectation["frame"]
-            if type is not None or type != "":
-                types.add(type)
-        return types
-
-    def boost_expected(self, pairs):
-        # Currently not used.
-        for pair in pairs:
-            if pair[0] in self.expectedTypes:
-                pair[1] += self.weightForExpected
-
-    def decide(self):
-        pairs = list(self.counts.items())
-        pairs.sort(key=lambda x: -x[1])
-
-        pairs = list(filter(lambda x: x[1] > 1, pairs))
-        return None if len(pairs) == 0 else pairs[0][0]
 
 
-# This use nearest neighbors in the exemplar space, and some simple voting for determine the skills.
-class KnnIntentDetector(IntentDetector, ABC):
+# Intent dectection cast as single class, binary classification problem.
+class BcIntentDetector(IntentDetector, ABC):
     def __init__(self, retriever: ContextRetriever, generator):
         self.retrieve = retriever
         self.generator = generator
-        self.desc_prompt = PromptManager.get_builder(Task.SKILL_DESC)
-        self.example_prompt = PromptManager.get_builder(Task.SKILL)
-        self.use_exemplar = True
-        self.use_desc = True
-        assert self.use_desc or self.use_exemplar
-        self.matcher = ExactMatcher                
+
+    def build_skill_prompts(self, text, skills, exemplar_nodes):
+        skill_metas = []
+        for skill in skills:
+            skill_metas.append({
+                "name": skill.name,
+                "description": skill.description,
+                "examples": skill.slots
+            })
 
     def build_prompts_by_examples(self, text, nodes):
         skill_prompts = []

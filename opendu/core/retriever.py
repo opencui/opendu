@@ -193,6 +193,7 @@ def dedup_nodes(old_results: list[TextNode], with_mode, arity=1):
     return new_results
 
 
+
 class ContextMatcher:
     def __init__(self, frame):
         self.frame = frame["frame"]
@@ -221,6 +222,14 @@ class ContextRetriever:
         assert(e_retriever is not None)
         self.arity = RauConfig.get().exemplar_retrieve_arity
         self.extended_mode = False
+
+    def get_skill_from_node(self, desc_nodes: list[TextNode], exemplar_nodes: list[TextNode]) -> list[FrameSchema]:
+        all_nodes = dedup_nodes(desc_nodes + exemplar_nodes, False, 1)
+        owners = [ item.metadata["owner"] for item in all_nodes ]
+
+        # Need to remove the bad owner/func/skill/intent.
+        skills = [self.module.get_skill(owner) for owner in owners if self.module.has_skill(owner)]
+        return skills
 
     def retrieve_by_desc(self, query):
         # The goal here is to find the combined descriptions and exemplars.
@@ -274,13 +283,8 @@ class ContextRetriever:
 
         # So we do not have too many exemplars from the same skill
         exemplar_nodes = dedup_nodes(exemplar_nodes, True, self.arity)
+        skills = self.get_skill_from_node(desc_nodes, exemplar_nodes)
 
-        all_nodes = dedup_nodes(desc_nodes + exemplar_nodes, False, 1)
-
-        owners = [ item.metadata["owner"] for item in all_nodes ]
-
-        # Need to remove the bad owner/func/skill/intent.
-        skills = [self.module.get_skill(owner) for owner in owners if self.module.has_skill(owner)]
         return skills, exemplar_nodes
 
 
