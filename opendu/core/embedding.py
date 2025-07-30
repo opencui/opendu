@@ -14,14 +14,15 @@ from torch import Tensor
 
 from opendu.core.config import RauConfig
 from jinja2 import Template
-
+from enum import Enum
 
 # There are two different retrieval tasks:
 # 1. desc, where query is query, and key/text is the deescription.
 # 2. exemplar, wehre query is query, and key/text is exemplar.
-
-DESC = "desc"
-EXEMPLAR = "exemplar"
+class EmbeddingType(str, Enum):
+    DESC = "desc"
+    EXEMPLAR = "exemplar"
+    PAIR = "pair"
 
 
 # We reuse the underlying embedding when we can.
@@ -46,10 +47,6 @@ class EmbeddingStore:
 
     @classmethod
     def get_embedding_by_task(cls, kind):
-        # make sure 
-        if kind != "desc" and kind != "exemplar":
-            raise RuntimeError("We can only handle desc and exemplar")
-        
         model_name = RauConfig.get().embedding_model
         model = EmbeddingStore.get_model(RauConfig.get().embedding_model)
         if model_name.startswith("dunzhang"):
@@ -58,8 +55,10 @@ class EmbeddingStore:
             return KalmEmbeddings(model, kind)
         elif model_name.startswith("HIT"):
             return KalmEmbeddings(model, kind)
+        elif model_name.startswith("Qwen"):
+            return Qwen3Embeddings(model, kind)
         else:
-            return BaaiEmbeddings(model, kind)
+            raise ValueError(f"Unsupported embedding model: {model_name}")
     
     @classmethod
     def for_description(cls) -> BaseEmbedding:
@@ -129,14 +128,13 @@ class InstructedEmbeddings(BaseEmbedding):
         return self._get_text_embedding(text)
 
     def _get_query_embedding(self, query: str) -> Tensor:
-        return self._model.encode(self.expand_for_query(query), normalize_embeddings=True, show_progress_bar=False)
+        return self._model.encode(query, prompt=self._instructions["query"], normalize_embeddings=True, show_progress_bar=False)
 
     def _get_text_embedding(self, text: str) -> Tensor:
-        return self._model.encode(self.expand_for_content(text), normalize_embeddings=True, show_progress_bar=False)
+        return self._model.encode(text, prompt=self._instructions["key"], normalize_embeddings=True, show_progress_bar=False)
 
     def _get_text_embeddings(self, texts: List[str]) -> List[List[float]]:
-        texts = [self._instructions["key"] + key for key in texts]
-        embeddings = self._model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
+        embeddings = self._model.encode(texts, prompt=self._instructions["key"], normalize_embeddings=True, show_progress_bar=False)
         return embeddings.tolist()
 
 
@@ -146,11 +144,11 @@ class KalmEmbeddings(InstructedEmbeddings):
 
     # We need different instruction pairs for different use cases.
     prompts: ClassVar[dict[str, dict[str, str]]] = {
-        DESC : {
+        EmbeddingType.DESC : {
             "query": "Instruct: Given a query, retrieve the related intent.\n Query:",
             "key": ""
         },
-        EXEMPLAR : {
+        EmbeddingType.EXEMPLAR : {
             "query": "Instruct: Given a query, retrieve the related intent.\n Query:",
             "key": "Instruct: Given a query, Retrieve the related intent.\n Query:",
         }
@@ -167,19 +165,24 @@ class KalmEmbeddings(InstructedEmbeddings):
         self._instructions = KalmEmbeddings.prompts[kind]
 
 
-class PairEmbeddings(InstructedEmbeddings):
+
+class Qwen3Embeddings(InstructedEmbeddings):
     _instructions: dict[str, str] = PrivateAttr()
     _model: SentenceTransformer = PrivateAttr()
 
     # We need different instruction pairs for different use cases.
     prompts: ClassVar[dict[str, dict[str, str]]] = {
-        DESC : {
-            "query": "Instruct: Given a query, retrieve the related intent.\n Query:",
+        EmbeddingType.DESC : {
+            "query": "Instruct: Given an utterance, retrieve the related skill description.",
             "key": ""
         },
-        EXEMPLAR : {
-            "query": "Instruct: evaluate the response to the yes/no question\n Query:",
-            "key": "Instruct: evaluate the response to the yes/no question\n Query:",
+        EmbeddingType.EXEMPLAR : {
+            "query": "",
+            "key": "",
+        },
+        EmbeddingType.PAIR : {
+            "query": "Instruct: Encode this question answer pair based on how the answer addresses about the question.",
+            "key": "Instruct: Encode this quesion answer pair based on how the answer addresses about the question."
         }
     }
 
@@ -191,65 +194,7 @@ class PairEmbeddings(InstructedEmbeddings):
     ) -> None:
         super().__init__(**kwargs)
         self._model = model
-        self._instructions = KalmEmbeddings.prompts[kind]
-
-
-# This is for BAAI
-class BaaiEmbeddings(BaseEmbedding):
-    _instructions: dict[str, str] = PrivateAttr()
-    _model: SentenceTransformer = PrivateAttr()
-
-    # We need different instruction pairs for different use cases.
-    prompts: ClassVar[dict[str, dict[str, str]]] = {
-        DESC : {
-            "query": "",
-            "key": "Represent this sentence for searching relevant passages:"
-        },
-        EXEMPLAR : {
-            "query": "",
-            "key": ""
-        }
-    }
-
-    def __init__(
-        self,
-        model: SentenceTransformer,
-        kind: str,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(**kwargs)
-        self._model = model
-        self._instructions = BaaiEmbeddings.prompts[kind]
-
-
-    @classmethod
-    def class_name(cls) -> str:
-        return "instructor"
-
-    # embedding might have two different modes: one for query, and one for key/text.
-
-    def expand_for_content(self, query):
-        return f"{self._instructions['key']} {query}"
-
-    def expand_for_query(self, query):
-        return f"{self._instructions['query']} {query}"
-
-    async def _aget_query_embedding(self, query: str) -> List[float]:
-        return self._get_query_embedding(query)
-
-    async def _aget_text_embedding(self, text: str) -> List[float]:
-        return self._get_text_embedding(text)
-
-    def _get_query_embedding(self, query: str) -> List[float]:
-        return self._model.encode(self.expand_for_query(query), normalize_embeddings=True)
-
-    def _get_text_embedding(self, text: str) -> List[float]:
-        return self._model.encode(self.expand_for_content(text), normalize_embeddings=True)
-
-    def _get_text_embeddings(self, texts: List[str]) -> List[List[float]]:
-        texts = [self._instructions["key"] + key for key in texts]
-        embeddings = self._model.encode(texts, normalize_embeddings=True)
-        return embeddings.tolist()
+        self._instructions = Qwen3Embeddings.prompts[kind]
 
 
 def println(str):
@@ -279,8 +224,8 @@ class Comparer:
 if __name__ == "__main__":
 
     compare = Comparer(
-        EmbeddingStore.get_embedding_by_task("desc"),
-        EmbeddingStore.get_embedding_by_task("exemplar")
+        EmbeddingStore.get_embedding_by_task(EmbeddingType.DESC),
+        EmbeddingStore.get_embedding_by_task(EmbeddingType.EXEMPLAR)
     )
 
     u0 = "okay, i'd like to make a transfer of 370 dollars from checking to alex"
@@ -409,6 +354,11 @@ if __name__ == "__main__":
     u0 = "drink can be newValue\ndrink can be oldValue\nchange to drink."
     t0 = 'red can be newValue\nred can be old Value\nchange to red.'
     compare(u0, t0)
+
+    compare = Comparer(
+        EmbeddingStore.get_embedding_by_task(EmbeddingType.PAIR),
+        EmbeddingStore.get_embedding_by_task(EmbeddingType.PAIR)
+    )
 
 
     u0 = "Question: are you ok with this?\nAnswer: I love it."
