@@ -12,8 +12,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, 
 
 from opendu import ModelType
 from opendu.core.config import RauConfig
-from vllm import LLM, SamplingParams, GuidedDecodingParams
-
+from vllm import LLM, SamplingParams
+from vllm.sampling_params import GuidedDecodingParams
 
 
 # The modes that we will support.
