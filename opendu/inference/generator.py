@@ -14,7 +14,7 @@ from opendu import ModelType
 from opendu.core.config import RauConfig
 from vllm import LLM, SamplingParams
 from vllm.sampling_params import GuidedDecodingParams
-from lmformatenforcer import JsonSchemaGuidance
+
 
 # The modes that we will support.
 # GeneratorType = Enum("Generator", ["FftGenerator", "LoraGenerator"])
@@ -56,5 +56,5 @@ if __name__ == "__main__":
     prompts = ["System: Summarize in JSON. Dialog: User: Help with order. Assistant: What's the issue?"]
 
     output = llm.generate(prompts)
-    
+
     print(output)
