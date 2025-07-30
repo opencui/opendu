@@ -18,7 +18,7 @@ from vllm.sampling_params import GuidedDecodingParams
 
 # The modes that we will support.
 # GeneratorType = Enum("Generator", ["FftGenerator", "LoraGenerator"])
-# GenerateMode = Enum("GenerateMode", ["desc", "exemplar", "extractive", "nli"])
+GenerateMode = Enum("GenerateMode", ["desc", "exemplar", "extractive", "nli"])
 
 # In case you are curious about decoding: https://huggingface.co/blog/how-to-generate
 # We are not interested in the variance, so we do not do sampling not beam search.
