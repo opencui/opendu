@@ -50,7 +50,7 @@ class FftVllmGenerator(Generator, ABC):
     def __init__(self, model: str):
         self.model = LLM(model=model, enable_prefix_caching=True)
 
-    def generate(self, input_texts: list[str], expectation: OutputExpectation = None):
+    def generate(self, input_texts: list[str], expectation: OutputExpectation):
         samplingParams = SamplingParams(
             temperature=expectation.temperature if expectation else 0.0,
             top_p=expectation.top_p if expectation else 0.9,
