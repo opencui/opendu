@@ -5,16 +5,11 @@
 import json
 from abc import ABC
 from opendu.core.annotation import FrameSchema
-from opendu.core.config import RauConfig
+from opendu.core.config import RauConfig, Task
 from enum import Enum
 from jinja2 import Environment, FileSystemLoader
 
 
-# We only work with well-defined task.
-class Task(Enum):
-    IdBc = "id_bc",
-    SfSs = "sf_ss",
-    Yni = "yni"
 
 
 class IOMode(Enum):
