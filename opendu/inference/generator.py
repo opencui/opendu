@@ -23,7 +23,6 @@ class OutputExpectation(BaseModel):
     temperature: float = Field(default=0.0, description="Temperature for the decoding process.")
     top_p: float = Field(default=0.9, description="Top-p, e.g., 'The answer is {answer}'.")
     top_k: int = Field(default=50, description="Top-k, e.g., 'The answer is {answer}'.")
-    max_new_tokens: int = Field(default=256, description="Maximum number of new tokens to generate.")
     repetition_penalty: float = Field(default=1.0, description="Repetition penalty for the decoding process.")
     choices: list[str] = Field(default_factory=list, description="List of expected outputs from the model.")
 
@@ -51,20 +50,21 @@ class FftVllmGenerator(Generator):
         self.model = LLM(model=model, enable_prefix_caching=True)
 
     def generate(self, input_texts: list[str], expectation: OutputExpectation=OutputExpectation()):
-        samplingParams = SamplingParams(
-            temperature=expectation.temperature,
-            top_p=expectation.top_p,
-            top_k=expectation.top_k,
-            max_tokens=expectation.max_new_tokens,
-            repetition_penalty=expectation.repetition_penalty,
-        )
+        sampling_kwargs = {
+            "temperature": expectation.temperature,
+            "top_p": expectation.top_p,
+            "top_k": expectation.top_k,
+            "repetition_penalty": expectation.repetition_penalty,
+        }
 
-        if (expectation.choices is not None and len(expectation.choices) > 0):
-            samplingParams = SamplingParams(
-                **samplingParams.model_dump(),
-                guided_choice=expectation.choices,
-                guided_decoding_backend="lm-format-enforcer"
-            )
+        if expectation.choices:
+            sampling_kwargs.update({
+                "guided_choice": expectation.choices,
+                "guided_decoding_backend": "lm-format-enforcer"
+            })
+
+        samplingParams = SamplingParams(**sampling_kwargs)
+
 
         outputs = self.model.generate(input_texts, sampling_params=samplingParams)
         return self.process_return(outputs, input_texts)
