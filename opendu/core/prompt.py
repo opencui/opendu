@@ -4,6 +4,7 @@
 #
 import json
 from abc import ABC
+from opendu.core.annotation import FrameSchema
 from opendu.core.config import RauConfig
 from enum import Enum
 from jinja2 import Environment, FileSystemLoader
@@ -59,6 +60,7 @@ class PromptManager(ABC):
 if __name__ == "__main__":
     print(Task.IdBc.value[0])
 
+
     examples = [
         {"response": "April 2st", "label": "related"},
         {"response": "April 3st", "label": "unrelated"}
@@ -70,6 +72,8 @@ if __name__ == "__main__":
         "examples": examples
     }
 
+
+        
     print(PromptManager.get("yni_default")(x))
 
     examples = [
