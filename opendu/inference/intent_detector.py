@@ -14,7 +14,7 @@ from opendu.core.config import RauConfig
 from opendu.core.matcher import OwnerMode, ExactMatcher
 from opendu.core.prompt import (PromptManager, Task)
 from opendu.core.retriever import (ContextRetriever)
-from opendu.inference.generator import FftVllmGenerator, GenerateMode
+from opendu.inference.generator import FftVllmGenerator, GenerateMode, OutputExpectation
 
 from opendu.utils.json_tools import parse_json_from_string
 from itertools import islice
@@ -214,5 +214,5 @@ if __name__ == "__main__":
 
     generator = FftVllmGenerator(model="Qwen/Qwen3-4B")
 
-    output = generator.generate([prompt])
+    output = generator.generate([prompt], OutputExpectation(choices=["True", "False"]))
     print(output)
