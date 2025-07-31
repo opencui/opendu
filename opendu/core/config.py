@@ -7,7 +7,12 @@ from dataclasses import field
 from pydantic import BaseModel, Field
 from enum import Enum
 
-from opendu.core.prompt import Task
+
+# We only work with well-defined task.
+class Task(Enum):
+    IdBc = "id_bc",
+    SfSs = "sf_ss",
+    Yni = "yni"
 
 
 # This is used for configure the project during the index and training.
