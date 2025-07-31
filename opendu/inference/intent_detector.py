@@ -137,45 +137,13 @@ class BcIntentDetector(IntentDetector, ABC):
         
         skill_outputs = self.generator.generate(skill_prompts, GenerateMode.extractive)
 
-        if RauConfig.get().converter_debug:
-            desc_prompts, owners = self.build_prompts_by_desc(text, skills)
 
-            desc_outputs = self.generator.generate(desc_prompts, GenerateMode.desc)
-            desc_preds = [
-                parse_json_from_string(raw_flag, None)
-                for index, raw_flag in enumerate(desc_outputs)
-            ]
 
-            if debug:
-                print(desc_prompts)
-                print(desc_preds)
-                self.accumulate_debug_for_skills(desc_preds, skills, debug_infos)
-
-            picker.accumulate(desc_preds, owners, 1)
-
+    
         label = picker.decide()
         return label, list(map(node_to_exemplar, exemplar_nodes)), debug_infos
 
 
-    @staticmethod
-    def update(preds, truth, counts, skill_prompts, skill_outputs, output=True):
-        pairs = list([str(item) for item in zip(preds, truth)])
-        if output:
-            print(json.dumps(skill_prompts, indent=2))
-            print(json.dumps(pairs, indent=2))
-
-        pairs = zip(preds, truth)
-        for index, pair in enumerate(pairs):
-            if pair[0] != pair[1] and output:
-                print(f"At {index}, {skill_prompts[index]} : {skill_outputs[index]}, not correct.")
-
-        pairs = zip(preds, truth)
-        for pair in pairs:
-            if pair[1] is None:
-                continue
-            index = 2 if pair[0] else 0
-            index += 1 if pair[1] else 0
-            counts[index] += 1
 
 
 def node_to_exemplar(node):
@@ -214,5 +182,6 @@ if __name__ == "__main__":
 
     generator = FftVllmGenerator(model="Qwen/Qwen3-4B")
 
-    output = generator.generate([prompt0, prompt1], OutputExpectation(choices=["True", "False"]))
-    print(output)
+    raw_output = generator.generate([prompt0, prompt1], OutputExpectation(choices=["True", "False"]))
+    outputs = [output.outputs for output in raw_output]
+    print(outputs)
