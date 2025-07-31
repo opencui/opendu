@@ -48,7 +48,7 @@ class Generator(ABC):
 
 class FftVllmGenerator(Generator):
     def __init__(self, model: str):
-        self.model = LLM(model=model, structured_output_backend="lm-format-enforcer", enable_prefix_caching=True)
+        self.model = LLM(model=model, enable_prefix_caching=True)
 
     def generate(self, input_texts: list[str], expectation: OutputExpectation=OutputExpectation()):
         sampling_kwargs = {
