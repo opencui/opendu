@@ -210,6 +210,8 @@ if __name__ == "__main__":
     build_prompt = PromptManager.get_builder(Task.IdBc, input_mode=True)
     prompt = build_prompt({"utterance": "can you help me to build a table reservation module", "skill": skill, "examples": examples, "arguments": {}})
 
+    print(prompt)
+
     generator = FftVllmGenerator(model="Qwen/Qwen3-4B")
 
     output = generator.generate([prompt])
