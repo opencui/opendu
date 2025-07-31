@@ -19,10 +19,11 @@ from enum import Enum
 # There are two different retrieval tasks:
 # 1. desc, where query is query, and key/text is the deescription.
 # 2. exemplar, wehre query is query, and key/text is exemplar.
+# using embedding to find the connection between two pieces of text is hard.
+#
 class EmbeddingType(str, Enum):
     DESC = "desc"
     EXEMPLAR = "exemplar"
-    PAIR = "pair"
 
 
 # We reuse the underlying embedding when we can.
@@ -49,13 +50,7 @@ class EmbeddingStore:
     def get_embedding_by_task(cls, kind):
         model_name = RauConfig.get().embedding_model
         model = EmbeddingStore.get_model(RauConfig.get().embedding_model)
-        if model_name.startswith("dunzhang"):
-            return StellaEmbeddings(model, kind)
-        elif model_name.startswith("intfloat"):
-            return KalmEmbeddings(model, kind)
-        elif model_name.startswith("HIT"):
-            return KalmEmbeddings(model, kind)
-        elif model_name.startswith("Qwen"):
+        if model_name.startswith("Qwen"):
             return Qwen3Embeddings(model, kind)
         else:
             raise ValueError(f"Unsupported embedding model: {model_name}")
@@ -67,41 +62,6 @@ class EmbeddingStore:
     @classmethod
     def for_exemplar(cls) -> BaseEmbedding:
         return EmbeddingStore.get_embedding_by_task(EXEMPLAR)
-
-
-# This embedding is based on Stella.
-# This embedding has two different modes: one for query, and one for description.
-class StellaEmbeddings(BaseEmbedding):
-    _instructions: dict[str, str] = PrivateAttr()
-    _model: SentenceTransformer = PrivateAttr()
-    _query_prompt: dict[str, str] = PrivateAttr()
-    _text_prompt: dict[str, str] = PrivateAttr()
-
-    def __init__(self, model: SentenceTransformer, kind: str, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self._model = model
-        self._query_prompt = {"prompt_name": "s2p_query" } if kind == DESC else {"prompt_name": "s2s_query" }
-        self._text_prompt = {} if kind == DESC else {"prompt_name": "s2s_query" }
-
-    @classmethod
-    def class_name(cls) -> str:
-        return "stella"
-
-    async def _aget_query_embedding(self, query: str) -> List[float]:
-        return self._get_query_embedding(query)
-
-    async def _aget_text_embedding(self, text: str) -> List[float]:
-        return self._get_text_embedding(text)
-
-    def _get_query_embedding(self, query: str) -> List[float]:
-        return self._model.encode(query, normalize_embeddings=True, show_progress_bar=False, **self._query_prompt)
-
-    def _get_text_embedding(self, text: str) -> List[float]:
-        return self._model.encode(text, normalize_embeddings=True, show_progress_bar=False, **self._text_prompt)
-
-    def _get_text_embeddings(self, texts: List[str]) -> List[List[float]]:
-        embeddings = self._model.encode(texts, normalize_embeddings=True, **self._text_prompt)
-        return embeddings.tolist()
 
 
 # This model support many languages, since it is based on qwen 2.5/0.5b
@@ -138,34 +98,6 @@ class InstructedEmbeddings(BaseEmbedding):
         return embeddings.tolist()
 
 
-class KalmEmbeddings(InstructedEmbeddings):
-    _instructions: dict[str, str] = PrivateAttr()
-    _model: SentenceTransformer = PrivateAttr()
-
-    # We need different instruction pairs for different use cases.
-    prompts: ClassVar[dict[str, dict[str, str]]] = {
-        EmbeddingType.DESC : {
-            "query": "Instruct: Given a query, retrieve the related intent.\n Query:",
-            "key": ""
-        },
-        EmbeddingType.EXEMPLAR : {
-            "query": "Instruct: Given a query, retrieve the related intent.\n Query:",
-            "key": "Instruct: Given a query, Retrieve the related intent.\n Query:",
-        }
-    }
-
-    def __init__(
-        self,
-        model: SentenceTransformer,
-        kind: str,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(**kwargs)
-        self._model = model
-        self._instructions = KalmEmbeddings.prompts[kind]
-
-
-
 class Qwen3Embeddings(InstructedEmbeddings):
     _instructions: dict[str, str] = PrivateAttr()
     _model: SentenceTransformer = PrivateAttr()
@@ -179,10 +111,6 @@ class Qwen3Embeddings(InstructedEmbeddings):
         EmbeddingType.EXEMPLAR : {
             "query": "",
             "key": "",
-        },
-        EmbeddingType.PAIR : {
-            "query": "Instruct: Encode this question answer pair based on how the answer addresses about the question.",
-            "key": "Instruct: Encode this quesion answer pair based on how the answer addresses about the question."
         }
     }
 
