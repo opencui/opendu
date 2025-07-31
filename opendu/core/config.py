@@ -7,6 +7,8 @@ from dataclasses import field
 from pydantic import BaseModel, Field
 from enum import Enum
 
+from opendu.core.prompt import Task
+
 
 # This is used for configure the project during the index and training.
 class ModelType(Enum):
@@ -60,7 +62,7 @@ class BcSsYniFullConfig(BaseModel):
     # sf -> slot filling, ss -> single slot (could be frame or multi slots).
     # yni-bethere -> boolean gate, yes/no/irrelevant
     # the last part is to identify prompt template.
-    prompt: dict[str, str] = Field(default_factory=lambda: {"id_bc": "id_bc_literal", "yni": "yni_default"})
+    prompt: dict[Task, str] = Field(default_factory=lambda: {Task.IdBc: "id_bc_literal", Task.SfSs: "sf_ss_literal", Task.Yni: "yni_default"})
 
 
     # All task should share the same base model
