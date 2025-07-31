@@ -259,5 +259,5 @@ if __name__ == "__main__":
         BcSkillExample(template="can you help me to build a table reservation module", label=True), 
         BcSkillExample(template="I like to reserve a table", label=False)
                 ]
-    prompt = PromptManager.get_builder(Task.IdBc)
+    prompt = PromptManager.get_builder("id_bc_literal")
     print(prompt({"skill": skill, "examples": examples}))
