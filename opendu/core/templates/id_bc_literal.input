@@ -1,4 +1,4 @@
-Determine whether the given utterance means "{{skill.name}}": {{skill.description}}, output true or false.\n'
+Determine whether the given utterance means "{{skill.name}}": {{skill.description}}, output True or False.\n'
 {% if examples %}
 Here some examples:
 {% for example in examples %}
