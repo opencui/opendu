@@ -14,7 +14,7 @@ from opendu.core.config import RauConfig
 from opendu.core.matcher import OwnerMode, ExactMatcher
 from opendu.core.prompt import (PromptManager, Task)
 from opendu.core.retriever import (ContextRetriever)
-from opendu.inference.generator import GenerateMode
+from opendu.inference.generator import FftVllmGenerator, GenerateMode
 
 from opendu.utils.json_tools import parse_json_from_string
 from itertools import islice
@@ -48,10 +48,6 @@ class SkillDemonstration(BaseModel):
 class IntentDetector(ABC):
     @abstractmethod
     def detect_intents(self, text, expectations=None, debug=False):
-        pass
-
-    @abstractmethod
-    def grade(self, text, owner, owner_mode, counts_dict):
         pass
 
 
@@ -126,16 +122,21 @@ class BcIntentDetector(IntentDetector, ABC):
         # Now we should use the expectation for improve node score, and filtering
         # the contextual template that is not match.
         skill_prompts = []
+        build_prompt = PromptManager.get_builder(Task.IdBc, input_mode=True)
         for skill_demonstration in skill_with_exemplars:
             skill_prompts.append(
-                PromptManager.get_builder(Task.SKILL)(
+                build_prompt(
                     {
                         "skill": skill_demonstration.skill,
                         "exemplars": skill_demonstration.exemples,
-                        "utterance": text
+                        "utterance": text,
+                        "arguments": candidates
                     }
                 )
             )
+        
+        skill_outputs = self.generator.generate(skill_prompts, GenerateMode.extractive)
+
         if RauConfig.get().converter_debug:
             desc_prompts, owners = self.build_prompts_by_desc(text, skills)
 
@@ -176,59 +177,6 @@ class BcIntentDetector(IntentDetector, ABC):
             index += 1 if pair[1] else 0
             counts[index] += 1
 
-    def grade(self, text, owner, owner_mode, count_dict):
-        if not self.matcher.is_good_mode(owner_mode):
-            return
-
-        picker = SingleOwnerKnnPicker([])
-        # nodes owner are always included in the
-        skills, nodes = self.retrieve(text, [])
-
-        # for exemplar
-        exemplar_prompts, owners, owner_modes = self.build_prompts_by_examples(text, nodes, CamelToSnake)
-        exemplar_outputs = self.generator.generate(exemplar_prompts, GenerateMode.exemplar)
-        exemplar_preds = [
-            parse_json_from_string(raw_flag, raw_flag)
-            for index, raw_flag in enumerate(exemplar_outputs)
-        ]
-        exemplar_truth = [
-            self.matcher.agree(owner, owner_mode, lowner, owner_modes[index])
-            for index, lowner in enumerate(owners)]
-
-        assert len(exemplar_preds) == len(exemplar_truth)
-        picker.accumulate(exemplar_preds, owners, 2)
-
-        # for desc
-        desc_prompts, owners = self.build_prompts_by_desc(text, skills, CamelToSnake)
-        desc_outputs = self.generator.generate(desc_prompts, GenerateMode.desc)
-        desc_preds = [
-            parse_json_from_string(raw_flag, None)
-            for index, raw_flag in enumerate(desc_outputs)
-        ]
-        desc_truth = [owner == lowner and OwnerMode[owner_mode] == OwnerMode.normal for lowner in owners]
-        assert len(desc_preds) == len(desc_truth)
-
-        picker.accumulate(desc_preds, owners, 1)
-        counts = count_dict["skill"]
-        predicted_owner = picker.decide()
-        concrete = count_dict["skills"]
-        if predicted_owner == owner and OwnerMode[owner_mode] in picker.modes:
-            counts[1] += 1
-            debug_output = False
-            concrete[owner][1] += 1
-        else:
-            counts[0] += 1
-            debug_output = True
-            concrete[owner][0] += 1
-
-        if debug_output:
-            print(f"\n\nMade mistakes on: [ {text} ] expecting [{owner}] but get [{predicted_owner}].")
-            print(json.dumps(picker.counts))
-
-        # We only output when there is a need for study
-        self.update(exemplar_preds, exemplar_truth, count_dict["exemplar"], exemplar_prompts, exemplar_outputs, debug_output)
-        self.update(desc_preds, desc_truth, count_dict["desc"], desc_prompts, desc_outputs, debug_output)
-
 
 def node_to_exemplar(node):
     meta = node.metadata
@@ -261,3 +209,8 @@ if __name__ == "__main__":
                 ]
     prompt = PromptManager.get_builder(Task.IdBc, input_mode=True)
     print(prompt({"utterance": "can you help me to build a table reservation module", "skill": skill, "examples": examples, "arguments": {}}))
+
+    generator = FftVllmGenerator(model="Qwen/Qwen3-4B")
+
+    output = generator.generate([prompt])
+    print(output)
