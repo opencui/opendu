@@ -9,7 +9,7 @@ from enum import Enum
 from typing import Dict, Any
 
 from pydantic import BaseModel
-from opendu.inference.intent_detector import KnnIntentDetector
+from opendu.inference.intent_detector import BcIntentDetector
 from opendu.core.annotation import (ListRecognizer, get_value, EntityStore)
 from opendu.core.config import RauConfig
 from opendu.core.prompt import (PromptManager, Task)
