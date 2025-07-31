@@ -56,7 +56,8 @@ reduce the possibility of prefix being cached.
 {%- endmacro %}
 
 {#
-This micro is design to render the arguments, kind like thinking, but based recognizer.
+This micro is design to render the arguments, kind like thinking, but based on the
+recognizer result.
 #}
 {% macro ml_render_dict(data) %}
     {%- for key, values in data.items() -%}

@@ -7,6 +7,7 @@
 import json
 from abc import ABC, abstractmethod
 from collections import defaultdict
+import random
 from pydantic import BaseModel
 
 from opendu.core.annotation import (CamelToSnake, Exemplar, FrameSchema)
@@ -135,16 +136,14 @@ class BcIntentDetector(IntentDetector, ABC):
                 )
             )
         
-        skill_outputs = self.generator.generate(skill_prompts, GenerateMode.extractive)
-
-
-
+        skill_outputs = self.generator.generate(skill_prompts, OutputExpectation(choices=["True", "False"])).output
+        # For now we assume single intent.
     
-        label = picker.decide()
+        zipped = list(zip(skills, skill_outputs))
+        # Later we can run this twice, first with examples (more trustworthy), then without examples.
+        label = next((paired[0].name for paired in zipped if paired[1].outputs == "True"), None)
+
         return label, list(map(node_to_exemplar, exemplar_nodes)), debug_infos
-
-
-
 
 def node_to_exemplar(node):
     meta = node.metadata

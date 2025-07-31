@@ -1,18 +1,42 @@
 {% from 'sf.base' import render_slot, render_dict %}
-Given the json representation of schemas for skill: {{skill}} and its dependency data structures, extract values
-from the input text for skill: {{skill}}:
+
+You are given a JSON schema describing the expected output for the skill {{skill.name}}: {{skill.description }}.
+
+## Extraction Task
+Extract information from the given utterance with respect to the skill according to the following schema:
 
 {{ render_dict(schema) }}
 
-{# example should be emitted if there is no example. #}
+## Analysis Framework
+1. **Intent Match**: the utterance can potentially mention more than one skills, only extract the information from portion of utterance that aligns with "{{skill.description}}"?
+2. **Use provided candidate cautiously**: some context independent extractor have extract the information based on type only, but since the same type can be used more than once in some skill, like "city" can be used as both arrival and departure, you need to take the surrounding words into account, do not blindly trust candidates.
+3. **Extract in the verbatim**: No need to do normalization in this step, just extract the raw information as is.
+4. **Use common sense**: some information like first names are not provided as candidates, so use common sense to extract.
 
 {% if examples %}
- Here are some examples:
-  {% for example in examples %}
-    Input: {{example.input}}
-    Output: {{example.output}}
-  {% endfor %}
+## Examples
+{% for example in examples %}
+**Input:**  
+{{ example.input }}
+
+**Expected Output:**  
+{{ example.output }}
+
+{% endfor %}
+{% else %}
+## Example
+**Input:**  
+"Book a table for two at 7 pm tomorrow at Sushi Place."
+
+**Expected Output:**  
+```json
+{
+  "restaurant": "Sushi Place",
+  "datetime": "7 pm tomorrow",
+  "party_size": "two"
+}
 {% endif %}
 
-Input: {{utterance}}
-Output:
+Now extract from the following input:
+Input:  {{ utterance }}
+Output (in JSON format):
