@@ -75,7 +75,6 @@ class BcSsYniFullConfig(BaseModel):
     eval_mode: bool = True
 
     # We will append instance.desc/instance.exemplar to this.
-    generator: str = "BcSsYniGenerator"
 
     # When we use one lora for each task, which we should not.
     #id_bc_model: str = "OpenCUI/IdBc-Qwen2.5-7B-Instruct-0.1"
