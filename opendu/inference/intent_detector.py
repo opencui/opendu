@@ -208,7 +208,7 @@ if __name__ == "__main__":
         BcSkillExample(template="I like to reserve a table", label=False)
                 ]
     build_prompt = PromptManager.get_builder(Task.IdBc, input_mode=True)
-    prompt = build_prompt({"utterance": "can you help me to build a table reservation module", "skill": skill, "examples": examples, "arguments": {}}))
+    prompt = build_prompt({"utterance": "can you help me to build a table reservation module", "skill": skill, "examples": examples, "arguments": {}})
 
     generator = FftVllmGenerator(model="Qwen/Qwen3-4B")
 
