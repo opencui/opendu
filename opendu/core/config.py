@@ -60,7 +60,8 @@ class BcSsYniFullConfig(BaseModel):
     # sf -> slot filling, ss -> single slot (could be frame or multi slots).
     # yni-bethere -> boolean gate, yes/no/irrelevant
     # the last part is to identify prompt template.
-    prompt: dict = Field(default_factory=lambda: {"id_bc": "id_bc_literal", "yni": "yni_default"})
+    prompt: dict[str, str] = Field(default_factory=lambda: {"id_bc": "id_bc_literal", "yni": "yni_default"})
+
 
     # All task should share the same base model
     base_model: str = "Qwen/Qwen3-4B"
