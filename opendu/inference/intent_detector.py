@@ -127,8 +127,16 @@ class BcIntentDetector(IntentDetector, ABC):
         # the contextual template that is not match.
         skill_prompts = []
         for skill_demonstration in skill_with_exemplars:
-            
-        if self.use_desc:
+            skill_prompts.append(
+                PromptManager.get_builder(Task.SKILL)(
+                    {
+                        "skill": skill_demonstration.skill,
+                        "exemplars": skill_demonstration.exemples,
+                        "utterance": text
+                    }
+                )
+            )
+        if RauConfig.get().converter_debug:
             desc_prompts, owners = self.build_prompts_by_desc(text, skills)
 
             desc_outputs = self.generator.generate(desc_prompts, GenerateMode.desc)
@@ -239,3 +247,17 @@ def node_to_exemplar(node):
         result["contextSlot"] = meta["context_slot"]
 
     return result
+
+
+if __name__ == "__main__":
+
+    skill = FrameSchema(
+        name="build_reservation_module",
+        description="build a reservation module")
+
+    examples = [
+        BcSkillExample(template="can you help me to build a table reservation module", label=True), 
+        BcSkillExample(template="I like to reserve a table", label=False)
+                ]
+    prompt = PromptManager.get_builder(Task.IdBc)
+    print(prompt({"skill": skill, "examples": examples}))
