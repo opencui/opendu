@@ -14,6 +14,7 @@ from opendu import ModelType
 from opendu.core.config import RauConfig
 from vllm import LLM, SamplingParams
 from pydantic import BaseModel, Field
+from vllm.sampling_params import GuidedDecodingParams, GuidedDecodingBackend
 
 # The modes that we will support.
 # GeneratorType = Enum("Generator", ["FftGenerator", "LoraGenerator"])
@@ -58,10 +59,10 @@ class FftVllmGenerator(Generator):
         }
 
         if expectation.choices:
-            sampling_kwargs.update({
-                "guided_choice": expectation.choices,
-                "guided_decoding_backend": "lm-format-enforcer"
-            })
+            sampling_kwargs["guided_decoding"] = GuidedDecodingParams(
+                guided_choices=expectation.choices,
+                guided_decoding_backend=GuidedDecodingBackend.LM_FORMAT_ENFORCER
+            )
 
         samplingParams = SamplingParams(**sampling_kwargs)
 
