@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from pydantic import BaseModel
 
-from opendu.core.annotation import (CamelToSnake, Exemplar)
+from opendu.core.annotation import (CamelToSnake, Exemplar, FrameSchema)
 from opendu.core.config import RauConfig
 from opendu.core.matcher import OwnerMode, ExactMatcher
 from opendu.core.prompt import (PromptManager, Task)
@@ -17,7 +17,7 @@ from opendu.core.retriever import (ContextRetriever)
 from opendu.inference.generator import GenerateMode
 
 from opendu.utils.json_tools import parse_json_from_string
-
+from itertools import islice
 
 class FrameState(BaseModel):
     frame: str
@@ -30,11 +30,14 @@ class DialogExpectation(BaseModel):
     context: list[FrameState]
 
 
+class BcSkillExample(BaseModel):
+    template: str
+    label: bool # True for positive, False for negative.
+
+
 class SkillDemonstration(BaseModel):
-    owner: str
-    owner_mode: str = "normal"
-    description: str = ""
-    exemplars: list[Exemplar] = []
+    skill: FrameSchema
+    exemples: list[BcSkillExample] = []
 
 
 #
@@ -53,14 +56,26 @@ class IntentDetector(ABC):
 
 
 
-
+# Because it is potentially a multi-class problem, we use the binary classification as the
+# tradeoff between cost (performance) and flexibility(accuracy).
 # Intent dectection cast as single class, binary classification problem.
 class BcIntentDetector(IntentDetector, ABC):
     def __init__(self, retriever: ContextRetriever, generator):
         self.retrieve = retriever
         self.generator = generator
 
-    def build_skill_prompts(self, text, skills, exemplar_nodes):
+    @staticmethod
+    def get_closest_template(owner: str, exemplars: list[Exemplar], k: int) -> list[BcSkillExample]:
+        positives = list(map(lambda x: BcSkillExample(template=x.template, label=True), islice((x for x in exemplars if x.owner == owner), k)))
+        negatives = list(map(lambda x: BcSkillExample(template=x.template, label=False), islice((x for x in exemplars if x.owner != owner), k)))
+        if len(positives) == 0 or len(negatives) == 0:
+            return []
+        else:
+            return random.shuffle(positives + negatives)
+        
+
+
+    def build_skills(self, text, skills, exemplar_nodes) -> list[SkillDemonstration]:
         # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
         exemplars = [
             Exemplar(
@@ -73,48 +88,14 @@ class BcIntentDetector(IntentDetector, ABC):
 
         skill_metas = []
         for skill in skills:
-            skill_metas.append({
-                "name": skill.name,
-                "description": skill.description,
-                "examples": skill.slots
-            })
-    
-    def build_prompts_by_examples(self, text, nodes):
-        skill_prompts = []
-        owners = []
-        owner_modes = []
-
-        # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
-        exemplars = [
-            Exemplar(
-                owner=node.metadata["owner"],
-                template=node.text,
-                owner_mode=node.metadata["owner_mode"]
+            skill_metas.append(
+                SkillDemonstration(
+                    skill=skill,
+                    exemples= self.get_closest_template(skill.name, exemplars, 1)
+                )
             )
-            for node in nodes
-        ]
-
-        for exemplar in exemplars:
-            print(f"process template: {exemplar.template}")
-            input_dict = {"utterance": text, "template": exemplar.template}
-            skill_prompts.append(self.example_prompt(input_dict))
-            owners.append(exemplar.owner)
-            owner_modes.append(exemplar.owner_mode)
-
-        return skill_prompts, owners, owner_modes
-
-    def build_prompts_by_desc(self, text, skills):
-        skill_prompts = []
-        owners = []
-
-        # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
-        # for now, we process it once.
-        for skill in skills:
-            print(f"process skill: {skill}")
-            input_dict = {"utterance": text, "skill": skill}
-            skill_prompts.append(self.desc_prompt(input_dict))
-            owners.append(skill["name"])
-        return skill_prompts, owners
+        return skill_metas
+    
 
     @staticmethod
     def parse_results(skill_prompts, owners, skill_outputs, owner_modes):
@@ -129,61 +110,24 @@ class BcIntentDetector(IntentDetector, ABC):
         return [owners[index] for index, flag in enumerate(flags) if flag]
 
 
-    @staticmethod
-    def accumulate_debug_for_exemplars(preds, nodes, infos):
-        assert len(preds) == len(nodes)
-        for index in range(len(preds)):
-            item = {
-                "type": "exemplar",
-                "owner": nodes[index].metadata["owner"],
-                "text": nodes[index].text,
-                "result": preds[index]
-            }
-            infos.append(item)
 
-    @staticmethod
-    def accumulate_debug_for_skills(preds, skills, infos):
-        assert len(preds) == len(skills)
-        for index in range(len(preds)):
-            item = {
-                "type": "desc",
-                "owner": skills[index].name,
-                "text": skills[index].description,
-                "result": preds[index]
-            }
-            infos.append(item)
 
     def detect_intents(self, text, expectations, candidates, debug=False):
         print(f"parse for skill: {text} with {expectations} and {candidates}")
         # For now, we only pick one skill
-        picker = SingleOwnerKnnPicker(expectations)
         # TODO: try to use candidates. 
         skills, exemplar_nodes = self.retrieve(text)
         print(f"get_skills for {text} with {len(exemplar_nodes)} nodes\n")
 
         debug_infos = []
 
-        # for exemplar
-        if self.use_exemplar:
-            exemplar_prompts, owners, _ = self.build_prompts_by_examples(text, exemplar_nodes)
-            exemplar_outputs = self.generator.generate(exemplar_prompts, GenerateMode.exemplar)
-
-            exemplar_preds = [
-                parse_json_from_string(raw_flag, raw_flag)
-                for _, raw_flag in enumerate(exemplar_outputs)
-            ]
-
-            if debug:
-                print(exemplar_prompts)
-                print(exemplar_preds)
-                self.accumulate_debug_for_exemplars(exemplar_preds, exemplar_nodes, debug_infos)
-
-            picker.accumulate(exemplar_preds, owners, 1)
+        skill_with_exemplars = self.build_skills(text, skills, exemplar_nodes)
 
         # Now we should use the expectation for improve node score, and filtering
         # the contextual template that is not match.
-
-        # for desc
+        skill_prompts = []
+        for skill_demonstration in skill_with_exemplars:
+            
         if self.use_desc:
             desc_prompts, owners = self.build_prompts_by_desc(text, skills)
 
