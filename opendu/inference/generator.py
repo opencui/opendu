@@ -60,8 +60,8 @@ class FftVllmGenerator(Generator):
 
         if expectation.choices:
             sampling_kwargs["guided_decoding"] = GuidedDecodingParams(
-                guided_choices=expectation.choices,
-                guided_decoding_backend="lm-format-enforcer"
+                choice=expectation.choices,
+                backend="lm-format-enforcer"
             )
 
         samplingParams = SamplingParams(**sampling_kwargs)
