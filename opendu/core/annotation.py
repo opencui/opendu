@@ -220,4 +220,100 @@ def build_nodes_from_exemplar_store(module_schema: Schema, store: Dict[str, List
             )
 
 
+#
+# This is used to build the JSON schema for the given frame and slots.
+#
+from typing import List, Dict, Set, Any
+from pydantic import BaseModel
 
+
+def build_json_schema(
+    root_frame_name: str,
+    frames: List[FrameSchema],
+    slots: List[SlotSchema],
+    include_deps: bool = True
+) -> Dict[str, Any]:
+    slot_dict: Dict[str, SlotSchema] = {slot.name: slot for slot in slots}
+    frame_dict: Dict[str, FrameSchema] = {frame.name: frame for frame in frames}
+
+    visited_frames: Set[str] = set()
+    visited_slots: Set[str] = set()
+    components: Dict[str, Dict[str, Any]] = {}
+
+    def resolve_slot_type(slot_name: str) -> Dict[str, Any]:
+        visited_slots.add(slot_name)
+        slot = slot_dict[slot_name]
+
+        if slot.type in {"string", "number", "boolean", "integer"}:
+            schema = {"type": slot.type}
+        elif slot.type in frame_dict:
+            visited_frames.add(slot.type)
+            # Reference component schema
+            schema = {"$ref": f"#/components/schemas/{slot.type}"}
+            # Ensure nested frame is resolved
+            if slot.type not in components:
+                components[slot.type] = resolve_frame(frame_dict[slot.type])
+        else:
+            schema = {"type": "string"}
+
+        schema["description"] = slot.description
+        if slot.examples:
+            schema["examples"] = sorted(slot.examples)
+        return schema
+
+    def resolve_frame(frame: FrameSchema) -> Dict[str, Any]:
+        props = {}
+        required = []
+        for slot_name in frame.slots:
+            if slot_name in slot_dict:
+                props[slot_name] = resolve_slot_type(slot_name)
+                required.append(slot_name)
+
+        return {
+            "type": "object",
+            "description": frame.description,
+            "properties": props,
+            "required": required,
+            "additionalProperties": False
+        }
+
+    # Root schema
+    visited_frames.add(root_frame_name)
+    root_schema = resolve_frame(frame_dict[root_frame_name])
+
+    # Final output
+    result = {
+        "title": root_frame_name,
+        **root_schema,
+        "components": {
+            "schemas": {name: schema for name, schema in components.items()}
+        }
+    }
+
+    if include_deps:
+        result["$deps"] = {
+            "frames": sorted(visited_frames),
+            "slots": sorted(visited_slots)
+        }
+
+    return result
+
+
+if __name__ == "__main__":
+    slots = [
+        SlotSchema(name="lat", description="Latitude", type="number"),
+        SlotSchema(name="lng", description="Longitude", type="number"),
+        SlotSchema(name="loc", description="GPS location", type="Coordinates"),
+        SlotSchema(name="time", description="Time of day", type="string"),
+        SlotSchema(name="irrelevant", description="unused slot", type="string"),
+    ]
+
+    frames = [
+        FrameSchema(name="Coordinates", description="GPS Coordinates", slots=["lat", "lng"]),
+        FrameSchema(name="WeatherQuery", description="Ask about weather", slots=["loc", "time"]),
+        FrameSchema(name="UnusedFrame", description="Should not appear", slots=["irrelevant"]),
+    ]
+
+    json_schema = build_json_schema("WeatherQuery", frames, slots)
+
+    print(json_schema)

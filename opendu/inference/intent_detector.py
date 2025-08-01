@@ -122,7 +122,7 @@ class BcIntentDetector(IntentDetector, ABC):
     
         zipped = list(zip(skills, skill_outputs))
         # Later we can run this twice, first with examples (more trustworthy), then without examples.
-        label = next((paired[0].name for paired in zipped if paired[1].outputs == "True"), None)
+        label = next((paired[0].name for paired in zipped if paired[1].outputs.text == "True"), None)
 
         return label, list(map(node_to_exemplar, exemplar_nodes)), debug_infos
 
