@@ -52,7 +52,6 @@ class IntentDetector(ABC):
         pass
 
 
-
 # Because it is potentially a multi-class problem, we use the binary classification as the
 # tradeoff between cost (performance) and flexibility(accuracy).
 # Intent dectection cast as single class, binary classification problem.
@@ -69,8 +68,6 @@ class BcIntentDetector(IntentDetector, ABC):
             return []
         else:
             return random.shuffle(positives + negatives)
-        
-
 
     def build_skills(self, text, skills, exemplar_nodes) -> list[SkillDemonstration]:
         # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
@@ -93,22 +90,6 @@ class BcIntentDetector(IntentDetector, ABC):
             )
         return skill_metas
     
-
-    @staticmethod
-    def parse_results(skill_prompts, owners, skill_outputs, owner_modes):
-        if RauConfig.get().converter_debug:
-            print(json.dumps(skill_prompts, indent=2))
-            print(json.dumps(skill_outputs, indent=2))
-
-        flags = [
-            parse_json_from_string(raw_flag, None)
-            for index, raw_flag in enumerate(skill_outputs)
-        ]
-        return [owners[index] for index, flag in enumerate(flags) if flag]
-
-
-
-
     def detect_intents(self, text, expectations, candidates, debug=False):
         print(f"parse for skill: {text} with {expectations} and {candidates}")
         # For now, we only pick one skill

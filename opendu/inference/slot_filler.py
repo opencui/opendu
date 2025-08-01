@@ -36,12 +36,115 @@ class EntitySlotMeta(SlotMeta):
 class FrameSlotMeta(SlotMeta):
     slots: Dict[str, SlotMeta]
 
-
+#
 # The slot filler takes task description, and slot descriptions, candidate values and
 # generate the json representation of values.
 #
 #
-class SlotFiller(ABC):
+class SlotExtractor(ABC):
     @abstractmethod
-    def extract_values(self, text, expectations:FrameSchema, candidates: dict):
+    def extract_values(self, text, expectation:FrameSchema, candidates: dict):
         pass
+
+# For each slot, we can use a different extraction, or we can extract everything at once.
+# One of the question that we need to answer is, how do we handle the extraction from response?
+class StructuredExtractor(SlotExtractor):
+    def __init__(self, slot_metas: Dict[str, SlotMeta]):
+        self.slot_metas = slot_metas
+
+    def build_skills(self, text, skill, exemplar_nodes) -> list[SkillDemonstration]:
+        # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
+        exemplars = [
+            Exemplar(
+                owner=node.metadata["owner"],
+                template=node.text,
+                owner_mode=node.metadata["owner_mode"]
+            )
+            for node in exemplar_nodes
+        ]
+
+        skill_metas = []
+        for skill in skills:
+            skill_metas.append(
+                SkillDemonstration(
+                    skill=skill,
+                    exemples= self.get_closest_template(skill.name, exemplars, 1)
+                )
+            )
+        return skill_metas
+    
+    def extract_values(self, text, expectations, candidates, debug=False):
+        print(f"parse for skill: {text} with {expectations} and {candidates}")
+        # For now, we only pick one skill
+        # TODO: try to use candidates. 
+        skills, exemplar_nodes = self.retrieve(text)
+        print(f"get_skills for {text} with {len(exemplar_nodes)} nodes\n")
+
+        debug_infos = []
+
+        skill_with_exemplars = self.build_skills(text, skills, exemplar_nodes)
+
+        # Now we should use the expectation for improve node score, and filtering
+        # the contextual template that is not match.
+        skill_prompts = []
+        build_prompt = PromptManager.get_builder(Task.IdBc, input_mode=True)
+        for skill_demonstration in skill_with_exemplars:
+            skill_prompts.append(
+                build_prompt(
+                    {
+                        "skill": skill_demonstration.skill,
+                        "exemplars": skill_demonstration.exemples,
+                        "utterance": text,
+                        "arguments": candidates
+                    }
+                )
+            )
+        
+        skill_outputs = self.generator.generate(skill_prompts, OutputExpectation(choices=["True", "False"])).output
+        # For now we assume single intent.
+    
+        zipped = list(zip(skills, skill_outputs))
+        # Later we can run this twice, first with examples (more trustworthy), then without examples.
+        label = next((paired[0].name for paired in zipped if paired[1].outputs == "True"), None)
+
+        return label, list(map(node_to_exemplar, exemplar_nodes)), debug_infos
+
+def node_to_exemplar(node):
+    meta = node.metadata
+    result = {
+        "type": "exemplar",
+        "template": meta["template"],
+        "ownerFrame": meta["owner"]
+    }
+
+    # The optional information. Kotlin side use label instead of owner_mode.
+    if meta["owner_mode"] != "normal":
+        result["label"] = meta["owner_mode"]
+    if meta["context_frame"] != "":
+        result["contextFrame"] = meta["context_frame"]
+    if meta["context_slot"] != "":
+        result["contextSlot"] = meta["context_slot"]
+
+    return result
+
+
+if __name__ == "__main__":
+
+    skill = FrameSchema(
+        name="build_reservation_module",
+        description="build a reservation module")
+
+    examples = [
+        BcSkillExample(template="can you help me to build a table reservation module", label=True), 
+        BcSkillExample(template="I like to reserve a table", label=False)
+                ]
+    build_prompt = PromptManager.get_builder(Task.IdBc, input_mode=True)
+    prompt0 = build_prompt({"utterance": "can you help me to make a table reservation please?", "skill": skill, "examples": examples, "arguments": {}})
+    prompt1 = build_prompt({"utterance": "I like to build a table reservation module, please", "skill": skill, "examples": examples, "arguments": {}})
+    print(prompt0)
+
+    generator = FftVllmGenerator(model="Qwen/Qwen3-4B")
+
+    raw_output = generator.generate([prompt0, prompt1], OutputExpectation(choices=["True", "False"]))
+    outputs = [output.outputs for output in raw_output]
+    print(outputs)

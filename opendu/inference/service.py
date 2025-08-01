@@ -32,7 +32,7 @@ Enum("DugMode", ["SKILL", "SLOT", "BINARY", "SEGMENT"])
 """
 curl -X POST -d '{"mode":"SKILL","utterance":"make a reservation","expectations":[],"slotMetas":[],"entityValues":{},"questions":[]}' 127.0.0.1:3001/v1/predict/tableReservation
 curl -X POST -d '{"mode":"BINARY","utterance":"Yes, absolutely.","questions":["Are you sure you want the white one?"]}' 127.0.0.1:3001/v1/predict/agent
-curl -X POST -d '{"mode": "SLOT", "utterance": "order food", "slots": [], "candidates": {}, "dialogActs": []}' http://127.0.0.1:3001/v1/predict/tableReservation
+curl -X POST -d '{"mode": "SLOT", "utterance": "order food", "frames": [], "slots": [], "candidates": {}, "dialogActs": []}' http://127.0.0.1:3001/v1/predict/tableReservation
 """
 
 @routes.get("/hello")
@@ -103,13 +103,6 @@ async def understand(request: web.Request):
     mode = req.get("mode")
     l_converter: Parser = request.app["converters"][bot]
 
-    if mode == "DESCSIM":
-        descriptions = req.get("descriptions")
-        return web.json_response({})
-
-    if mode == "EXEMPLARSIM":
-        exemplars = req.get("exemplars")
-        return web.json_response({})
 
     if mode == "DEBUG":
         expectations = req.get("expectations")
@@ -123,16 +116,16 @@ async def understand(request: web.Request):
         try:
             expectations = req.get("expectations")
             candidates = req.get("candidates")
-            results = l_converter.detect_triggerables(utterance, expectations)
+            results = l_converter.detect_triggerables(utterance, expectations, candidates)
         except Exception as e:
             traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
             return web.Response(text=traceback_str, status=500)
-
         return web.json_response(results)
 
     if mode == "SLOT":
         try:
             slots = req.get("slots")
+            frames = req.get("frames")
             entities = req.get("candidates")
             results = l_converter.fill_slots(utterance, slots, entities)
             logging.info(results)
