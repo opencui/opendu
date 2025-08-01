@@ -311,9 +311,9 @@ def build_json_schema(
 
 if __name__ == "__main__":
     slots = [
-        SlotSchema(name="lat", description="Latitude", type="number"),
+        SlotSchema(name="lat", description="Latitude", type="number", multi_value=True),
         SlotSchema(name="lng", description="Longitude", type="number"),
-        SlotSchema(name="loc", description="GPS location", type="Coordinates"),
+        SlotSchema(name="loc", description="GPS location", type="Coordinates", multi_value=True),
         SlotSchema(name="time", description="Time of day", type="string"),
         SlotSchema(name="irrelevant", description="unused slot", type="string"),
     ]
