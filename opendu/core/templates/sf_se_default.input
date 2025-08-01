@@ -4,13 +4,6 @@
 ## Task Overview
 Extract the value for slot `{{slot.name}}` from the given utterance within the context of task: **{{skill.description}}**
 
-**Slot Description:** {{slot.description}}
-**
-**Json Schema for slot type:**
-```json
-{{ json_schema }}
-```
-
 ## Extraction Guidelines
 
 ### 1. Context Filtering
@@ -35,7 +28,24 @@ Extract the value for slot `{{slot.name}}` from the given utterance within the c
 - Omit optional fields that cannot be determined
 - For arrays, return empty `[]` if no values found
 
-## Templates
+## Extraction target slot
+**Slot Description:** {{slot.description}}
+**Json Schema for slot type:**
+```json
+{{ json_schema }}
+```
+
+{% if tepmplates %}
+## Usage Templates
+These templates illustrate how slot-relevant phrases commonly appear in utterance, pay attention to their context or surrounding words. 
+Notice it also shows the phrases of the same type can sometime fill different slots.  
+
+{% for template in templates %}
+{{ template }}
+{% endfor %}
+{% else %}
+
+## Examples:
 {% if examples %}
 {% for example in examples %}
 ### Example {{loop.index}}
@@ -62,5 +72,4 @@ Extract the value for slot `{{slot.name}}` from the given utterance within the c
 
 ## Your Task
 **Input:** {{ utterance }}
-
 **Output:** (Return only valid JSON matching the schema)
