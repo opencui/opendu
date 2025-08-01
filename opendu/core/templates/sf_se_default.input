@@ -1,42 +1,66 @@
-{% from 'sf.base' import render_slot, render_dict %}
 
+# Slot Value Extraction
 
+## Task Overview
+Extract the value for slot `{{slot.name}}` from the given utterance within the context of task: **{{skill.description}}**
 
-## Extraction Task
-Given a JSON schema describing the expected configuration for the skill {{skill.name}}: {{skill.description }},  extract information from the given utterance with respect to the schema:
+**Slot Description:** {{slot.description}}
+**
+**Json Schema for slot type:**
+```json
+{{ json_schema }}
+```
 
-{{ render_dict(schema) }}
+## Extraction Guidelines
 
-## Analysis Framework
-1. **Intent Match**: the utterance can potentially mention more than one skills, only extract the information from portion of utterance that aligns with "{{skill.description}}"?
-2. **Use provided candidate cautiously**: some context independent extractor have extract the information based on type only, but since the same type can be used more than once in some skill, like "city" can be used as both arrival and departure, you need to take the surrounding words into account, do not blindly trust candidates.
-3. **Extract in the verbatim**: No need to do normalization in this step, just extract the raw information as is.
-4. **Use common sense**: some information like first names are not provided as candidates, so use common sense to extract.
+### 1. Context Filtering
+- Focus only on the portion of the utterance that relates to "{{skill.description}}"
+- Ignore information related to other skills or intents that may be present
 
+### 2. Candidate Validation
+- Pre-extracted candidates are provided as hints, not ground truth
+- Validate candidates against context (e.g., "Paris" could be departure OR arrival city)
+- Consider surrounding words and semantic relationships
+- Reject candidates that don't fit the specific slot context
+
+### 3. Extraction Principles
+- **Preserve original form**: Extract values verbatim without normalization
+- **Apply common sense**: Extract obvious values even if not in candidate list (e.g., common names, numbers)
+- **Handle composite types**: For complex objects, extract all relevant sub-fields
+- **Support multi-values**: Return arrays when schema expects multiple values
+
+### 4. Output Requirements
+- Return valid JSON matching the provided schema exactly
+- Use `null` for missing required fields
+- Omit optional fields that cannot be determined
+- For arrays, return empty `[]` if no values found
+
+## Templates
 {% if examples %}
-## Examples
 {% for example in examples %}
-**Input:**  
-{{ example.input }}
-
-**Expected Output:**  
+### Example {{loop.index}}
+**Input:** {{ example.input }}  
+**Expected Output:**
+```json
 {{ example.output }}
-
+```
 {% endfor %}
 {% else %}
-## Example
-**Input:**  
-"Book a table for two at 7 pm tomorrow at Sushi Place."
-
-**Expected Output:**  
+### Sample Example
+**Input:** "Book a table for two at 7 pm tomorrow at Sushi Place"  
+**Expected Output:**
 ```json
 {
   "restaurant": "Sushi Place",
-  "datetime": "7 pm tomorrow",
+  "datetime": "7 pm tomorrow", 
   "party_size": "two"
 }
+```
 {% endif %}
 
-Now extract from the following input:
-Input:  {{ utterance }}
-Output (in JSON format):
+---
+
+## Your Task
+**Input:** {{ utterance }}
+
+**Output:** (Return only valid JSON matching the schema)

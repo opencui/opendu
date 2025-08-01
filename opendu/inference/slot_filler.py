@@ -76,8 +76,7 @@ class StructuredExtractor(SlotExtractor):
     
     
     # For each slot, we can use a different extraction, regardless whether it is entity or structure,
-    # single value or multiple value.
-
+    # single value or multiple value.                                         
     def extract_values(self, utterance:str, frame: FrameSchema, slots: dict[str, SlotSchema], expectation:list[str], candidates: dict, debug=False):
         print(f"parse for skill: {text} with {expectations} and {candidates}")
         # For now, we only pick one skill
