@@ -1,15 +1,18 @@
-Decide whether the response is Affirmative, Negative or Irrelevant to the yes/no question:\n
+You are given a yes/no question and a user utterance. Determine the user's stance based on their utterance:
+- "affirmative" if the utterance affirms the question.
+- "negative" if the utterance denies it.
+- "indifferent" if the user explicitly expresses indifference or lack of preference.
+- "irrelevant" if the utterance does not address the question.
 
 {% if examples %}
-Here some examples:
+Here are some examples:
 {% for example in examples %}
-Question: {{example.question}}
-Response: {{example.response}}
-Decision: {{example.label}}
+Question: {{ example.question }}
+Response: {{ example.response }}
+Decision: {{ example.label }}
 {% endfor %}
 {% endif %}
 
-Question: {{question}}
-Response: {{response}}
-{#  Eventually, we might add some reasoning trail here. #}
+Question: {{ question }}
+Response: {{ response }}
 Decision:
