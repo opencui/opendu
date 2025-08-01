@@ -12,11 +12,13 @@ from enum import Enum
 from llama_index.core.schema import TextNode
 import json
 
+
 # During the understanding, we do not have concept of multivalued, as even when the slot
 # is the single valued, user can still say multiple values.
 class SlotSchema(BaseModel):
     name: str = Field(..., description="The name of the slot", title="Name")
     description: str = Field(..., description="Description of the slot")
+    multi_value: bool = Field(False, description="Whether the slot can have multiple values")
     type: Optional[str] = Field(None, description="The type of the slot")
     label: Optional[str] = Field(None, description="Optional label for the slot")
     examples: Set[str] = Field(set(), description="Example values for the slot.")
@@ -223,8 +225,8 @@ def build_nodes_from_exemplar_store(module_schema: Schema, store: Dict[str, List
 #
 # This is used to build the JSON schema for the given frame and slots.
 #
-from typing import List, Dict, Set, Any
-from pydantic import BaseModel
+
+
 
 
 def build_json_schema(
@@ -233,33 +235,46 @@ def build_json_schema(
     slots: List[SlotSchema],
     include_deps: bool = True
 ) -> Dict[str, Any]:
-    slot_dict: Dict[str, SlotSchema] = {slot.name: slot for slot in slots}
-    frame_dict: Dict[str, FrameSchema] = {frame.name: frame for frame in frames}
+    slot_dict = {slot.name: slot for slot in slots}
+    frame_dict = {frame.name: frame for frame in frames}
 
-    visited_frames: Set[str] = set()
-    visited_slots: Set[str] = set()
-    components: Dict[str, Dict[str, Any]] = {}
+    visited_frames = set()
+    visited_slots = set()
+    components = {}
 
     def resolve_slot_type(slot_name: str) -> Dict[str, Any]:
         visited_slots.add(slot_name)
         slot = slot_dict[slot_name]
 
+        # Base schema for the slot's underlying type
         if slot.type in {"string", "number", "boolean", "integer"}:
-            schema = {"type": slot.type}
+            base_schema = {"type": slot.type}
         elif slot.type in frame_dict:
             visited_frames.add(slot.type)
-            # Reference component schema
-            schema = {"$ref": f"#/components/schemas/{slot.type}"}
-            # Ensure nested frame is resolved
+            # Reference to reusable nested frame schema
+            base_schema = {"$ref": f"#/components/schemas/{slot.type}"}
             if slot.type not in components:
                 components[slot.type] = resolve_frame(frame_dict[slot.type])
         else:
-            schema = {"type": "string"}
+            base_schema = {"type": "string"}
 
-        schema["description"] = slot.description
-        if slot.examples:
-            schema["examples"] = sorted(slot.examples)
-        return schema
+        # Wrap in array if multi_value is True
+        if getattr(slot, "multi_value", False):
+            array_schema = {
+                "type": "array",
+                "items": base_schema,
+                "description": slot.description,
+            }
+            # Optionally, you can add examples here as well (array examples)
+            if slot.examples:
+                array_schema["examples"] = [list(slot.examples)]
+            return array_schema
+        else:
+            # Single value slot
+            base_schema["description"] = slot.description
+            if slot.examples:
+                base_schema["examples"] = sorted(slot.examples)
+            return base_schema
 
     def resolve_frame(frame: FrameSchema) -> Dict[str, Any]:
         props = {}
@@ -268,32 +283,27 @@ def build_json_schema(
             if slot_name in slot_dict:
                 props[slot_name] = resolve_slot_type(slot_name)
                 required.append(slot_name)
-
         return {
             "type": "object",
             "description": frame.description,
             "properties": props,
             "required": required,
-            "additionalProperties": False
+            "additionalProperties": False,
         }
 
-    # Root schema
     visited_frames.add(root_frame_name)
     root_schema = resolve_frame(frame_dict[root_frame_name])
 
-    # Final output
     result = {
         "title": root_frame_name,
         **root_schema,
-        "components": {
-            "schemas": {name: schema for name, schema in components.items()}
-        }
+        "components": {"schemas": {name: schema for name, schema in components.items()}},
     }
 
     if include_deps:
         result["$deps"] = {
             "frames": sorted(visited_frames),
-            "slots": sorted(visited_slots)
+            "slots": sorted(visited_slots),
         }
 
     return result
