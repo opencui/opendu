@@ -1,9 +1,9 @@
 {% from 'sf.base' import render_slot, render_dict %}
 
-You are given a JSON schema describing the expected output for the skill {{skill.name}}: {{skill.description }}.
+
 
 ## Extraction Task
-Extract information from the given utterance with respect to the skill according to the following schema:
+Given a JSON schema describing the expected configuration for the skill {{skill.name}}: {{skill.description }},  extract information from the given utterance with respect to the schema:
 
 {{ render_dict(schema) }}
 
