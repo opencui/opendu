@@ -10,7 +10,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 from enum import Enum
 from llama_index.core.schema import TextNode
-
+import json
 
 # During the understanding, we do not have concept of multivalued, as even when the slot
 # is the single valued, user can still say multiple values.
@@ -315,5 +315,4 @@ if __name__ == "__main__":
     ]
 
     json_schema = build_json_schema("WeatherQuery", frames, slots)
-
-    print(json_schema)
+    print(json.dumps(json_schema, indent=2, sort_keys=True))
