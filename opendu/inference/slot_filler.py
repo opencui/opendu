@@ -10,6 +10,7 @@ from typing import Dict
 
 from pydantic import BaseModel
 from opendu import FrameSchema
+from opendu.core.annotation import SlotSchema
 
 
 #
@@ -37,17 +38,17 @@ class FrameSlotMeta(SlotMeta):
     slots: Dict[str, SlotMeta]
 
 #
-# The slot filler takes task description, and slot descriptions, candidate values and
+# The slot extractor takes task description as context, and slot schema, candidate values and
 # generate the json representation of values.
-#
 #
 class SlotExtractor(ABC):
     @abstractmethod
-    def extract_values(self, text, expectation:FrameSchema, candidates: dict):
+    def extract_values(self, utterance:str, frame: FrameSchema, slots: dict[str, SlotSchema], expectation:list[str], candidates: dict, debug=False) -> dict[str, dict]:
+        """"""
         pass
 
-# For each slot, we can use a different extraction, or we can extract everything at once.
-# One of the question that we need to answer is, how do we handle the extraction from response?
+
+
 class StructuredExtractor(SlotExtractor):
     def __init__(self, slot_metas: Dict[str, SlotMeta]):
         self.slot_metas = slot_metas
@@ -73,7 +74,11 @@ class StructuredExtractor(SlotExtractor):
             )
         return skill_metas
     
-    def extract_values(self, text, expectations, candidates, debug=False):
+    
+    # For each slot, we can use a different extraction, regardless whether it is entity or structure,
+    # single value or multiple value.
+
+    def extract_values(self, utterance:str, frame: FrameSchema, slots: dict[str, SlotSchema], expectation:list[str], candidates: dict, debug=False):
         print(f"parse for skill: {text} with {expectations} and {candidates}")
         # For now, we only pick one skill
         # TODO: try to use candidates. 
