@@ -35,7 +35,7 @@ Extract the value for slot `{{slot.name}}` from the given utterance within the c
 {{ json_schema }}
 ```
 
-{% if tepmplates %}
+{% if templates %}
 ## Usage Templates
 These templates illustrate how slot-relevant phrases commonly appear in utterance, pay attention to their context or surrounding words. 
 Notice it also shows the phrases of the same type can sometime fill different slots.  
@@ -68,8 +68,21 @@ Notice it also shows the phrases of the same type can sometime fill different sl
 ```
 {% endif %}
 
+
+{% if candidates %}
+## Candidate Phrases (from utterance)
+These are potential slot-filling phrases extracted by a separate out of context recognizer. Validate them in context.
+```json
+{{ candidates | tojson(indent=2) }}
+```
+{% endif %}
+
+
 ---
 
 ## Your Task
 **Input:** {{ utterance }}
 **Output:** (Return only valid JSON matching the schema)
+
+
+
