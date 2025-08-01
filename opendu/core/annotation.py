@@ -233,7 +233,9 @@ def build_json_schema(
     root_frame_name: str,
     frames: List[FrameSchema],
     slots: List[SlotSchema],
-    include_deps: bool = True
+    include_deps: bool = True,
+    root_multi_value: bool = False  # ← new parameter
+
 ) -> Dict[str, Any]:
     slot_dict = {slot.name: slot for slot in slots}
     frame_dict = {frame.name: frame for frame in frames}
@@ -294,11 +296,20 @@ def build_json_schema(
     visited_frames.add(root_frame_name)
     root_schema = resolve_frame(frame_dict[root_frame_name])
 
-    result = {
-        "title": root_frame_name,
-        **root_schema,
-        "components": {"schemas": {name: schema for name, schema in components.items()}},
-    }
+    if root_multi_value:
+        root_schema = {
+            "title": root_frame_name,
+            "type": "array",
+            "items": root_schema,
+        }
+    else:
+        root_schema = {
+            "title": root_frame_name,
+            **root_schema,
+        }
+
+    result = root_schema
+    result["components"] = {"schemas": {name: schema for name, schema in components.items()}}
 
     if include_deps:
         result["$deps"] = {
