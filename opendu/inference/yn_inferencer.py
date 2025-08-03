@@ -14,7 +14,7 @@ from opendu import FrameSchema
 from opendu.core.annotation import SlotSchema
 from opendu.core.config import Task
 from opendu.core.prompt import PromptManager
-from opendu.inference.generator import Decoder, OutputExpectation
+from opendu.inference.decoder import Decoder, OutputExpectation
 
 
 #
