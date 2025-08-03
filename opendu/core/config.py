@@ -32,6 +32,8 @@ class ModelType(Enum):
 DEVICE="cuda:0"
 
 
+GeneratorType = Enum("Generator", ["FftGenerator", "LoraGenerator"])
+
 class RauConfig:
     _instance = None
 
@@ -46,8 +48,7 @@ class RauConfig:
         return RauConfig._instance
 
 
-
-
+# This is configueration for treating the du as 3 tasks.
 class BcSsYniFullConfig(BaseModel):
     embedding_device: str = DEVICE
     embedding_model: str = "Qwen/Qwen3-Embedding-0.6B"
@@ -65,12 +66,13 @@ class BcSsYniFullConfig(BaseModel):
     # Append input or output suffix, we get the actual prompt template.
     # id -> intent identification, bc -> binary class (could be multi class).
     # sf -> slot filling, ss -> single slot (could be frame or multi slots).
-    # yni-bethere -> boolean gate, yes/no/irrelevant
+    # yni -> boolean gate, yes/no/irrelevant
     # the last part is to identify prompt template.
     prompt: dict[Task, str] = Field(default_factory=lambda: {Task.IdBc: "id_bc_literal", Task.SfSs: "sf_ss_literal", Task.Yni: "yni_default"})
 
 
     # All task should share the same base model
+    generator: GeneratorType = GeneratorType.FftGenerator
     base_model: str = "Qwen/Qwen3-4B"
     eval_mode: bool = True
 
