@@ -15,7 +15,7 @@ import traceback as tb
 from aiohttp import web
 import shutil
 from opendu.core.config import RauConfig
-from opendu.inference.parser import Parser, Generator, load_parser
+from opendu.inference.parser import Parser, Decoder, load_parser
 from opendu.core.index import indexing
 from sentence_transformers import SentenceTransformer
 
@@ -103,15 +103,6 @@ async def understand(request: web.Request):
     mode = req.get("mode")
     l_converter: Parser = request.app["converters"][bot]
 
-
-    if mode == "DEBUG":
-        expectations = req.get("expectations")
-        results = l_converter.debug(utterance, expectations)
-        return web.json_response(results)
-
-    if mode == "SEGMENT":
-        return web.json_response({"errMsg": f"Not implemented yet."})
-
     if mode == "SKILL":
         try:
             expectations = req.get("expectations")
@@ -186,5 +177,5 @@ if __name__ == "__main__":
 
     # This load the generator LLM first.
     embedder = SentenceTransformer(RauConfig.get().embedding_model, device=RauConfig.get().embedding_device, trust_remote_code=True)
-    Generator.build()
+    Decoder.build()
     web.run_app(init_app(root_path, lru_capacity), port=3001)

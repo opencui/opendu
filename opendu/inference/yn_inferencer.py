@@ -7,14 +7,14 @@
 # See LICENSE file in the project root for full license information.
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Dict, Generator
+from typing import Dict, Any, Optional
 
 from pydantic import BaseModel
 from opendu import FrameSchema
 from opendu.core.annotation import SlotSchema
 from opendu.core.config import Task
 from opendu.core.prompt import PromptManager
-from opendu.inference.generator import OutputExpectation
+from opendu.inference.generator import Decoder, OutputExpectation
 
 
 #
@@ -45,7 +45,7 @@ YesNoResult = Enum("YesNoResult", ["Affirmative", "Negative", "Indifferent", "Ir
 #
 class YesNoInferencer(ABC):
     def __init__(self, retriever = None):
-        self.generator = Generator.get()
+        self.generator = Decoder.get()
         self.retriever = retriever
         self.yni_prompt = PromptManager.get_builder(Task.YNI)
         self.yni_results = ["Affirmative", "Negative", "Indifferent", "Irrelevant"]
