@@ -6,11 +6,15 @@
 # This source code is licensed under the BeThere AI license.
 # See LICENSE file in the project root for full license information.
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Any, Dict
 
 from pydantic import BaseModel
 from opendu import FrameSchema
 from opendu.core.annotation import SlotSchema
+from opendu.core.config import RauConfig, Task
+from opendu.core.prompt import PromptManager
+from opendu.core.retriever import ContextRetriever
+from opendu.inference.decoder import Decoder
 
 
 #
@@ -43,41 +47,50 @@ class FrameSlotMeta(SlotMeta):
 #
 class SlotExtractor(ABC):
     @abstractmethod
-    def extract_values(self, utterance:str, frame: FrameSchema, slots: dict[str, SlotSchema], expectation:list[str], candidates: dict, debug=False) -> dict[str, dict]:
+    def extract_values(self, utterance:str, frame: str, expectation:list[str], candidates: dict, debug=False) -> dict[str, Any]:
         """"""
         pass
 
 
-
 class StructuredExtractor(SlotExtractor):
-    def __init__(self, slot_metas: Dict[str, SlotMeta]):
-        self.slot_metas = slot_metas
-
-    def build_skills(self, text, skill, exemplar_nodes) -> list[SkillDemonstration]:
-        # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
-        exemplars = [
-            Exemplar(
-                owner=node.metadata["owner"],
-                template=node.text,
-                owner_mode=node.metadata["owner_mode"]
-            )
-            for node in exemplar_nodes
-        ]
-
-        skill_metas = []
-        for skill in skills:
-            skill_metas.append(
-                SkillDemonstration(
-                    skill=skill,
-                    exemples= self.get_closest_template(skill.name, exemplars, 1)
-                )
-            )
-        return skill_metas
-    
+    def __init__(self, retriever:ContextRetriever=None):
+        self.retriever = retriever
+        self.decocer = Decoder.get()
+        self.slot_prompt = PromptManager.get_builder(Task.Sfss)
+        self.debug = RauConfig().g.get().sf_debug or RauConfig.get().converter_debug or RauConfig.get().debug
     
     # For each slot, we can use a different extraction, regardless whether it is entity or structure,
     # single value or multiple value.                                         
-    def extract_values(self, utterance:str, frame: FrameSchema, slots: dict[str, SlotSchema], expectation:list[str], candidates: dict, debug=False):
+    def extract_values(self, utterance:str, frame_name: str, expectations:list[str], candidates: dict):
+        module = self.retriever.module
+        
+        frame_schema = module.get_skill(frame_name)
+        slot_schemas = [module.slots[slot_name] for slot_name in frame_schema.slots]
+        return self.raw_extract_values(utterance, frame_schema, slot_schemas, expectations, candidates)
+
+    def raw_extract_values(self, utterance:str, frame: FrameSchema, slots: list[SlotSchema], expectations: list[str], candidates: dict):
+        slot_prompts = []
+        for slot in slots:
+            name = slot["name"]
+            values = get_value(candidates, name, [])
+            slot_input_dict = {"utterance": text, "name": name, "candidates": values}
+            slot_prompts.append(self.slot_prompt(slot_input_dict))
+
+        if RauConfig.get().converter_debug:
+            print(json.dumps(slot_prompts, indent=2))
+        slot_outputs = self.generator.generate(slot_prompts)
+
+        if RauConfig.get().converter_debug:
+            print(json.dumps(slot_outputs, indent=2))
+
+        results = {}
+        for index, slot in enumerate(slots):
+            # TODO(sean): this the source where we know what is the value, while we do not do
+            # normalization here, we need to explicitly
+            if slot_outputs[index] != "":
+                results[slot["name"]] = {"values" : [slot_outputs[index]], "operator": "=="}
+        return results
+
         print(f"parse for skill: {text} with {expectations} and {candidates}")
         # For now, we only pick one skill
         # TODO: try to use candidates. 
@@ -112,24 +125,6 @@ class StructuredExtractor(SlotExtractor):
         label = next((paired[0].name for paired in zipped if paired[1].outputs == "True"), None)
 
         return label, list(map(node_to_exemplar, exemplar_nodes)), debug_infos
-
-def node_to_exemplar(node):
-    meta = node.metadata
-    result = {
-        "type": "exemplar",
-        "template": meta["template"],
-        "ownerFrame": meta["owner"]
-    }
-
-    # The optional information. Kotlin side use label instead of owner_mode.
-    if meta["owner_mode"] != "normal":
-        result["label"] = meta["owner_mode"]
-    if meta["context_frame"] != "":
-        result["contextFrame"] = meta["context_frame"]
-    if meta["context_slot"] != "":
-        result["contextSlot"] = meta["context_slot"]
-
-    return result
 
 
 if __name__ == "__main__":

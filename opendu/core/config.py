@@ -82,4 +82,8 @@ class BcSsYniFullConfig(BaseModel):
     #id_bc_model: str = "OpenCUI/IdBc-Qwen2.5-7B-Instruct-0.1"
     #sf_ss_model: str = "OpenCUI/SfSs-Qwen2.5-7B-Instruct-0.1"
     # yni_model: str = "OpenCUI/Yni-Qwen2.5-7B-Instruct-0.1"
-    converter_debug: bool = True
+    debug: bool = False
+    converter_debug: bool = False
+    id_debug: bool = False
+    sf_debug: bool = True
+    yni_debug: bool = False
