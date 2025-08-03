@@ -9,13 +9,14 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 import random
 from pydantic import BaseModel
+from torch import Generator
 
 from opendu.core.annotation import (CamelToSnake, Exemplar, FrameSchema)
 from opendu.core.config import RauConfig
 from opendu.core.matcher import OwnerMode, ExactMatcher
 from opendu.core.prompt import (PromptManager, Task)
 from opendu.core.retriever import (ContextRetriever)
-from opendu.inference.generator import FftVllmGenerator, GenerateMode, OutputExpectation
+from opendu.inference.generator import Generator, OutputExpectation
 
 from opendu.utils.json_tools import parse_json_from_string
 from itertools import islice
@@ -56,9 +57,9 @@ class IntentDetector(ABC):
 # tradeoff between cost (performance) and flexibility(accuracy).
 # Intent dectection cast as single class, binary classification problem.
 class BcIntentDetector(IntentDetector, ABC):
-    def __init__(self, retriever: ContextRetriever, generator):
+    def __init__(self, retriever: ContextRetriever):
         self.retrieve = retriever
-        self.generator = generator
+        self.generator = Generator.get()
 
     @staticmethod
     def get_closest_template(owner: str, exemplars: list[Exemplar], k: int) -> list[BcSkillExample]:
