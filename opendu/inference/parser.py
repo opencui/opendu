@@ -17,7 +17,7 @@ from opendu.core.retriever import (ContextRetriever, load_context_retrievers)
 from opendu.core.schema_parser import load_all_from_directory
 from opendu.inference.generator import Generator
 
-from opendu.inference.yn_inferencer import YesNoInferencer
+from opendu.inference.yn_inferencer import YesNoInferencer, YesNoQuestion, YesNoResult
 from opendu.utils.json_tools import parse_json_from_string
 
 
@@ -27,15 +27,7 @@ class FrameValue(BaseModel):
     arguments: Dict[str, Any]
 
 
-class YesNoQuestion(BaseModel):
-    text: str
-    dialogActType: Optional[str] = None
-    frame: Optional[str] = None
-    slot: Optional[str] = None
 
-
-# The modes that we will support.
-YesNoResult = Enum("YesNoResult", ["Affirmative", "Negative", "Indifferent", "Irrelevant"])
 
 
 #
