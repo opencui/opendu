@@ -16,7 +16,7 @@ from opendu.core.config import RauConfig
 from opendu.core.matcher import OwnerMode, ExactMatcher
 from opendu.core.prompt import (PromptManager, Task)
 from opendu.core.retriever import (ContextRetriever)
-from opendu.inference.generator import Generator, OutputExpectation
+from opendu.inference.generator import Decoder, OutputExpectation
 
 from opendu.utils.json_tools import parse_json_from_string
 from itertools import islice
@@ -59,7 +59,7 @@ class IntentDetector(ABC):
 class BcIntentDetector(IntentDetector, ABC):
     def __init__(self, retriever: ContextRetriever):
         self.retrieve = retriever
-        self.generator = Generator.get()
+        self.generator = Decoder.get()
 
     @staticmethod
     def get_closest_template(owner: str, exemplars: list[Exemplar], k: int) -> list[BcSkillExample]:
