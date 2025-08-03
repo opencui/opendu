@@ -17,6 +17,7 @@ from opendu.core.retriever import (ContextRetriever, load_context_retrievers)
 from opendu.core.schema_parser import load_all_from_directory
 from opendu.inference.decoder import Decoder
 
+from opendu.inference.slot_filler import StructuredExtractor
 from opendu.inference.yn_inferencer import YesNoInferencer, YesNoQuestion, YesNoResult
 from opendu.utils.json_tools import parse_json_from_string
 
@@ -48,12 +49,8 @@ class Parser:
         if entity_metas is not None:
             self.recognizer = ListRecognizer(entity_metas)
 
-        self.slot_prompt = PromptManager.get_builder(Task.SLOT)
- 
-        self.with_arguments = with_arguments
-        self.bracket_match = re.compile(r"\[([^]]*)\]")
-
         self.skill_converter = BcIntentDetector(retriever)
+        self.slot_extractor = StructuredExtractor(retriever)
         self.yn_decider = YesNoInferencer(retriever)
  
 
@@ -79,29 +76,9 @@ class Parser:
         return [result]
 
 
-    def fill_slots(self, text, slots:list[dict[str, str]], candidates:dict[str, list[str]])-> dict[str, str]:
-        slot_prompts = []
-        for slot in slots:
-            name = slot["name"]
-            values = get_value(candidates, name, [])
-            slot_input_dict = {"utterance": text, "name": name, "candidates": values}
-            slot_prompts.append(self.slot_prompt(slot_input_dict))
-
-        if RauConfig.get().converter_debug:
-            print(json.dumps(slot_prompts, indent=2))
-        slot_outputs = self.generator.generate(slot_prompts)
-
-        if RauConfig.get().converter_debug:
-            print(json.dumps(slot_outputs, indent=2))
-
-        results = {}
-        for index, slot in enumerate(slots):
-            # TODO(sean): this the source where we know what is the value, while we do not do
-            # normalization here, we need to explicitly
-            if slot_outputs[index] != "":
-                results[slot["name"]] = {"values" : [slot_outputs[index]], "operator": "=="}
-        return results
-
+    def fill_slots(self, text, frame: str, expections: list[str], candidates:dict[str, list[str]])-> dict[str, str]:
+        return self.slot_extractor.extract_values(text, frame, expections, candidates)
+    
     # Why do we need questions to be a list?
     def decide(self, utterance:str, questions:YesNoQuestion) -> YesNoResult:
         return self.yn_decider.decide(utterance, questions)
