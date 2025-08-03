@@ -6,7 +6,7 @@
 import json
 import re
 from enum import Enum
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from pydantic import BaseModel
 from opendu.inference.intent_detector import BcIntentDetector
@@ -15,18 +15,28 @@ from opendu.core.config import RauConfig
 from opendu.core.prompt import (PromptManager, Task)
 from opendu.core.retriever import (ContextRetriever, load_context_retrievers)
 from opendu.core.schema_parser import load_all_from_directory
-from opendu.inference.generator import GenerateMode, Generator
+from opendu.inference.generator import Generator
 
+from opendu.inference.yn_inferencer import YesNoInferencer
 from opendu.utils.json_tools import parse_json_from_string
-
-# The modes that we will support.
-YesNoResult = Enum("YesNoResult", ["Affirmative", "Negative", "Indifferent", "Irrelevant"])
 
 
 # Used for serving function calling API.
 class FrameValue(BaseModel):
     name: str
     arguments: Dict[str, Any]
+
+
+class YesNoQuestion(BaseModel):
+    text: str
+    dialogActType: Optional[str] = None
+    frame: Optional[str] = None
+    slot: Optional[str] = None
+
+
+# The modes that we will support.
+YesNoResult = Enum("YesNoResult", ["Affirmative", "Negative", "Indifferent", "Irrelevant"])
+
 
 #
 # This is the parser is used to convert natural language text into its semantic representation.
@@ -46,14 +56,23 @@ class Parser:
         if entity_metas is not None:
             self.recognizer = ListRecognizer(entity_metas)
 
-        self.generator = Generator.build()
         self.slot_prompt = PromptManager.get_builder(Task.SLOT)
-        self.yni_prompt = PromptManager.get_builder(Task.YNI)
+ 
         self.with_arguments = with_arguments
         self.bracket_match = re.compile(r"\[([^]]*)\]")
 
-        self.skill_converter = KnnIntentDetector(retriever, self.generator)
-        self.yni_results = {"Affirmative", "Negative", "Indifferent", "Irrelevant" }
+        self.skill_converter = BcIntentDetector(retriever)
+        self.yn_decider = YesNoInferencer(retriever)
+ 
+
+
+    def debug(self, utterance, expectations):
+        _, _, debugs = self.skill_converter.detect_intents(utterance, expectations, True)
+        # For now, we assume single intent.
+
+        # TODO: figure out how to handle the multi intention utterance.
+        return debugs
+
 
     def detect_triggerables(self, utterance, expectations, candidates = {}, debug=False):
         func_name, evidence, _ = self.skill_converter.detect_intents(utterance, expectations, debug)
@@ -78,7 +97,7 @@ class Parser:
 
         if RauConfig.get().converter_debug:
             print(json.dumps(slot_prompts, indent=2))
-        slot_outputs = self.generator.generate(slot_prompts, GenerateMode.extractive)
+        slot_outputs = self.generator.generate(slot_prompts)
 
         if RauConfig.get().converter_debug:
             print(json.dumps(slot_outputs, indent=2))
@@ -91,22 +110,10 @@ class Parser:
                 results[slot["name"]] = {"values" : [slot_outputs[index]], "operator": "=="}
         return results
 
-    def inference(self, utterance:str, questions:list[str]) -> list[str]:
-        input_prompts = []
-        for question in questions:
-            # For now, we ignore the language
-            input_dict = {"response": utterance, "question": f"{question}."}
-            input_prompts.append(self.yni_prompt(input_dict))
+    # Why do we need questions to be a list?
+    def decide(self, utterance:str, questions:YesNoQuestion) -> YesNoResult:
+        return self.yn_decider.decide(utterance, questions)
 
-        outputs = self.generator.generate(input_prompts, GenerateMode.nli)
-        outputs = list(map(lambda x: x if (x in self.yni_results) else "Irrelevant", outputs))
-
-        if RauConfig.get().converter_debug:
-            print(f"{input_prompts} {outputs}")
-        return outputs
-
-    def generate(self, struct: FrameValue) -> str:
-        raise NotImplemented
 
 
 def load_parser(module_path, index_path):
