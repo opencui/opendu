@@ -15,7 +15,7 @@ from opendu.core.config import RauConfig
 from opendu.core.prompt import (PromptManager, Task)
 from opendu.core.retriever import (ContextRetriever, load_context_retrievers)
 from opendu.core.schema_parser import load_all_from_directory
-from opendu.inference.generator import Decoder
+from opendu.inference.decoder import Decoder
 
 from opendu.inference.yn_inferencer import YesNoInferencer, YesNoQuestion, YesNoResult
 from opendu.utils.json_tools import parse_json_from_string
