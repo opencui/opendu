@@ -16,7 +16,7 @@ from opendu.core.config import RauConfig
 from opendu.core.matcher import OwnerMode, ExactMatcher
 from opendu.core.prompt import (PromptManager, Task)
 from opendu.core.retriever import (ContextRetriever)
-from opendu.inference.generator import Decoder, OutputExpectation
+from opendu.inference.decoder import Decoder, OutputExpectation
 
 from opendu.utils.json_tools import parse_json_from_string
 from itertools import islice
