@@ -15,7 +15,6 @@ from opendu.core.annotation import SlotSchema
 from opendu.core.config import Task
 from opendu.core.prompt import PromptManager
 from opendu.inference.generator import OutputExpectation
-from opendu.inference.parser import YesNoQuestion, YesNoResult
 
 
 #
@@ -30,7 +29,15 @@ from opendu.inference.parser import YesNoQuestion, YesNoResult
 # For structure extraction bases: nuextract
 # https://arxiv.org/pdf/2403.17536v1
 
+class YesNoQuestion(BaseModel):
+    text: str
+    dialogActType: Optional[str] = None
+    frame: Optional[str] = None
+    slot: Optional[str] = None
 
+
+# The modes that we will support.
+YesNoResult = Enum("YesNoResult", ["Affirmative", "Negative", "Indifferent", "Irrelevant"])
 
 #
 # The slot extractor takes task description as context, and slot schema, candidate values and
