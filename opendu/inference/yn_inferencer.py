@@ -47,7 +47,7 @@ class YesNoInferencer(ABC):
     def __init__(self, retriever = None):
         self.generator = Decoder.get()
         self.retriever = retriever
-        self.yni_prompt = PromptManager.get_builder(Task.YNI)
+        self.yni_prompt = PromptManager.get_builder(Task.Yni)
         self.yni_results = ["Affirmative", "Negative", "Indifferent", "Irrelevant"]
         
     def decide(self, utterance:str, question:YesNoQuestion) -> YesNoResult:
