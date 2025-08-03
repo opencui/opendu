@@ -69,3 +69,17 @@ if __name__ == "__main__":
     
     outputs = yni.decide(text, question)
     print(outputs)
+
+
+    text = "I really doubt it."
+    outputs = yni.decide(text, question)
+    print(outputs)
+
+    text = "I am not sure."
+    outputs = yni.decide(text, question)
+    print(outputs)
+
+
+    text = "I like to open a new account."
+    outputs = yni.decide(text, question)
+    print(outputs)
