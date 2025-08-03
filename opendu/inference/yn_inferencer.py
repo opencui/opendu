@@ -57,7 +57,7 @@ class YesNoInferencer(ABC):
 
         raw_output = self.generator.generate(input_prompt, OutputExpectation(choices=self.yni_results))
         print(raw_output)
-        return raw_output.outputs[0].text
+        return raw_output[0].outputs.text
 
 
 if __name__ == "__main__":
