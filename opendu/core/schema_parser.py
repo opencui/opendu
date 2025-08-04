@@ -6,7 +6,7 @@
 
 import json
 import os
-from opendu.core.annotation import (CamelToSnake, EntityType, FrameSchema, Schema, SlotSchema, get_value)
+from opendu.core.annotation import (CamelToSnake, EntitySchema, FrameSchema, Schema, SlotSchema, get_value)
 
 
 #

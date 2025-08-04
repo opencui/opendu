@@ -22,15 +22,6 @@ from opendu.inference.yn_inferencer import YesNoInferencer, YesNoQuestion, YesNo
 from opendu.utils.json_tools import parse_json_from_string
 
 
-# Used for serving function calling API.
-class FrameValue(BaseModel):
-    name: str
-    arguments: Dict[str, Any]
-
-
-
-
-
 #
 # This is the parser is used to convert natural language text into its semantic representation.
 # Instead of using function calling enabled model, or prompt, this parser using an agentic
@@ -52,17 +43,8 @@ class Parser:
         self.skill_converter = BcIntentDetector(retriever)
         self.slot_extractor = StructuredExtractor(retriever)
         self.yn_decider = YesNoInferencer(retriever)
- 
 
-
-    def debug(self, utterance, expectations):
-        _, _, debugs = self.skill_converter.detect_intents(utterance, expectations, True)
-        # For now, we assume single intent.
-
-        # TODO: figure out how to handle the multi intention utterance.
-        return debugs
-
-
+    # this is used to detect the intent, or skill, of the utterance.
     def detect_triggerables(self, utterance, expectations, candidates = {}, debug=False):
         func_name, evidence, _ = self.skill_converter.detect_intents(utterance, expectations, debug)
         # For now, we assume single intent.
@@ -75,11 +57,11 @@ class Parser:
         # TODO: figure out how to handle the multi intention utterance.
         return [result]
 
-
+    # This is used to extract the slots from the utterance for the given frame.
     def fill_slots(self, text, frame: str, expections: list[str], candidates:dict[str, list[str]])-> dict[str, str]:
         return self.slot_extractor.extract_values(text, frame, expections, candidates)
     
-    # Why do we need questions to be a list?
+    # This is used to understand the user response to yes no question.
     def decide(self, utterance:str, questions:YesNoQuestion) -> YesNoResult:
         return self.yn_decider.decide(utterance, questions)
 

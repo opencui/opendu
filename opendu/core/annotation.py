@@ -30,7 +30,12 @@ class SlotSchema(BaseModel):
         return {field: self.model_field[field].field_info.description for field in self.model_fields}
 
 
-class FrameSchema(BaseModel):
+class TypeSchema(BaseModel):
+    name: str = Field(..., description="The name of the frame", title="Name")
+    description: str = Field(..., description="Description of the frame")
+
+
+class FrameSchema(TypeSchema):
     name: str = Field(..., description="The name of the frame", title="Name")
     description: str = Field(..., description="Description of the frame")
     slots: List[str] = Field(default_factory=list, description="List of slot names in the frame")
@@ -52,7 +57,7 @@ class EntityInstance(BaseModel):
     )
 
 
-class EntityType(BaseModel):
+class EntitySchema(TypeSchema):
     name: Optional[str]= Field(None, description="language dependent name")
     description: Optional[str] = Field(None, description="define what is this type for.")
     enumable: bool = Field(True, description="whether this type is enumable.")
@@ -80,9 +85,8 @@ class EntityType(BaseModel):
 # So there should not be overlapping between schema names.
 # the key for skills and slots does not need to be.
 class Schema(BaseModel):
-    skills: Dict[str, FrameSchema]
+    skills: Dict[str, TypeSchema]
     slots: Dict[str, SlotSchema]
-    entities: Dict[str, EntityType] = Field(default_factory=dict, description="Entity types for entity recognition")
 
     def get_skill(self, frame_id: str):
         return self.skills[frame_id]
@@ -122,7 +126,7 @@ class EntityInstance(BaseModel):
     )
 
 
-class EntityType(BaseModel):
+class EntitySchema(BaseModel):
     name: Optional[str]= Field(None, description="language dependent name")
     description: Optional[str] = Field(None, description="define what is this type for.")
     enumable: bool = Field(True, description="whether this type is enumable.")
@@ -147,7 +151,7 @@ class EntityType(BaseModel):
     
 
 # EntityStore just need to be:  Dict[str, List[EntityInstance]]
-EntityStore = Dict[str, EntityType]
+EntityStore = Dict[str, EntitySchema]
 
 #
 # Owner is not needed if exemplars are listed insider function specs.
@@ -180,7 +184,7 @@ ExemplarStore = Dict[str, list[Exemplar]]
 
 # For now, we do not handle normalization in understanding.
 class ListRecognizer:
-    def __init__(self, infos: Dict[str, EntityType]):
+    def __init__(self, infos: Dict[str, EntitySchema]):
         self.infos = infos
         self.patterns = {}
         for key, info in infos.items():
@@ -301,7 +305,7 @@ def build_json_schema(
             if slot.type not in components:
                 components[slot.type] = resolve_frame(frame_dict[slot.type])
         else:
-            base_schema = {"type": "string"}
+            base_schema = {"type": "string", "description": slot.type}
 
         # Wrap in array if multi_value is True
         if getattr(slot, "multi_value", False):
