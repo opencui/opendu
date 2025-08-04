@@ -122,7 +122,7 @@ if __name__ == "__main__":
     frame_dict = {frame.name: frame for frame in frames}
 
 
-    build_prompt = PromptManager.get_builder(Task.Sfss, input_mode=True)
+    build_prompt = PromptManager.get_builder(Task.SfSs, input_mode=True)
 
     json_schema = build_json_schema(frame_dict, slot_dict, "Coordinates", False)
     print(json_schema)
