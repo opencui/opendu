@@ -107,7 +107,7 @@ if __name__ == "__main__":
         SlotSchema(name="lat", description="Latitude", type="number"),
         SlotSchema(name="lng", description="Longitude", type="number"),
         SlotSchema(name="loc", description="GPS location", type="Coordinates"),
-        SlotSchema(name="city", description="Longitude", type="string"),
+        SlotSchema(name="city", description="city name", type="string"),
         SlotSchema(name="time", description="Time of day", type="string"),
         SlotSchema(name="irrelevant", description="unused slot", type="string"),
     ]
@@ -124,21 +124,37 @@ if __name__ == "__main__":
 
     build_prompt = PromptManager.get_builder(Task.SfSs, input_mode=True)
 
-    json_schema = build_json_schema(frame_dict, slot_dict, "Coordinates", False)
+    json_schema0 = build_json_schema(frame_dict, slot_dict, "Coordinates", False)
     print(json_schema)
     prompt0 = build_prompt(
         {
             "utterance": "can you help me find the weather in San Francisco at 10am?",
             "skill": frames[1],
             "slot": slots[2],
-            "type_schema": json_schema,
+            "type_schema": json_schema0,
             "examples": [],
             "candidates": {}
         })
 
     print(prompt0)
-    generator = Decoder.get()
 
-    raw_output = generator.generate([prompt0, prompt1], OutputExpectation(choices=["True", "False"]))
+    json_schema1 = build_json_schema(frame_dict, slot_dict, "city", False)
+    print(json_schema)
+    prompt1 = build_prompt(
+        {
+            "utterance": "can you help me find the weather in San Francisco at 10am?",
+            "skill": frames[1],
+            "slot": slots[3],
+            "type_schema": json_schema1,
+            "examples": [],
+            "candidates": {}
+        })
+
+    print(prompt1)
+
+    extractor = StructuredExtractor()
+    utterance = "can you help me find the weather in San Francisco at 10am?",
+    raw_output = extractor.raw_extract_values(utterance, frames[1], [slots[3], slots[4]], [json_schema0, json_schema1], ["city", "time"], {})
+    print(raw_output)
     outputs = [output.outputs for output in raw_output]
     print(outputs)
