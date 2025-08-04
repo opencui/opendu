@@ -125,7 +125,7 @@ if __name__ == "__main__":
     build_prompt = PromptManager.get_builder(Task.SfSs, input_mode=True)
 
     json_schema0 = build_json_schema(frame_dict, slot_dict, "Coordinates", False)
-    print(json_schema)
+    print(json_schema0)
     prompt0 = build_prompt(
         {
             "utterance": "can you help me find the weather in San Francisco at 10am?",
@@ -139,7 +139,7 @@ if __name__ == "__main__":
     print(prompt0)
 
     json_schema1 = build_json_schema(frame_dict, slot_dict, "city", False)
-    print(json_schema)
+    print(json_schema1)
     prompt1 = build_prompt(
         {
             "utterance": "can you help me find the weather in San Francisco at 10am?",
