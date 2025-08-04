@@ -61,8 +61,7 @@ These are potential slot-filling phrases extracted by a separate out of context 
 {% endif %}
 ---
 
-## Your Task: Extract the value for slot `{{slot.name}}` from the given utterance within the context of task: **{{skill.description}}**, Return only valid JSON matching the schema, with payload come from the utterance. 
-
+## Based on the above description, extract the value for slot `{{slot.name}}` from the given utterance within the context of task: **{{skill.description}}**, Return only valid JSON matching the schema, with payload come from the utterance. 
 **Input:**: {{ utterance }}
 **Output:**: 
 
