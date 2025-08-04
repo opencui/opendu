@@ -285,8 +285,8 @@ def build_json_schema(
     frame_dict: Dict[str, FrameSchema],
     slot_dict: Dict[str, SlotSchema],
     root_frame_name: str,
-    include_deps: bool = True,
-    root_multi_value: bool = False) -> Dict[str, Any]:
+    root_multi_value: bool = False,
+    include_deps: bool = False) -> Dict[str, Any]:
     visited_frames = set()
     visited_slots = set()
     components = {}
@@ -385,5 +385,5 @@ if __name__ == "__main__":
     slot_dict = {slot.name: slot for slot in slots}
     frame_dict = {frame.name: frame for frame in frames}
 
-    json_schema = build_json_schema(frame_dict, slot_dict, "WeatherQuery", True, False)
+    json_schema = build_json_schema(frame_dict, slot_dict, "WeatherQuery", True)
     print(json.dumps(json_schema, indent=2, sort_keys=True))
