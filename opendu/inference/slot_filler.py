@@ -90,8 +90,8 @@ class StructuredExtractor(SlotExtractor):
 
         # we use list for both prompts, and expectations.
         slot_outputs = self.decoder.generate(slot_prompts, expectations)
-        slot_outputs = [output.outputs[0] for output in slot_outputs]
-        
+        slot_outputs = [output.outputs[0].text for output in slot_outputs]
+
         if self.debug:
             print(json.dumps(slot_outputs, indent=2))
 
