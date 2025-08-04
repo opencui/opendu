@@ -10,7 +10,7 @@ from typing import Any, Dict
 
 from pydantic import BaseModel
 from opendu import FrameSchema
-from opendu.core.annotation import SlotSchema
+from opendu.core.annotation import SlotSchema, build_json_schema
 from opendu.core.config import RauConfig, Task
 from opendu.core.prompt import PromptManager
 from opendu.core.retriever import ContextRetriever
@@ -57,30 +57,37 @@ class StructuredExtractor(SlotExtractor):
         self.retriever = retriever
         self.decocer = Decoder.get()
         self.slot_prompt = PromptManager.get_builder(Task.Sfss)
+        self.module = self.retriever.module if retriever else None
         self.debug = RauConfig().g.get().sf_debug or RauConfig.get().converter_debug or RauConfig.get().debug
     
     # For each slot, we can use a different extraction, regardless whether it is entity or structure,
     # single value or multiple value.                                         
-    def extract_values(self, utterance:str, frame_name: str, expectations:list[str], candidates: dict):
-        module = self.retriever.module
-        
-        frame_schema = module.get_skill(frame_name)
-        slot_schemas = [module.slots[slot_name] for slot_name in frame_schema.slots]
-        return self.raw_extract_values(utterance, frame_schema, slot_schemas, expectations, candidates)
+    def extract_values(self, utterance:str, frame_name: str, expectations:list[str], candidates: dict):      
+        frame_schema = self.module.get_skill(frame_name)
+        slot_infos = [self.module.slots[slot_name] for slot_name in frame_schema.slots]
+        slot_types = [build_json_schema(self.module.skills, self.module.slots, slot_schema.type, True, slot_schema.multi_value) for slot_schema in slot_infos]
+        return self.raw_extract_values(utterance, frame_schema, slot_infos, slot_types, expectations, candidates)
+    
 
-    def raw_extract_values(self, utterance:str, frame: FrameSchema, slots: list[SlotSchema], expectations: list[str], candidates: dict):
+    def raw_extract_values(self, utterance:str, frame: FrameSchema, slots: list[SlotSchema], slot_types: list[dict], expectations: list[str], candidates: dict):
         slot_prompts = []
-        for slot in slots:
-            name = slot["name"]
-            values = get_value(candidates, name, [])
-            slot_input_dict = {"utterance": text, "name": name, "candidates": values}
-            slot_prompts.append(self.slot_prompt(slot_input_dict))
+        for idx in range(len(slots)):
+            slot = slots[index]
+            slot_type = slot_types[index]
 
-        if RauConfig.get().converter_debug:
-            print(json.dumps(slot_prompts, indent=2))
+            # For now, we do not have example.
+            slot_prompts.append(self.slot_prompt({
+                "utterance": utterance,
+                "skill": frame,
+                "slot": slot,
+                "type_schema": slot_type,
+                "candidates": candidates,
+                "is_expected": slot.name in expectations
+            }))
+        
         slot_outputs = self.generator.generate(slot_prompts)
 
-        if RauConfig.get().converter_debug:
+        if self.debug:
             print(json.dumps(slot_outputs, indent=2))
 
         results = {}
