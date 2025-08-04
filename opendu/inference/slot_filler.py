@@ -15,7 +15,7 @@ from opendu.core.annotation import SlotSchema, build_json_schema
 from opendu.core.config import RauConfig, Task
 from opendu.core.prompt import PromptManager
 from opendu.core.retriever import ContextRetriever
-from opendu.inference.decoder import Decoder
+from opendu.inference.decoder import Decoder, OutputExpectation
 
 
 #
@@ -86,7 +86,7 @@ class StructuredExtractor(SlotExtractor):
                 "candidates": candidates,
                 "is_expected": slot.name in expected
             }))
-            expectations.append(slot_type)
+            expectations.append(OutputExpectation(json_schema=slot_type))
 
         # we use list for both prompts, and expectations.
         slot_outputs = self.decoder.generate(slot_prompts, expectations)
