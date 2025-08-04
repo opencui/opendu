@@ -103,20 +103,40 @@ class StructuredExtractor(SlotExtractor):
 
 
 if __name__ == "__main__":
+    slots = [
+        SlotSchema(name="lat", description="Latitude", type="number"),
+        SlotSchema(name="lng", description="Longitude", type="number"),
+        SlotSchema(name="loc", description="GPS location", type="Coordinates"),
+        SlotSchema(name="city", description="Longitude", type="string"),
+        SlotSchema(name="time", description="Time of day", type="string"),
+        SlotSchema(name="irrelevant", description="unused slot", type="string"),
+    ]
 
-    skill = FrameSchema(
-        name="build_reservation_module",
-        description="build a reservation module")
+    frames = [
+        FrameSchema(name="Coordinates", description="GPS Coordinates", slots=["lat", "lng"]),
+        FrameSchema(name="WeatherQuery", description="Ask about weather", slots=["loc", "time"]),
+        FrameSchema(name="UnusedFrame", description="Should not appear", slots=["irrelevant"]),
+    ]
+    
+    slot_dict = {slot.name: slot for slot in slots}
+    frame_dict = {frame.name: frame for frame in frames}
 
-    examples = [
-        BcSkillExample(template="can you help me to build a table reservation module", label=True), 
-        BcSkillExample(template="I like to reserve a table", label=False)
-                ]
-    build_prompt = PromptManager.get_builder(Task.IdBc, input_mode=True)
-    prompt0 = build_prompt({"utterance": "can you help me to make a table reservation please?", "skill": skill, "examples": examples, "arguments": {}})
-    prompt1 = build_prompt({"utterance": "I like to build a table reservation module, please", "skill": skill, "examples": examples, "arguments": {}})
+
+    build_prompt = PromptManager.get_builder(Task.Sfss, input_mode=True)
+
+    json_schema = build_json_schema(frame_dict, slot_dict, "Coordinates", False)
+    print(json_schema)
+    prompt0 = build_prompt(
+        {
+            "utterance": "can you help me find the weather in San Francisco at 10am?",
+            "skill": frames[1],
+            "slot": slots[2],
+            "type_schema": json_schema,
+            "examples": [],
+            "candidates": {}
+        })
+
     print(prompt0)
-
     generator = Decoder.get()
 
     raw_output = generator.generate([prompt0, prompt1], OutputExpectation(choices=["True", "False"]))
