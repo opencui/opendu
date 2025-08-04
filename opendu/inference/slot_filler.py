@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
     frames = [
         FrameSchema(name="Coordinates", description="GPS Coordinates", slots=["lat", "lng"]),
-        FrameSchema(name="WeatherQuery", description="Ask about weather", slots=["loc", "time"]),
+        FrameSchema(name="WeatherQuery", description="Ask about weather", slots=["city", "time"]),
         FrameSchema(name="UnusedFrame", description="Should not appear", slots=["irrelevant"]),
     ]
     
@@ -126,19 +126,6 @@ if __name__ == "__main__":
 
     build_prompt = PromptManager.get_builder(Task.SfSs, input_mode=True)
 
-    json_schema0 = build_json_schema(frame_dict, slot_dict, "Coordinates", False)
-    print(json_schema0)
-    prompt0 = build_prompt(
-        {
-            "utterance": "can you help me find the weather in San Francisco at 10am?",
-            "skill": frames[1],
-            "slot": slots[2],
-            "type_schema": json_schema0,
-            "examples": [],
-            "candidates": {}
-        })
-
-    print(prompt0)
 
     json_schema1 = build_json_schema(frame_dict, slot_dict, "city", False)
     print(json_schema1)
@@ -153,8 +140,9 @@ if __name__ == "__main__":
         })
 
     print(prompt1)
+    json_schema2 = build_json_schema(frame_dict, slot_dict, "time", False)
 
     extractor = StructuredExtractor()
     utterance = "can you help me find the weather in San Francisco at 10am?",
-    raw_output = extractor.raw_extract_values(utterance, frames[1], [slots[3], slots[4]], [json_schema0, json_schema1], ["city", "time"], {})
+    raw_output = extractor.raw_extract_values(utterance, frames[1], [slots[3], slots[4]], [json_schema1, json_schema2], ["city", "time"], {})
     print(raw_output)
