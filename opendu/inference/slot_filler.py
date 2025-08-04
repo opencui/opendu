@@ -6,6 +6,7 @@
 # This source code is licensed under the BeThere AI license.
 # See LICENSE file in the project root for full license information.
 from abc import ABC, abstractmethod
+import json
 from typing import Any, Dict
 
 from pydantic import BaseModel
@@ -62,16 +63,16 @@ class StructuredExtractor(SlotExtractor):
     
     # For each slot, we can use a different extraction, regardless whether it is entity or structure,
     # single value or multiple value.                                         
-    def extract_values(self, utterance:str, frame_name: str, expectations:list[str], candidates: dict):      
+    def extract_values(self, utterance:str, frame_name: str, candidates: dict, expected:list[str] = []):      
         frame_schema = self.module.get_skill(frame_name)
         slot_infos = [self.module.slots[slot_name] for slot_name in frame_schema.slots]
         slot_types = [build_json_schema(self.module.skills, self.module.slots, slot_schema.type, True, slot_schema.multi_value) for slot_schema in slot_infos]
-        return self.raw_extract_values(utterance, frame_schema, slot_infos, slot_types, expectations, candidates)
+        return self.raw_extract_values(utterance, frame_schema, slot_infos, slot_types, candidates, expected)
     
 
-    def raw_extract_values(self, utterance:str, frame: FrameSchema, slots: list[SlotSchema], slot_types: list[dict], expectations: list[str], candidates: dict):
-        slot_prompts = []
+    def raw_extract_values(self, utterance:str, frame: FrameSchema, slots: list[SlotSchema], slot_types: list[dict], candidates: dict = {}, expected: list[str] = []):
         expectations = []
+        slot_prompts = []
         for index in range(len(slots)):
             slot = slots[index]
             slot_type = slot_types[index]
@@ -83,12 +84,12 @@ class StructuredExtractor(SlotExtractor):
                 "slot": slot,
                 "type_schema": slot_type,
                 "candidates": candidates,
-                "is_expected": slot.name in expectations
+                "is_expected": slot.name in expected
             }))
             expectations.append(slot_type)
 
         # we use list for both prompts, and expectations.
-        slot_outputs = self.generator.generate(slot_prompts, expectations)
+        slot_outputs = self.decoder.generate(slot_prompts, expectations)
 
         if self.debug:
             print(json.dumps(slot_outputs, indent=2))
