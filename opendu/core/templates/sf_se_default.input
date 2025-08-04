@@ -27,10 +27,7 @@ Extract the value for slot `{{slot.name}}` from the given utterance within the c
 - Omit optional fields that cannot be determined
 - For arrays, return empty `[]` if no values found
 
-## Extraction target slot
-**Slot Description:** {{slot.description}}
-**Json Schema for slot type:**
-```json
+## Extraction value for slot {{slot.name}} : {{slot.description}} with the follow json schema:
 {{ type_schema | tojson(indent=2) }}
 ```
 
@@ -62,8 +59,6 @@ These are potential slot-filling phrases extracted by a separate out of context 
 {{ candidates | tojson(indent=2) }}
 ```
 {% endif %}
-
-ff
 ---
 
 ## Your Task: Extract the value for slot `{{slot.name}}` from the given utterance within the context of task: **{{skill.description}}**, Return only valid JSON matching the schema, with payload come from the utterance. 
