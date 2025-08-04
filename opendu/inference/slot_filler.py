@@ -58,7 +58,7 @@ class StructuredExtractor(SlotExtractor):
         self.decocer = Decoder.get()
         self.slot_prompt = PromptManager.get_builder(Task.SfSs)
         self.module = self.retriever.module if retriever else None
-        self.debug = RauConfig().g.get().sf_debug or RauConfig.get().converter_debug or RauConfig.get().debug
+        self.debug = RauConfig().get().sf_debug or RauConfig.get().converter_debug or RauConfig.get().debug
     
     # For each slot, we can use a different extraction, regardless whether it is entity or structure,
     # single value or multiple value.                                         
