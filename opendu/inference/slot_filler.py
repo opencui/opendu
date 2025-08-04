@@ -66,7 +66,7 @@ class StructuredExtractor(SlotExtractor):
     def extract_values(self, utterance:str, frame_name: str, candidates: dict, expected:list[str] = []):      
         frame_schema = self.module.get_skill(frame_name)
         slot_infos = [self.module.slots[slot_name] for slot_name in frame_schema.slots]
-        slot_types = [build_json_schema(self.module.skills, self.module.slots, slot_schema.type, True, slot_schema.multi_value) for slot_schema in slot_infos]
+        slot_types = [build_json_schema(self.module.skills, self.module.slots, slot_schema.type, slot_schema.multi_value) for slot_schema in slot_infos]
         return self.raw_extract_values(utterance, frame_schema, slot_infos, slot_types, candidates, expected)
     
 
@@ -109,8 +109,8 @@ if __name__ == "__main__":
         SlotSchema(name="lat", description="Latitude", type="number"),
         SlotSchema(name="lng", description="Longitude", type="number"),
         SlotSchema(name="loc", description="GPS location", type="Coordinates"),
-        SlotSchema(name="city", description="city name", type="string"),
-        SlotSchema(name="time", description="Time of day", type="string"),
+        SlotSchema(name="city", description="city name", type="city"),
+        SlotSchema(name="time", description="Time of day", type="time_of_day"),
         SlotSchema(name="irrelevant", description="unused slot", type="string"),
     ]
 
