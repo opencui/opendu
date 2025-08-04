@@ -57,26 +57,7 @@ class FftVllmGenerator(Decoder):
     def __init__(self, model: str):
         self.model = LLM(model=model, enable_prefix_caching=True)
 
-    def generate(self, input_texts: list[str], expectation:  Union[OutputExpectation, list[OutputExpectation]] = OutputExpectation()):
-        sampling_kwargs = {
-            "temperature": expectation.temperature,
-            "top_p": expectation.top_p,
-            "top_k": expectation.top_k,
-            "repetition_penalty": expectation.repetition_penalty,
-        }
-
-        if expectation.choices:
-            sampling_kwargs["guided_decoding"] = GuidedDecodingParams(
-                choice=expectation.choices
-            )
-
-        samplingParams = SamplingParams(**sampling_kwargs)
-
-
-        outputs = self.model.generate(input_texts, sampling_params=samplingParams)
-        return self.process_return(outputs, input_texts)
-    
-    def generate(self, input_texts: list[str], expectation: Union[OutputExpectation, list[OutputExpectation]] = OutputExpectation()):
+    def generate(self, prompts: list[str], expectation: Union[OutputExpectation, list[OutputExpectation]] = OutputExpectation()):
         # Check if expectation is a single instance or a list
         if isinstance(expectation, OutputExpectation):
             # Single expectation - apply to all inputs
@@ -97,12 +78,12 @@ class FftVllmGenerator(Decoder):
                  )
             
             samplingParams = SamplingParams(**sampling_kwargs)
-            outputs = self.model.generate(input_texts, sampling_params=samplingParams)
+            outputs = self.model.generate(prompts, sampling_params=samplingParams)
         
         else:
             # List of expectations - one per input
-            if len(expectation) != len(input_texts):
-                raise ValueError(f"Number of expectations ({len(expectation)}) must match number of input texts ({len(input_texts)})")
+            if len(expectation) != len(prompts):
+                raise ValueError(f"Number of expectations ({len(expectation)}) must match number of input texts ({len(prompts)})")
             
             # Create a SamplingParams for each expectation
             sampling_params_list = []
@@ -123,9 +104,9 @@ class FftVllmGenerator(Decoder):
                  )    
                 sampling_params_list.append(SamplingParams(**sampling_kwargs))
             
-            outputs = self.model.generate(input_texts, sampling_params=sampling_params_list)
+            outputs = self.model.generate(prompts, sampling_params=sampling_params_list)
         
-        return self.process_return(outputs, input_texts)
+        return self.process_return(outputs, prompts)
 
 if __name__ == "__main__":
 
