@@ -43,7 +43,7 @@ Notice it also shows the phrases of the same type can sometime fill different sl
 {% for template in templates %}
 {{ template }}
 {% endfor %}
-{% else %}
+{% endif %}
 
 
 {% if examples %}
