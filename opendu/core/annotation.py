@@ -360,7 +360,8 @@ def build_json_schema(
         }
 
     result = root_schema
-    result["components"] = {"schemas": {name: schema for name, schema in components.items()}}
+    if (len(components) != 0):
+        result["components"] = {"schemas": {name: schema for name, schema in components.items()}}
 
     if include_deps:
         result["$deps"] = {
