@@ -71,6 +71,7 @@ class StructuredExtractor(SlotExtractor):
 
     def raw_extract_values(self, utterance:str, frame: FrameSchema, slots: list[SlotSchema], slot_types: list[dict], expectations: list[str], candidates: dict):
         slot_prompts = []
+        expectations = []
         for idx in range(len(slots)):
             slot = slots[index]
             slot_type = slot_types[index]
@@ -84,8 +85,10 @@ class StructuredExtractor(SlotExtractor):
                 "candidates": candidates,
                 "is_expected": slot.name in expectations
             }))
-        
-        slot_outputs = self.generator.generate(slot_prompts)
+            expectations.append(slot_type)
+
+        # we use list for both prompts, and expectations.
+        slot_outputs = self.generator.generate(slot_prompts, expectations)
 
         if self.debug:
             print(json.dumps(slot_outputs, indent=2))
@@ -114,7 +117,7 @@ if __name__ == "__main__":
     prompt1 = build_prompt({"utterance": "I like to build a table reservation module, please", "skill": skill, "examples": examples, "arguments": {}})
     print(prompt0)
 
-    generator = FftVllmGenerator(model="Qwen/Qwen3-4B")
+    generator = Decoder.get()
 
     raw_output = generator.generate([prompt0, prompt1], OutputExpectation(choices=["True", "False"]))
     outputs = [output.outputs for output in raw_output]
