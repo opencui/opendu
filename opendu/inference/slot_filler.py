@@ -98,41 +98,6 @@ class StructuredExtractor(SlotExtractor):
                 results[slot["name"]] = {"values" : [slot_outputs[index]], "operator": "=="}
         return results
 
-        print(f"parse for skill: {text} with {expectations} and {candidates}")
-        # For now, we only pick one skill
-        # TODO: try to use candidates. 
-        skills, exemplar_nodes = self.retrieve(text)
-        print(f"get_skills for {text} with {len(exemplar_nodes)} nodes\n")
-
-        debug_infos = []
-
-        skill_with_exemplars = self.build_skills(text, skills, exemplar_nodes)
-
-        # Now we should use the expectation for improve node score, and filtering
-        # the contextual template that is not match.
-        skill_prompts = []
-        build_prompt = PromptManager.get_builder(Task.IdBc, input_mode=True)
-        for skill_demonstration in skill_with_exemplars:
-            skill_prompts.append(
-                build_prompt(
-                    {
-                        "skill": skill_demonstration.skill,
-                        "exemplars": skill_demonstration.exemples,
-                        "utterance": text,
-                        "arguments": candidates
-                    }
-                )
-            )
-        
-        skill_outputs = self.generator.generate(skill_prompts, OutputExpectation(choices=["True", "False"])).output
-        # For now we assume single intent.
-    
-        zipped = list(zip(skills, skill_outputs))
-        # Later we can run this twice, first with examples (more trustworthy), then without examples.
-        label = next((paired[0].name for paired in zipped if paired[1].outputs == "True"), None)
-
-        return label, list(map(node_to_exemplar, exemplar_nodes)), debug_infos
-
 
 if __name__ == "__main__":
 

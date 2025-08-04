@@ -11,8 +11,8 @@ Extract the value for slot `{{slot.name}}` from the given utterance within the c
 - Ignore information related to other skills or intents that may be present
 
 ### 2. Candidate Validation
-- Pre-extracted candidates are provided as hints, not ground truth
-- Validate candidates against context (e.g., "Paris" could be departure OR arrival city)
+- Pre-extracted candidates are provided as hints, not ground truth, as it only map phrase to its type.
+- Validate candidates against context (e.g., "Paris" as city could be departure OR arrival)
 - Consider surrounding words and semantic relationships
 - Reject candidates that don't fit the specific slot context
 
@@ -64,7 +64,7 @@ These are potential slot-filling phrases extracted by a separate out of context 
 ```
 {% endif %}
 
-
+ff
 ---
 
 ## Your Task

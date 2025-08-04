@@ -4,6 +4,7 @@
 # This source code is licensed under the BeThere AI license.
 # See LICENSE file in the project root for full license information.
 from abc import ABC, abstractmethod
+from typing import Union
 from opendu.core.config import GeneratorType, RauConfig
 from vllm import LLM, SamplingParams
 from pydantic import BaseModel, Field
@@ -19,6 +20,7 @@ class OutputExpectation(BaseModel):
     top_k: int = Field(default=50, description="Top-k, e.g., 'The answer is {answer}'.")
     repetition_penalty: float = Field(default=1.0, description="Repetition penalty for the decoding process.")
     choices: list[str] = Field(default_factory=list, description="List of expected outputs from the model.")
+    json_schema: dict = Field(default_factory=dict, description="JSON schema for the expected output.")
 
 #
 # In case you are curious about decoding: https://huggingface.co/blog/how-to-generate
@@ -55,7 +57,7 @@ class FftVllmGenerator(Decoder):
     def __init__(self, model: str):
         self.model = LLM(model=model, enable_prefix_caching=True)
 
-    def generate(self, input_texts: list[str], expectation: OutputExpectation=OutputExpectation()):
+    def generate(self, input_texts: list[str], expectation:  Union[OutputExpectation, list[OutputExpectation]] = OutputExpectation()):
         sampling_kwargs = {
             "temperature": expectation.temperature,
             "top_p": expectation.top_p,
@@ -73,7 +75,57 @@ class FftVllmGenerator(Decoder):
 
         outputs = self.model.generate(input_texts, sampling_params=samplingParams)
         return self.process_return(outputs, input_texts)
+    
+    def generate(self, input_texts: list[str], expectation: Union[OutputExpectation, list[OutputExpectation]] = OutputExpectation()):
+        # Check if expectation is a single instance or a list
+        if isinstance(expectation, OutputExpectation):
+            # Single expectation - apply to all inputs
+            sampling_kwargs = {
+                "temperature": expectation.temperature,
+                "top_p": expectation.top_p,
+                "top_k": expectation.top_k,
+                "repetition_penalty": expectation.repetition_penalty,
+            }
 
+            if expectation.choices:
+                sampling_kwargs["guided_decoding"] = GuidedDecodingParams(
+                    choice=expectation.choices
+                )
+            if expectation.json_schema:
+                 sampling_kwargs["guided_decoding"]= GuidedDecodingParams(
+                    json=expectation.json_schema
+                 )
+            
+            samplingParams = SamplingParams(**sampling_kwargs)
+            outputs = self.model.generate(input_texts, sampling_params=samplingParams)
+        
+        else:
+            # List of expectations - one per input
+            if len(expectation) != len(input_texts):
+                raise ValueError(f"Number of expectations ({len(expectation)}) must match number of input texts ({len(input_texts)})")
+            
+            # Create a SamplingParams for each expectation
+            sampling_params_list = []
+            for exp in expectation:
+                sampling_kwargs = {
+                    "temperature": exp.temperature,
+                    "top_p": exp.top_p,
+                    "top_k": exp.top_k,
+                    "repetition_penalty": exp.repetition_penalty,
+                }
+                if exp.choices:
+                    sampling_kwargs["guided_decoding"] = GuidedDecodingParams(
+                        choice=exp.choices
+                    )
+                if exp.json_schema:
+                 sampling_kwargs["guided_decoding"]= GuidedDecodingParams(
+                    json=exp.json_schema
+                 )    
+                sampling_params_list.append(SamplingParams(**sampling_kwargs))
+            
+            outputs = self.model.generate(input_texts, sampling_params=sampling_params_list)
+        
+        return self.process_return(outputs, input_texts)
 
 if __name__ == "__main__":
 
