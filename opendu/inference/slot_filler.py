@@ -144,5 +144,5 @@ if __name__ == "__main__":
 
     extractor = StructuredExtractor()
     utterance = "can you help me find the weather in San Francisco at 10am?",
-    raw_output = extractor.raw_extract_values(utterance, frames[1], [slots[3], slots[4]], [json_schema1, json_schema2], ["city", "time"], {})
+    raw_output = extractor.raw_extract_values(utterance, frames[1], [slots[3], slots[4]], [json_schema1, json_schema2], {})
     print(raw_output)
