@@ -56,7 +56,7 @@ class SlotExtractor(ABC):
 class StructuredExtractor(SlotExtractor):
     def __init__(self, retriever:ContextRetriever=None):
         self.retriever = retriever
-        self.decocer = Decoder.get()
+        self.decoder = Decoder.get()
         self.slot_prompt = PromptManager.get_builder(Task.SfSs)
         self.module = self.retriever.module if retriever else None
         self.debug = RauConfig().get().sf_debug or RauConfig.get().converter_debug or RauConfig.get().debug
