@@ -72,7 +72,7 @@ class StructuredExtractor(SlotExtractor):
     def raw_extract_values(self, utterance:str, frame: FrameSchema, slots: list[SlotSchema], slot_types: list[dict], expectations: list[str], candidates: dict):
         slot_prompts = []
         expectations = []
-        for idx in range(len(slots)):
+        for index in range(len(slots)):
             slot = slots[index]
             slot_type = slot_types[index]
 
