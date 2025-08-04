@@ -327,6 +327,7 @@ def build_json_schema(
 
     def resolve_frame(frame_name: str) -> Dict[str, Any]:
         if frame_name in frame_dict:
+            frame = frame_dict[frame_name]
             props = {}
             required = []
             for slot_name in frame.slots:
