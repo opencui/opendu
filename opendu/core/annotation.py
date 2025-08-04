@@ -7,7 +7,7 @@
 import re
 from typing import Dict, List, TypedDict, Set, Any
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 from enum import Enum
 from llama_index.core.schema import TextNode
 import json
@@ -44,12 +44,45 @@ class FrameSchema(BaseModel):
         self.__dict__[key] = value
 
 
+
+class EntityInstance(BaseModel):
+    label: str = Field(description="the canonical form of the instance")
+    expressions: List[str] = Field(
+        description="the expressions used to identify this instance."
+    )
+
+
+class EntityType(BaseModel):
+    name: Optional[str]= Field(None, description="language dependent name")
+    description: Optional[str] = Field(None, description="define what is this type for.")
+    enumable: bool = Field(True, description="whether this type is enumable.")
+    instances: List[EntityInstance]
+
+    @computed_field
+    @property
+    def examples(self) -> Set[str]:
+        """Random sample of expressions from instances."""
+        if not self.instances:
+            return set()
+        
+        all_expressions = [
+            expr for instance in self.instances 
+            for expr in instance.expressions
+        ]
+        if not all_expressions:
+            return set()
+            
+        sample_size = min(5, len(all_expressions))
+        return set(random.sample(all_expressions, sample_size))
+    
+
 # This name inside the FrameSchema and SlotSchema is semantic bearing.
 # So there should not be overlapping between schema names.
 # the key for skills and slots does not need to be.
 class Schema(BaseModel):
     skills: Dict[str, FrameSchema]
     slots: Dict[str, SlotSchema]
+    entities: Dict[str, EntityType] = Field(default_factory=dict, description="Entity types for entity recognition")
 
     def get_skill(self, frame_id: str):
         return self.skills[frame_id]
@@ -92,7 +125,26 @@ class EntityInstance(BaseModel):
 class EntityType(BaseModel):
     name: Optional[str]= Field(None, description="language dependent name")
     description: Optional[str] = Field(None, description="define what is this type for.")
+    enumable: bool = Field(True, description="whether this type is enumable.")
     instances: List[EntityInstance]
+
+    @computed_field
+    @property
+    def examples(self) -> Set[str]:
+        """Random sample of expressions from instances."""
+        if not self.instances:
+            return set()
+        
+        all_expressions = [
+            expr for instance in self.instances 
+            for expr in instance.expressions
+        ]
+        if not all_expressions:
+            return set()
+            
+        sample_size = min(5, len(all_expressions))
+        return set(random.sample(all_expressions, sample_size))
+    
 
 # EntityStore just need to be:  Dict[str, List[EntityInstance]]
 EntityStore = Dict[str, EntityType]
