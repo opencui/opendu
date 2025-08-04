@@ -325,23 +325,26 @@ def build_json_schema(
                 base_schema["examples"] = sorted(slot.examples)
             return base_schema
 
-    def resolve_frame(frame: FrameSchema) -> Dict[str, Any]:
-        props = {}
-        required = []
-        for slot_name in frame.slots:
-            if slot_name in slot_dict:
-                props[slot_name] = resolve_slot_type(slot_name)
-                required.append(slot_name)
-        return {
-            "type": "object",
-            "description": frame.description,
-            "properties": props,
-            "required": required,
-            "additionalProperties": False,
-        }
+    def resolve_frame(frame_name: str) -> Dict[str, Any]:
+        if frame_name in frame_dict:
+            props = {}
+            required = []
+            for slot_name in frame.slots:
+                if slot_name in slot_dict:
+                    props[slot_name] = resolve_slot_type(slot_name)
+                    required.append(slot_name)
+            return {
+                "type": "object",
+                "description": frame.description,
+                "properties": props,
+                "required": required,
+                "additionalProperties": False,
+            }
+        else:
+            return  {"type": "string", "description": frame_name}
 
     visited_frames.add(root_frame_name)
-    root_schema = resolve_frame(frame_dict[root_frame_name])
+    root_schema = resolve_frame(root_frame_name)
 
     if root_multi_value:
         root_schema = {
