@@ -32,7 +32,7 @@ Extract the value for slot `{{slot.name}}` from the given utterance within the c
 **Slot Description:** {{slot.description}}
 **Json Schema for slot type:**
 ```json
-{{ json_schema }}
+{{ type_schema | tojson(indent=2) }}
 ```
 
 {% if templates %}
@@ -45,27 +45,14 @@ Notice it also shows the phrases of the same type can sometime fill different sl
 {% endfor %}
 {% else %}
 
-## Examples:
+
 {% if examples %}
+## Examples:
 {% for example in examples %}
 ### Example {{loop.index}}
-**Input:** {{ example.input }}  
-**Expected Output:**
-```json
-{{ example.output }}
-```
+**Input:**: {{ example.input }}  
+**Expected Output:**: {{ example.output }}
 {% endfor %}
-{% else %}
-### Sample Example
-**Input:** "Book a table for two at 7 pm tomorrow at Sushi Place"  
-**Expected Output:**
-```json
-{
-  "restaurant": "Sushi Place",
-  "datetime": "7 pm tomorrow", 
-  "party_size": "two"
-}
-```
 {% endif %}
 
 
@@ -81,8 +68,8 @@ These are potential slot-filling phrases extracted by a separate out of context 
 ---
 
 ## Your Task
-**Input:** {{ utterance }}
-**Output:** (Return only valid JSON matching the schema)
+**Input:**: {{ utterance }}
+**Output:**: (Return only valid JSON matching the schema)
 
 
 
