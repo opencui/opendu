@@ -1,3 +1,8 @@
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
 import logging
 from dataclasses import dataclass
 
@@ -92,9 +97,7 @@ def create_sentence_pair_for_description(
     return results
 
 
-def create_sentence_pair_for_exemplars(
-        dataset: Dataset, retriever: BaseRetriever, num_examples=1
-):
+def create_sentence_pair_for_exemplars(dataset: Dataset, retriever: BaseRetriever, num_examples=1):
     embedding = EmbeddingStore.get_embedding_by_task("exemplar")
     results = []
     for item in dataset:

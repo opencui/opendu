@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
 
 import json
 import os
-from opendu.core.annotation import (
-    CamelToSnake, EntityMetas, ExemplarStore, FrameSchema, Schema, SlotSchema, get_value)
+from opendu.core.annotation import (CamelToSnake, EntitySchema, FrameSchema, Schema, SlotSchema, get_value)
 
 
 #
 # This is used to create the DatasetCreator from OpenAI function descriptions.
-#
 # We assume that in each domain, the slot name are unique, and skill name are unique.
 #
 def from_openai(functions) -> Schema:
@@ -31,9 +33,9 @@ def from_openai(functions) -> Schema:
                 slot_name = key
                 slot_description = slot["description"]
                 slot_infos[slot_name] = SlotSchema(
-                    slot_name, slot_description
-                ).to_dict()
-        skill_infos[f_name] = FrameSchema(name=f_name, description=f_description, slots=f_slots).to_dict()
+                    name=slot_name, description=slot_description
+                )
+        skill_infos[f_name] = FrameSchema(name=f_name, description=f_description, slots=f_slots)
     return Schema(skills=skill_infos, slots=slot_infos)
 
 
@@ -55,9 +57,9 @@ def from_openapi(specs) -> Schema:
                 slot_name = get_value(_p, "name")
                 slot_description = get_value(_p, "description")
                 if slot_name not in slots:
-                    slots[slot_name] = SlotSchema(name=slot_name, description=slot_description).to_dict()
+                    slots[slot_name] = SlotSchema(name=slot_name, description=slot_description)
                 parameters.append(slot_name)
-            skills[name] = FrameSchema(name=name, description=description, slots=parameters).to_dict()
+            skills[name] = FrameSchema(name=name, description=description, slots=parameters)
     return Schema(skills=skills, slots=slots)
 
 
@@ -76,22 +78,22 @@ def load_schema_from_directory(path):
 
 def load_all_from_directory(input_path):
     module_schema = load_schema_from_directory(f"{input_path}/schemas.json")
-    examplers = ExemplarStore(**json.load(open(f"{input_path}/exemplars.json")))
+    exemplars = json.load(open(f"{input_path}/exemplars.json"))
     if os.path.exists(f"{input_path}/recognizers.json"):
-        recognizers = EntityMetas(**json.load(open(f"{input_path}/recognizers.json")))
+        recognizers = json.load(open(f"{input_path}/recognizers.json"))
     else:
         recognizers = None
-    return module_schema, examplers, recognizers
+    return module_schema, exemplars, recognizers
 
 
 def load_specs_and_recognizers_from_directory(input_path):
     module_schema = load_schema_from_directory(f"{input_path}/schemas.json")
-    recognizers = EntityMetas(**json.load(open(f"{input_path}/recognizers.json")))
+    recognizers = json.load(open(f"{input_path}/recognizers.json"))
     return module_schema, recognizers
 
 
 if __name__ == "__main__":
-    schema = from_openai(json.load(open("./examples/schemas.json")))
+    schema = from_openai(json.load(open("./examples/openai/schemas.json")))
     print(schema)
     print("\n")
 
@@ -99,10 +101,12 @@ if __name__ == "__main__":
     print(schema)
     print("\n")
 
-    exemplars = ExemplarStore(**json.load(open("./examples/exemplars.json")))
+    recognizer = json.load(open("./examples/openai/recognizers.json"))
+    print(recognizer)
+    print("\n")
+
+    exemplars = json.load(open("./examples/openai/exemplars.json"))
     print(exemplars)
     print("\n")
 
-    recognizer = EntityMetas(**json.load(open("./examples/recognizers.json")))
-    print(recognizer)
-    print("\n")
+

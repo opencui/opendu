@@ -1,22 +1,22 @@
 # Copyright 2024, OpenCUI
 # Licensed under the Apache License, Version 2.0.
-
-import json
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
 from abc import ABC, abstractmethod
-from typing import Dict
+import json
+from typing import Any, Dict
 
 from pydantic import BaseModel
-from collections import defaultdict
-from enum import Enum
-
 from opendu import FrameSchema
-from opendu.core.annotation import (CamelToSnake, DialogExpectation, Exemplar, OwnerMode, ExactMatcher)
-from opendu.core.config import RauConfig
-from opendu.core.prompt import (DescriptionPrompts, ExemplarPrompts)
-from opendu.core.retriever import (ContextRetriever)
-from opendu.inference.generator import GenerateMode
+from opendu.core.annotation import SlotSchema, build_json_schema
+from opendu.core.config import RauConfig, Task
+from opendu.core.prompt import PromptManager
+from opendu.core.retriever import ContextRetriever
+from opendu.inference.decoder import Decoder, OutputExpectation
 
-from opendu.utils.json_tools import parse_json_from_string
 
 #
 # There are two levels of the APIs here: a
@@ -42,12 +42,112 @@ class EntitySlotMeta(SlotMeta):
 class FrameSlotMeta(SlotMeta):
     slots: Dict[str, SlotMeta]
 
-
-# The slot filler takes task description, and slot descriptions, candidate values and
+#
+# The slot extractor takes task description as context, and slot schema, candidate values and
 # generate the json representation of values.
 #
-#
-class SlotFiller(ABC):
+class SlotExtractor(ABC):
     @abstractmethod
-    def extract_values(self, text, expectations:FrameSchema, candidates: dict):
+    def extract_values(self, utterance:str, frame: str, expectation:list[str], candidates: dict, debug=False) -> dict[str, Any]:
+        """"""
         pass
+
+
+class StructuredExtractor(SlotExtractor):
+    def __init__(self, retriever:ContextRetriever=None):
+        self.retriever = retriever
+        self.decoder = Decoder.get()
+        self.slot_prompt = PromptManager.get_builder(Task.SfSs)
+        self.module = self.retriever.module if retriever else None
+        self.debug = RauConfig().get().sf_debug or RauConfig.get().converter_debug or RauConfig.get().debug
+    
+    # For each slot, we can use a different extraction, regardless whether it is entity or structure,
+    # single value or multiple value.                                         
+    def extract_values(self, utterance:str, frame_name: str, candidates: dict[str, list[str]], expectedSlots:list[str] = []):      
+        frame_schema = self.module.get_skill(frame_name)
+        slot_infos = [self.module.slots[slot_name] for slot_name in frame_schema.slots]
+        slot_types = [build_json_schema(self.module.skills, self.module.slots, slot_schema.type, slot_schema.multi_value) for slot_schema in slot_infos]
+        return self.raw_extract_values(utterance, frame_schema, slot_infos, slot_types, candidates, expectedSlots)
+    
+
+    def raw_extract_values(self, utterance:str, frame: FrameSchema, slots: list[SlotSchema], slot_types: list[dict], candidates: dict[str, list[str]], expectedSlots: list[str] = []):
+        expectations = []
+        slot_prompts = []
+        for index in range(len(slots)):
+            slot = slots[index]
+            slot_type = slot_types[index]
+
+            # For now, we do not have example.
+            slot_prompts.append(self.slot_prompt({
+                "utterance": utterance,
+                "skill": frame,
+                "slot": slot,
+                "type_schema": slot_type,
+                "candidates": candidates,
+                "is_expected": slot.name in expectedSlots
+            }))
+            expectations.append(OutputExpectation(json_schema=slot_type))
+
+            if self.debug:
+                print(slot_prompts[-1])
+                print(expectations[-1])
+
+
+        # we use list for both prompts, and expectations.
+        slot_outputs = self.decoder.generate(slot_prompts, expectations)
+        slot_outputs = [output.outputs[0] for output in slot_outputs]
+
+        if self.debug:
+            print(slot_outputs)
+
+        results = {}
+        for index, slot in enumerate(slots):
+            # TODO(sean): this the source where we know what is the value, while we do not do
+            # normalization here, we need to explicitly
+            if slot_outputs[index] != "":
+                results[slot["name"]] = {"values" : [slot_outputs[index]], "operator": "=="}
+        return results
+
+
+if __name__ == "__main__":
+    slots = [
+        SlotSchema(name="lat", description="Latitude", type="number"),
+        SlotSchema(name="lng", description="Longitude", type="number"),
+        SlotSchema(name="loc", description="GPS location", type="Coordinates"),
+        SlotSchema(name="city", description="city name", type="city"),
+        SlotSchema(name="time", description="Time of day", type="time_of_day"),
+        SlotSchema(name="irrelevant", description="unused slot", type="string"),
+    ]
+
+    frames = [
+        FrameSchema(name="Coordinates", description="GPS Coordinates", slots=["lat", "lng"]),
+        FrameSchema(name="WeatherQuery", description="Ask about weather", slots=["city", "time"]),
+        FrameSchema(name="UnusedFrame", description="Should not appear", slots=["irrelevant"]),
+    ]
+    
+    slot_dict = {slot.name: slot for slot in slots}
+    frame_dict = {frame.name: frame for frame in frames}
+
+
+    build_prompt = PromptManager.get_builder(Task.SfSs, input_mode=True)
+
+
+    json_schema1 = build_json_schema(frame_dict, slot_dict, "city", False)
+    print(json_schema1)
+    prompt1 = build_prompt(
+        {
+            "utterance": "can you help me find the weather in San Francisco at 10am?",
+            "skill": frames[1],
+            "slot": slots[3],
+            "type_schema": json_schema1,
+            "examples": [],
+            "candidates": {}
+        })
+
+    print(prompt1)
+    json_schema2 = build_json_schema(frame_dict, slot_dict, "time", False)
+
+    extractor = StructuredExtractor()
+    utterance = "can you help me find the weather in San Francisco at 10am?",
+    raw_output = extractor.raw_extract_values(utterance, frames[1], [slots[3], slots[4]], [json_schema1, json_schema2], {})
+    print(raw_output)

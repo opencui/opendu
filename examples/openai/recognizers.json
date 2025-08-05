@@ -1,0 +1,9 @@
+{
+  "city" : {
+    "name": "city",
+    "description": "the place where people live",
+    "instances": [
+      {"label": "seattle", "expressions" :  ["seattle", "evergreen"]}
+    ]
+  }
+}

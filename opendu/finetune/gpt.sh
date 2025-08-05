@@ -4,9 +4,14 @@
 #
 export PYTHONPATH="$PYTHONPATH:."
 
-accelerate launch opencui/finetune/t2t.py \
-    --model_name_or_path google/gemma-2b \
-    --output_dir  ./output/gemma2b \
+accelerate launch opendu/finetune/t2t.py \
+    --num_processes=1 \
+    --num_machines=1 \
+    --mixed_precision=fp16 \
+    --fp16=True \
+    --bf16=False \
+    --model_name_or_path Qwen/Qwen2.5-7B-Instruct \
+    --output_dir  ./output/qwen2.5b7i \
     --logging_steps 50 \
     --save_strategy epoch \
     --data_seed 42 \
@@ -35,8 +40,8 @@ accelerate launch opencui/finetune/t2t.py \
     --weight_decay 0.0 \
     --seed 0 \
     --debug_dataset False \
-    --training_mode desc-exemplar-extractive_slot-nli  \
-    --peft_mode null \
+    --training_mode yni  \
+    --peft_mode lora \
+    --qlora_mode True \
     --model_type gpt \
-    --trust_remote_code \
-    --report_to wandb
+    --trust_remote_code

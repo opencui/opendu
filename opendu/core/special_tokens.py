@@ -1,7 +1,12 @@
-# We need to introduce a list of special tokens so that they can impact the response better.
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
+
 from enum import Enum
 
-
+# We need to introduce a list of special tokens so that they can impact the response better.
 class SpecialTokens(str, Enum):
     by_description = "<description>"
     by_exemplar = "<exemplar>"

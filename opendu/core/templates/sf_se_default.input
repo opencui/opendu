@@ -1,0 +1,68 @@
+# Slot Value Extraction
+
+## Task Overview
+Extract the value for slot `{{slot.name}}` from the given utterance within the context of task: **{{skill.description}}**
+
+## Extraction Guidelines
+
+### 1. Context Filtering
+- Focus only on the portion of the utterance that relates to "{{skill.description}}"
+- Ignore information related to other skills or intents that may be present
+
+### 2. Candidate Validation
+- Pre-extracted candidates are provided as hints, not ground truth, as it only map phrase to its type.
+- Validate candidates against context (e.g., "Paris" as city could be departure OR arrival)
+- Consider surrounding words and semantic relationships
+- Reject candidates that don't fit the specific slot context
+
+### 3. Extraction Principles
+- **Preserve original form**: Extract values verbatim without normalization
+- **Apply common sense**: Extract obvious values even if not in candidate list (e.g., common names, numbers)
+- **Handle composite types**: For complex objects, extract all relevant sub-fields
+- **Support multi-values**: Return arrays when schema expects multiple values
+
+### 4. Output Requirements
+- Return valid JSON matching the provided schema exactly
+- Use `null` for missing required fields
+- Omit optional fields that cannot be determined
+- For arrays, return empty `[]` if no values found
+
+## Extraction value for slot {{slot.name}} : {{slot.description}} with the follow json schema:
+```json
+{{ type_schema | tojson(indent=2) }}
+```
+
+{% if templates %}
+## Usage Templates
+These templates illustrate how slot-relevant phrases commonly appear in utterance, pay attention to their context or surrounding words. 
+Notice it also shows the phrases of the same type can sometime fill different slots.  
+{% for template in templates %}
+{{ template }}
+{% endfor %}
+{% endif %}
+
+{% if examples %}
+## Examples:
+{% for example in examples %}
+### Example {{loop.index}}
+**Input:**: {{ example.input }}  
+**Expected Output:**: {{ example.output }}
+{% endfor %}
+{% endif %}
+
+
+{% if candidates %}
+## Candidate Phrases (from utterance)
+These are potential slot-filling phrases extracted by a separate out of context recognizer. Validate them in context.
+```json
+{{ candidates | tojson(indent=2) }}
+```
+{% endif %}
+---
+
+## Based on the above description, extract the value for slot `{{slot.name}}` from the given utterance within the context of task: **{{skill.description}}**, Return only valid JSON matching the schema, with payload come from the utterance. 
+**Input:**: {{ utterance }}
+**Output:**: 
+
+
+

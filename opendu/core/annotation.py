@@ -1,10 +1,16 @@
-import json
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
+
 import re
-from typing import Dict, List, Literal, TypedDict, Set
+from typing import Dict, List, TypedDict, Set, Any
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 from enum import Enum
 from llama_index.core.schema import TextNode
+import json
 
 
 # During the understanding, we do not have concept of multivalued, as even when the slot
@@ -12,6 +18,7 @@ from llama_index.core.schema import TextNode
 class SlotSchema(BaseModel):
     name: str = Field(..., description="The name of the slot", title="Name")
     description: str = Field(..., description="Description of the slot")
+    multi_value: bool = Field(False, description="Whether the slot can have multiple values")
     type: Optional[str] = Field(None, description="The type of the slot")
     label: Optional[str] = Field(None, description="Optional label for the slot")
     examples: Set[str] = Field(set(), description="Example values for the slot.")
@@ -23,7 +30,12 @@ class SlotSchema(BaseModel):
         return {field: self.model_field[field].field_info.description for field in self.model_fields}
 
 
-class FrameSchema(BaseModel):
+class TypeSchema(BaseModel):
+    name: str = Field(..., description="The name of the frame", title="Name")
+    description: str = Field(..., description="Description of the frame")
+
+
+class FrameSchema(TypeSchema):
     name: str = Field(..., description="The name of the frame", title="Name")
     description: str = Field(..., description="Description of the frame")
     slots: List[str] = Field(default_factory=list, description="List of slot names in the frame")
@@ -37,22 +49,50 @@ class FrameSchema(BaseModel):
         self.__dict__[key] = value
 
 
-class FrameId(BaseModel):
-    name: str
 
+class EntityInstance(BaseModel):
+    label: str = Field(description="the canonical form of the instance")
+    expressions: List[str] = Field(
+        description="the expressions used to identify this instance."
+    )
+
+
+class EntitySchema(TypeSchema):
+    name: Optional[str]= Field(None, description="language dependent name")
+    description: Optional[str] = Field(None, description="define what is this type for.")
+    enumable: bool = Field(True, description="whether this type is enumable.")
+    instances: List[EntityInstance]
+
+    @computed_field
+    @property
+    def examples(self) -> Set[str]:
+        """Random sample of expressions from instances."""
+        if not self.instances:
+            return set()
+        
+        all_expressions = [
+            expr for instance in self.instances 
+            for expr in instance.expressions
+        ]
+        if not all_expressions:
+            return set()
+            
+        sample_size = min(5, len(all_expressions))
+        return set(random.sample(all_expressions, sample_size))
+    
 
 # This name inside the FrameSchema and SlotSchema is semantic bearing.
 # So there should not be overlapping between schema names.
 # the key for skills and slots does not need to be.
 class Schema(BaseModel):
-    skills: Dict[str, FrameSchema]
+    skills: Dict[str, TypeSchema]
     slots: Dict[str, SlotSchema]
 
-    def get_skill(self, frame_id: FrameId):
-        return self.skills[frame_id.name]
+    def get_skill(self, frame_id: str):
+        return self.skills[frame_id]
 
-    def has_skill(self, frame_id: FrameId):
-        return frame_id.name in self.skills
+    def has_skill(self, frame_id: str):
+        return frame_id in self.skills
 
     def get_slots_descriptions_in_dict(self, frame_name: str) -> dict:
         res = {}
@@ -79,50 +119,6 @@ class Schema(BaseModel):
         return res
 
 
-
-OwnerMode = Enum('OwnerMode', ["normal", "extended"])
-
-
-# This considers the match under the exact sense.
-class ExactMatcher:
-    @staticmethod
-    def agree(owner, owner_mode, target, target_mode):
-        label_match = owner == target
-        if not label_match:
-            return label_match
-
-        # We should not use this example.
-        if OwnerMode[owner_mode] != OwnerMode.normal and OwnerMode[target_mode] != OwnerMode.normal:
-            return None
-
-        # now we have match, but mode does not match.
-        return OwnerMode[owner_mode] == OwnerMode.normal and OwnerMode[target_mode] == OwnerMode.normal
-
-    @staticmethod
-    def match(owner, target, mode_in_str):
-        return owner == target and OwnerMode[mode_in_str] == OwnerMode.normal
-
-    @staticmethod
-    def is_good_mode(mode_in_str):
-        return OwnerMode[mode_in_str] == OwnerMode.normal
-
-
-class FrameValue(BaseModel):
-    name: str
-    arguments: TypedDict
-
-
-class FrameState(BaseModel):
-    frame: str
-    slot: str
-    slotType: str
-
-
-# How to present context is strictly state tracking implementation dependent.
-class DialogExpectation(BaseModel):
-    context: list[FrameState]
-
-
 class EntityInstance(BaseModel):
     label: str = Field(description="the canonical form of the instance")
     expressions: List[str] = Field(
@@ -130,24 +126,65 @@ class EntityInstance(BaseModel):
     )
 
 
-class ListEntityInfo(BaseModel):
-    rec_type: Literal["list"]
-    name: str = Field(description="language dependent name")
-    description: Optional[str] = Field(description="define what is this type for.")
+class EntitySchema(BaseModel):
+    name: Optional[str]= Field(None, description="language dependent name")
+    description: Optional[str] = Field(None, description="define what is this type for.")
+    enumable: bool = Field(True, description="whether this type is enumable.")
     instances: List[EntityInstance]
 
+    @computed_field
+    @property
+    def examples(self) -> Set[str]:
+        """Random sample of expressions from instances."""
+        if not self.instances:
+            return set()
+        
+        all_expressions = [
+            expr for instance in self.instances 
+            for expr in instance.expressions
+        ]
+        if not all_expressions:
+            return set()
+            
+        sample_size = min(5, len(all_expressions))
+        return set(random.sample(all_expressions, sample_size))
+    
 
-# For now, we only worry about list entity in the python side, as it is mainly designed for function calling.
-class EntityMetas(BaseModel):
-    slots: Dict[str, str] = Field(
-        description="the mapping from slot name to entity name"
+# EntityStore just need to be:  Dict[str, List[EntityInstance]]
+EntityStore = Dict[str, EntitySchema]
+
+#
+# Owner is not needed if exemplars are listed insider function specs.
+# This exemplar is used for intent detection only, as the template
+# already delegate the entity detection out.
+#
+class Exemplar(BaseModel):
+    owner: str = Field(description="onwer of this exemplar.")
+    template: str = Field(
+        description="the example utterance that should trigger the given skill"
     )
-    recognizers: Dict[str, ListEntityInfo] = Field(description="the name to recognizer")
+    owner_mode: Optional[str] = Field(None,
+        description="the matching mode between template and owner",
+    )
+    context_frame: Optional[str] = Field(None,
+        description="the context slot under which this exemplar works.",
+    )
+    context_slot: Optional[str] = Field(None,
+        description="the context slot under which this exemplar works.",
+    )
+    arguments: Optional[Dict[str, Any]] = Field(None)
+
+    def __getitem__(self, key):
+        return self.__dict__[key]
+
+
+# The exemplar store should simply just be a dict.
+ExemplarStore = Dict[str, list[Exemplar]]
 
 
 # For now, we do not handle normalization in understanding.
 class ListRecognizer:
-    def __init__(self, infos: Dict[str, ListEntityInfo]):
+    def __init__(self, infos: Dict[str, EntitySchema]):
         self.infos = infos
         self.patterns = {}
         for key, info in infos.items():
@@ -166,45 +203,13 @@ class ListRecognizer:
         return ListRecognizer.find_matches(self.patterns, slot, text)
 
 
-#
-# Owner is not needed if exemplars are listed insider function specs.
-# This exemplar is used for intent detection only, as the template
-# already delegate the entity detection out.
-#
-class Exemplar(BaseModel):
-    owner: str = Field(description="onwer of this exemplar.")
-    template: str = Field(
-        description="the example utterance that should trigger the given skill"
-    )
-    owner_mode: Optional[str] = Field(
-        description="the matching mode between template and owner",
-        default=None
-    )
-    context_frame: Optional[str] = Field(
-        description="the context slot under which this exemplar works.",
-        default=None
-    )
-    context_slot: Optional[str] = Field(
-        description="the context slot under which this exemplar works.",
-        default=None
-    )
-
-    def __getitem__(self, key):
-        return self.__dict__[key]
-
-# There are two different use cases for exemplars:
-# During fine-turning, we need both utterance and exemplars.
-# During index, we only need exemplars.
-class ExemplarStore(TypedDict):
-    name: str
-    exemplars: List[Exemplar]
-
-
 def get_value(item, key, value=None):
     try:
         return item[key]
     except:
         return value
+
+
 
 #
 # This is need to convert the camel casing to snake casing.
@@ -243,7 +248,7 @@ class MatchReplace:
         return f"< {slot_name} >"
 
 
-def build_nodes_from_exemplar_store(module_schema: Schema, store: ExemplarStore, nodes: List[TextNode]):
+def build_nodes_from_exemplar_store(module_schema: Schema, store: Dict[str, List[Exemplar]], nodes: List[TextNode]):
     pattern = re.compile(r"<(.+?)>")
     for label, exemplars in store.items():
         label_to_name = MatchReplace(ToSlotName(module_schema, label))
@@ -272,7 +277,118 @@ def build_nodes_from_exemplar_store(module_schema: Schema, store: ExemplarStore,
                 )
             )
 
+
+#
+# This is used to build the JSON schema for the given frame and slots.
+#
+def build_json_schema(
+    frame_dict: Dict[str, FrameSchema],
+    slot_dict: Dict[str, SlotSchema],
+    root_frame_name: str,
+    root_multi_value: bool = False,
+    include_deps: bool = False) -> Dict[str, Any]:
+    visited_frames = set()
+    visited_slots = set()
+    components = {}
+
+    def resolve_slot_type(slot_name: str) -> Dict[str, Any]:
+        visited_slots.add(slot_name)
+        slot = slot_dict[slot_name]
+
+        # Base schema for the slot's underlying type
+        if slot.type in {"string", "number", "boolean", "integer"}:
+            base_schema = {"type": slot.type}
+        elif slot.type in frame_dict:
+            visited_frames.add(slot.type)
+            # Reference to reusable nested frame schema
+            base_schema = {"$ref": f"#/components/schemas/{slot.type}"}
+            if slot.type not in components:
+                components[slot.type] = resolve_frame(frame_dict[slot.type])
+        else:
+            base_schema = {"type": "string", "description": slot.type}
+
+        # Wrap in array if multi_value is True
+        if getattr(slot, "multi_value", False):
+            array_schema = {
+                "type": "array",
+                "items": base_schema,
+                "description": slot.description,
+            }
+            # Optionally, you can add examples here as well (array examples)
+            if slot.examples:
+                array_schema["examples"] = [list(slot.examples)]
+            return array_schema
+        else:
+            # Single value slot
+            base_schema["description"] = slot.description
+            if slot.examples:
+                base_schema["examples"] = sorted(slot.examples)
+            return base_schema
+
+    def resolve_frame(frame_name: str) -> Dict[str, Any]:
+        if frame_name in frame_dict:
+            frame = frame_dict[frame_name]
+            props = {}
+            required = []
+            for slot_name in frame.slots:
+                if slot_name in slot_dict:
+                    props[slot_name] = resolve_slot_type(slot_name)
+                    required.append(slot_name)
+            return {
+                "type": "object",
+                "description": frame.description,
+                "properties": props,
+                "required": required,
+                "additionalProperties": False,
+            }
+        else:
+            return  {"type": "string", "description": frame_name}
+
+    visited_frames.add(root_frame_name)
+    root_schema = resolve_frame(root_frame_name)
+
+    if root_multi_value:
+        root_schema = {
+            "title": root_frame_name,
+            "type": "array",
+            "items": root_schema,
+        }
+    else:
+        root_schema = {
+            "title": root_frame_name,
+            **root_schema,
+        }
+
+    result = root_schema
+    if (len(components) != 0):
+        result["components"] = {"schemas": {name: schema for name, schema in components.items()}}
+
+    if include_deps:
+        result["$deps"] = {
+            "frames": sorted(visited_frames),
+            "slots": sorted(visited_slots),
+        }
+
+    return result
+
+
 if __name__ == "__main__":
-    print(json.dumps(ExemplarStore.model_json_schema(), indent=2))
+    slots = [
+        SlotSchema(name="lat", description="Latitude", type="number", multi_value=True),
+        SlotSchema(name="lng", description="Longitude", type="number"),
+        SlotSchema(name="loc", description="GPS location", type="Coordinates", multi_value=True),
+        SlotSchema(name="time", description="Time of day", type="string"),
+        SlotSchema(name="irrelevant", description="unused slot", type="string"),
+    ]
 
+    frames = [
+        FrameSchema(name="Coordinates", description="GPS Coordinates", slots=["lat", "lng"]),
+        FrameSchema(name="WeatherQuery", description="Ask about weather", slots=["loc", "time"]),
+        FrameSchema(name="UnusedFrame", description="Should not appear", slots=["irrelevant"]),
+    ]
 
+    slot_dict = {slot.name: slot for slot in slots}
+    frame_dict = {frame.name: frame for frame in frames}
+
+    json_schema = build_json_schema(frame_dict, slot_dict, "WeatherQuery", True)
+    print(json.dumps(json_schema, indent=2, sort_keys=True))

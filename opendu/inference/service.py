@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import dataclasses
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
 import getopt
 import logging
-import json
 import sys
 from enum import Enum
 import os
@@ -12,8 +15,8 @@ import traceback as tb
 from aiohttp import web
 import shutil
 from opendu.core.config import RauConfig
-from opendu.inference.parser import Parser, Generator, load_parser
-from opendu.inference.index import indexing
+from opendu.inference.parser import Parser, Decoder, load_parser
+from opendu.core.index import indexing
 from sentence_transformers import SentenceTransformer
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -29,7 +32,7 @@ Enum("DugMode", ["SKILL", "SLOT", "BINARY", "SEGMENT"])
 """
 curl -X POST -d '{"mode":"SKILL","utterance":"make a reservation","expectations":[],"slotMetas":[],"entityValues":{},"questions":[]}' 127.0.0.1:3001/v1/predict/tableReservation
 curl -X POST -d '{"mode":"BINARY","utterance":"Yes, absolutely.","questions":["Are you sure you want the white one?"]}' 127.0.0.1:3001/v1/predict/agent
-curl -X POST -d '{"mode": "SLOT", "utterance": "order food", "slots": [], "candidates": {}, "dialogActs": []}' http://127.0.0.1:3001/v1/predict/tableReservation
+curl -X POST -d '{"mode": "SLOT", "utterance": "order food", "frames": [], "slots": [], "candidates": {}, "dialogActs": []}' http://127.0.0.1:3001/v1/predict/tableReservation
 """
 
 @routes.get("/hello")
@@ -100,37 +103,22 @@ async def understand(request: web.Request):
     mode = req.get("mode")
     l_converter: Parser = request.app["converters"][bot]
 
-    if mode == "DESCSIM":
-        descriptions = req.get("descriptions")
-        return web.json_response({})
-
-    if mode == "EXEMPLARSIM":
-        exemplars = req.get("exemplars")
-        return web.json_response({})
-
-    if mode == "DEBUG":
-        expectations = req.get("expectations")
-        results = l_converter.debug(utterance, expectations)
-        return web.json_response(results)
-
-    if mode == "SEGMENT":
-        return web.json_response({"errMsg": f"Not implemented yet."})
-
     if mode == "SKILL":
         try:
-            expectations = req.get("expectations")
-            results = l_converter.detect_triggerables(utterance, expectations)
+            expectations = req.get("expectedFrames")
+            candidates = req.get("candidates")
+            results = l_converter.detect_triggerables(utterance, expectations, candidates)
         except Exception as e:
             traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
             return web.Response(text=traceback_str, status=500)
-
         return web.json_response(results)
 
     if mode == "SLOT":
         try:
-            slots = req.get("slots")
+            frame_name = req.get("targetFrame")
             entities = req.get("candidates")
-            results = l_converter.fill_slots(utterance, slots, entities)
+            expected_slots = req.get("expectedSlots")
+            results = l_converter.fill_slots(utterance, frame_name, entities)
             logging.info(results)
         except Exception as e:
             traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
@@ -140,10 +128,12 @@ async def understand(request: web.Request):
 
     if mode == "BINARY":
         try:
-            questions = req.get("questions")
-            dialog_acts = req.get("dialogActs")
+            question = req.get("question")
+            dialog_act_type = req.get("dialogActType")
+            target_frame = req.get("targetFrame")
+            target_slot = req.get("targetSlot")
             # So that we can use different llm.
-            resp = l_converter.inference(utterance, questions)
+            resp = l_converter.inference(utterance, question, dialog_act_type, target_frame, target_slot)
         except Exception as e:
             traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
             return web.Response(text=traceback_str, status=500)
@@ -161,6 +151,7 @@ def reload(key, app):
         index_path = f"{bot_path}/index/"
         converters[key] = load_parser(bot_path, index_path)
         logging.info(f"bot {key} is ready.")
+
 
 def init_app(schema_root, size):
     app = web.Application()
@@ -188,5 +179,5 @@ if __name__ == "__main__":
 
     # This load the generator LLM first.
     embedder = SentenceTransformer(RauConfig.get().embedding_model, device=RauConfig.get().embedding_device, trust_remote_code=True)
-    Generator.build()
+    Decoder.build()
     web.run_app(init_app(root_path, lru_capacity), port=3001)

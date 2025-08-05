@@ -1,0 +1,38 @@
+# Intent Detection: "{{skill.name}}"
+
+## Task
+Analyze the given utterance and determine if it matches the intent "{{skill.name}}": {{skill.description}}
+
+Output only "True" or "False".
+
+## Decision Guidelines
+- **True**: The utterance clearly expresses the intent described above
+- **False**: The utterance does not match this intent or expresses a different intent, 
+
+## Analysis Framework
+1. **Intent Match**: Does the utterance align with "{{skill.description}}"?
+2. **Context Check**: Consider the full context and meaning
+3. **Precision**: Avoid false positives - be specific about intent matching, 
+4. **the same level of abstraction**: for example, building a tool to do X is not the same intent as doing X.
+5. **example**: examples comes with True or False label, pay attention to how label is defined based on the template with respect to the same intent. 
+
+---
+
+{% if examples %}
+## Examples
+{% for example in examples %}
+**Utterance**: "{{example.template}}"
+**Decision**: {{example.label}}
+
+{% endfor %}
+{% endif %}
+
+{% if arguments %}
+**Context Arguments**:
+{% for key, value in arguments.items() %}
+- {{key}}: {{value}}
+{% endfor %}
+
+{% endif %}
+**Utterance**: "{{utterance}}"
+**Decision**: 

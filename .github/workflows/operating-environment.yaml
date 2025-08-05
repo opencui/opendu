@@ -1,5 +1,7 @@
 name: build operating environment
 on:
+  pull_request:
+    branches: [main]
   push:
     tags: [build-image-*]
 jobs:

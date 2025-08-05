@@ -1,3 +1,8 @@
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
 import copy
 import dataclasses
 
@@ -61,6 +66,7 @@ class DataCollatorForCausalLM(object):
                     )
             else:
                 input_ids.append(torch.tensor(tokenized_source))
+
         # Apply padding
         input_ids = pad_sequence(
             input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id

@@ -1,3 +1,9 @@
+# Copyright (c) 2025 BeThere AI
+# All rights reserved.
+#
+# This source code is licensed under the BeThere AI license.
+# See LICENSE file in the project root for full license information.
+
 import argparse
 import json
 import logging
@@ -15,14 +21,15 @@ import numpy as np
 import torch
 import transformers
 from datasets import Dataset, interleave_datasets
-from peft import LoraConfig, get_peft_model, TaskType, PrefixTuningConfig
+from peft import LoraConfig,  get_peft_model, TaskType, PrefixTuningConfig
 
-from transformers import (AutoModelForCausalLM, AutoTokenizer, Seq2SeqTrainer, set_seed,
+from transformers import (GenerationConfig, BitsAndBytesConfig, AutoModelForCausalLM,
+                          AutoTokenizer, Seq2SeqTrainer, set_seed,
                           DataCollatorForSeq2Seq, AutoModelForSeq2SeqLM)
 
 from opendu.core.config import RauConfig, ModelType
 from opendu.core.special_tokens import SpecialTokens
-from opendu.finetune.commons import (load_training_dataset)
+from opendu.finetune.load_dataset import load_training_dataset
 from opendu.finetune.datacollator import DataCollatorForCausalLM
 
 logger = logging.getLogger(__name__)
@@ -95,7 +102,7 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
     )
 
     report_to: str = field(
-        default="none",
+        default=None,
         metadata={"help": "To use wandb or something else for reporting."},
     )
     output_dir: str = field(
@@ -171,16 +178,18 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
         },
     )
     fp16: bool = field(
-        default=False, metadata={"help": "Whether or not use fp16 during training."}
+        default=True, metadata={"help": "Whether or not use fp16 during training."}
     ),
     bf16: bool = field(
-        default=True, metadata={"help": "Whether or not use bf16 during training."}
+        default=False, metadata={"help": "Whether or not use bf16 during training."}
     ),
     debug_dataset: bool = field(
         default=False, metadata={"help": "print out dataset instead"}
     )
+
     training_mode: str = field(default="skill", metadata={"help": "skill or slot"})
     peft_mode: str = field(default="null", metadata={"help": "lora or prompt-tuning"})
+    qlora_mode: bool = field(default=False, metadata={"help": "whether or not to use qlora"})
     model_type: str = field(default="gpt", metadata={"help": "gpt or t5, just need to be t2t"})
 
 
@@ -218,7 +227,7 @@ class GenerationArguments:
     no_repeat_ngram_size: Optional[int] = field(default=0)
 
 
-def get_model(args, peft_config=None):
+def get_model(args, peft_config=None, qlora_config=None):
     device_map = "auto"
 
     # if we are in a distributed setting, we need to set the device map and max memory per device
@@ -233,6 +242,7 @@ def get_model(args, peft_config=None):
             args.model_name_or_path,
             device_map=device_map,
             trust_remote_code=args.trust_remote_code,
+            quantization_config=qlora_config,
             torch_dtype=torch.bfloat16,
         )
 
@@ -273,6 +283,11 @@ def get_model(args, peft_config=None):
     #smart_tokenizer_and_embedding_resize(
     #    special_tokens_dict=special_tokens_dict, tokenizer=tokenizer, model=model
     #)
+
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+    if model.config.pad_token_id is None:
+        model.config.pad_token_id = model.config.eos_token_id
 
     return model, tokenizer
 
@@ -433,7 +448,7 @@ def preprocess_logits_for_metrics(logits, labels):
 
 
 def train():
-    # Turn of the evaluation mode.
+    # Turn off the evaluation mode, but why?
     RauConfig.get().eval_mode = False
 
     hfparser = transformers.HfArgumentParser(
@@ -455,6 +470,10 @@ def train():
         **vars(model_args), **vars(data_args), **vars(training_args)
     )
 
+    qlora_config = None
+    if args.qlora_mode == True:
+        qlora_config = get_bnb_config()
+
     peft_config = None
     if args.peft_mode == "lora":
         peft_config = get_lora_config()
@@ -467,9 +486,11 @@ def train():
     # For now, just use the fix path.
     output = "../output"
 
+    training_args.report_to = []
+
     # Save the things to disk first, for training we keep each module separate.
-    # Down the road, we might
-    converted_factories = load_training_dataset(args)
+    training_mode = args.training_mode
+    converted_factories = load_training_dataset(training_mode)
 
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
@@ -478,7 +499,7 @@ def train():
     print("loaded model")
     set_seed(args.seed)
     data_collator = None
-    model, tokenizer = get_model(args, peft_config)
+    model, tokenizer = get_model(args, peft_config, qlora_config)
 
     if ModelType[args.model_type] == ModelType.gpt:
         data_collator = DataCollatorForCausalLM(
@@ -499,8 +520,8 @@ def train():
 
     # this creates a dict.
     # Split train/eval, reduce size
-    eval_dataset = merge_created_datasets(converted_factories, "validation")
-    train_dataset = merge_created_datasets(converted_factories, "train")
+    eval_dataset = converted_factories.get("dev")
+    train_dataset = converted_factories["train"]
 
     if ModelType[args.model_type] == ModelType.t5:
         preprocess = DatasetAdaptor(tokenizer, args.source_max_len, args.target_max_len)
@@ -582,16 +603,28 @@ def train():
         os.symlink(check_name, last_path)
 
         # fix the generate_config.json
+        os.makedirs(last_path, exist_ok=True)
         generation_config = os.path.join(last_path, "generation_config.json")
-        with open(generation_config, 'r') as json_file:
-            config = json.load(json_file)
-        # this is what is missing.
-        config['decoder_start_token_id'] = 0
-
-        with open(generation_config, 'w') as json_file:
-            json.dump(config, json_file, indent=2)
+        update_generation_config(generation_config, args)
 
 
+def update_generation_config(generation_config_path, args):
+    config = GenerationConfig.from_pretrained(args.model_name_or_path)
+    # this is what is missing.
+    config['decoder_start_token_id'] = 0
+
+    with open(generation_config_path, 'w') as json_file:
+        json.dump(config, json_file, indent=2)
+
+
+# Get ready for Qlora so that we can fine tune the 7B.
+def get_bnb_config():
+    return BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.bfloat16
+    )
 
 def get_lora_config():
     lora_alpha = 16  # 16
