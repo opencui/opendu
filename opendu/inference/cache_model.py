@@ -14,5 +14,7 @@ if __name__ == "__main__":
     embedder = SentenceTransformer(
         RauConfig.get().embedding_model,
         device=RauConfig.get().embedding_device,
-        trust_remote_code=True)
-    generator = Decoder.build()
+        trust_remote_code=True,
+    )
+    generator = Decoder.get()
+

@@ -10,17 +10,29 @@ from vllm import LLM, SamplingParams
 from pydantic import BaseModel, Field
 from vllm.sampling_params import GuidedDecodingParams
 
+
 # This is expectation for the output of the generator.
 # different implementation may need to translate this into different format.
 # For example, the vllm generator will use this to set the sampling parameters.
 # The vllm generator will use this to set the sampling parameters.
 class OutputExpectation(BaseModel):
-    temperature: float = Field(default=0.0, description="Temperature for the decoding process.")
-    top_p: float = Field(default=0.9, description="Top-p, e.g., 'The answer is {answer}'.")
+    temperature: float = Field(
+        default=0.0, description="Temperature for the decoding process."
+    )
+    top_p: float = Field(
+        default=0.9, description="Top-p, e.g., 'The answer is {answer}'."
+    )
     top_k: int = Field(default=50, description="Top-k, e.g., 'The answer is {answer}'.")
-    repetition_penalty: float = Field(default=1.0, description="Repetition penalty for the decoding process.")
-    choices: list[str] = Field(default_factory=list, description="List of expected outputs from the model.")
-    json_schema: dict = Field(default_factory=dict, description="JSON schema for the expected output.")
+    repetition_penalty: float = Field(
+        default=1.0, description="Repetition penalty for the decoding process."
+    )
+    choices: list[str] = Field(
+        default_factory=list, description="List of expected outputs from the model."
+    )
+    json_schema: dict = Field(
+        default_factory=dict, description="JSON schema for the expected output."
+    )
+
 
 #
 # In case you are curious about decoding: https://huggingface.co/blog/how-to-generate
@@ -37,13 +49,16 @@ class OutputExpectation(BaseModel):
 #
 class Decoder(ABC):
     generator = None
-    
+
     @staticmethod
     def get():
-        if RauConfig.get().generator == GeneratorType.FftGenerator and Decoder.generator is None:
+        if (
+            RauConfig.get().generator == GeneratorType.FftGenerator
+            and Decoder.generator is None
+        ):
             Decoder.generator = FftVllmGenerator(RauConfig.get().base_model)
         return Decoder.generator
-    
+
     @abstractmethod
     def generate(self, input_texts: list[str], expectation: OutputExpectation):
         pass
@@ -55,9 +70,19 @@ class Decoder(ABC):
 # The caller need to set the output git diexpectation.
 class FftVllmGenerator(Decoder):
     def __init__(self, model: str):
-        self.model = LLM(model=model, enable_prefix_caching=True)
+        self.model = LLM(
+            model=model,
+            enable_prefix_caching=True,
+            tensor_parallel_size=1,
+        )
 
-    def generate(self, prompts: list[str], expectation: Union[OutputExpectation, list[OutputExpectation]] = OutputExpectation()):
+    def generate(
+        self,
+        prompts: list[str],
+        expectation: Union[
+            OutputExpectation, list[OutputExpectation]
+        ] = OutputExpectation(),
+    ):
         # Check if expectation is a single instance or a list
         if isinstance(expectation, OutputExpectation):
             # Single expectation - apply to all inputs
@@ -73,18 +98,20 @@ class FftVllmGenerator(Decoder):
                     choice=expectation.choices
                 )
             if expectation.json_schema:
-                 sampling_kwargs["guided_decoding"]= GuidedDecodingParams(
+                sampling_kwargs["guided_decoding"] = GuidedDecodingParams(
                     json=expectation.json_schema
-                 )
-            
+                )
+
             samplingParams = SamplingParams(**sampling_kwargs)
             outputs = self.model.generate(prompts, sampling_params=samplingParams)
-        
+
         else:
             # List of expectations - one per input
             if len(expectation) != len(prompts):
-                raise ValueError(f"Number of expectations ({len(expectation)}) must match number of input texts ({len(prompts)})")
-            
+                raise ValueError(
+                    f"Number of expectations ({len(expectation)}) must match number of input texts ({len(prompts)})"
+                )
+
             # Create a SamplingParams for each expectation
             sampling_params_list = []
             for exp in expectation:
@@ -99,19 +126,21 @@ class FftVllmGenerator(Decoder):
                         choice=exp.choices
                     )
                 if exp.json_schema:
-                 sampling_kwargs["guided_decoding"]= GuidedDecodingParams(
-                    json=exp.json_schema
-                 )    
+                    sampling_kwargs["guided_decoding"] = GuidedDecodingParams(
+                        json=exp.json_schema
+                    )
                 sampling_params_list.append(SamplingParams(**sampling_kwargs))
-            
+
             outputs = self.model.generate(prompts, sampling_params=sampling_params_list)
-        
+
         return self.process_return(outputs, prompts)
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     llm = FftVllmGenerator(model="Qwen/Qwen3-4B")
-    prompts = ["System: Summarize in JSON. Dialog: User: Help with order. Assistant: What's the issue?"]
+    prompts = [
+        "System: Summarize in JSON. Dialog: User: Help with order. Assistant: What's the issue?"
+    ]
 
     output = llm.generate(prompts)
 
