@@ -35,6 +35,7 @@ curl -X POST -d '{"mode":"BINARY","utterance":"Yes, absolutely.","questions":["A
 curl -X POST -d '{"mode": "SLOT", "utterance": "order food", "frames": [], "slots": [], "candidates": {}, "dialogActs": []}' http://127.0.0.1:3001/v1/predict/tableReservation
 """
 
+
 @routes.get("/hello")
 async def hello(_: web.Request):  # For heart beat
     return web.Response(text=f"Ok")
@@ -42,7 +43,7 @@ async def hello(_: web.Request):  # For heart beat
 
 @routes.get("/v1/index/{bot}")
 async def index(request: web.Request):
-    bot = request.match_info['bot']
+    bot = request.match_info["bot"]
     root = request.app["root"]
     bot_path = f"{root}/{bot}"
     index_path = f"{root}/{bot}/index"
@@ -62,7 +63,7 @@ async def index(request: web.Request):
         # Assume it is always a good idea to reload the index.
         reload(bot, request.app)
     except Exception as e:
-        traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
+        traceback_str = "".join(tb.format_exception(None, e, e.__traceback__))
         return web.Response(text=traceback_str, status=500)
 
     return web.Response(text="Ok")
@@ -70,11 +71,11 @@ async def index(request: web.Request):
 
 @routes.get("/v1/load/{bot}")
 async def load(request: web.Request):
-    bot = request.match_info['bot']
+    bot = request.match_info["bot"]
     try:
         reload(bot, request.app)
     except Exception as e:
-        traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
+        traceback_str = "".join(tb.format_exception(None, e, e.__traceback__))
         return web.Response(text=traceback_str, status=500)
 
     # client will only check 200.
@@ -83,13 +84,13 @@ async def load(request: web.Request):
 
 @routes.post("/v1/predict/{bot}")
 async def understand(request: web.Request):
-    bot = request.match_info['bot']
+    bot = request.match_info["bot"]
 
     # Make sure we have reload the index.
     try:
         reload(bot, request.app)
     except Exception as e:
-        traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
+        traceback_str = "".join(tb.format_exception(None, e, e.__traceback__))
         return web.Response(text=traceback_str, status=500)
 
     req = await request.json()
@@ -107,9 +108,11 @@ async def understand(request: web.Request):
         try:
             expectations = req.get("expectedFrames")
             candidates = req.get("candidates")
-            results = l_converter.detect_triggerables(utterance, expectations, candidates)
+            results = l_converter.detect_triggerables(
+                utterance, expectations, candidates
+            )
         except Exception as e:
-            traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
+            traceback_str = "".join(tb.format_exception(None, e, e.__traceback__))
             return web.Response(text=traceback_str, status=500)
         return web.json_response(results)
 
@@ -121,7 +124,7 @@ async def understand(request: web.Request):
             results = l_converter.fill_slots(utterance, frame_name, entities)
             logging.info(results)
         except Exception as e:
-            traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
+            traceback_str = "".join(tb.format_exception(None, e, e.__traceback__))
             return web.Response(text=traceback_str, status=500)
 
         return web.json_response(results)
@@ -133,9 +136,11 @@ async def understand(request: web.Request):
             target_frame = req.get("targetFrame")
             target_slot = req.get("targetSlot")
             # So that we can use different llm.
-            resp = l_converter.inference(utterance, question, dialog_act_type, target_frame, target_slot)
+            resp = l_converter.inference(
+                utterance, question, dialog_act_type, target_frame, target_slot
+            )
         except Exception as e:
-            traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
+            traceback_str = "".join(tb.format_exception(None, e, e.__traceback__))
             return web.Response(text=traceback_str, status=500)
 
         return web.json_response(resp)
@@ -157,7 +162,7 @@ def init_app(schema_root, size):
     app = web.Application()
     app.add_routes(routes)
     app["converters"] = LRU(size)
-    app['root'] = schema_root
+    app["root"] = schema_root
     return app
 
 
@@ -168,9 +173,7 @@ if __name__ == "__main__":
     lru_capacity = 32
     for opt, arg in opts:
         if opt == "-h":
-            print(
-                "serve.py -s <root for services/agent schema>"
-            )
+            print("serve.py -s <root for services/agent schema>")
             sys.exit()
         elif opt == "-s":
             root_path = arg
@@ -178,6 +181,10 @@ if __name__ == "__main__":
             lru_capacity = int(arg)
 
     # This load the generator LLM first.
-    embedder = SentenceTransformer(RauConfig.get().embedding_model, device=RauConfig.get().embedding_device, trust_remote_code=True)
-    Decoder.build()
+    embedder = SentenceTransformer(
+        RauConfig.get().embedding_model,
+        device=RauConfig.get().embedding_device,
+        trust_remote_code=True,
+    )
+    Decoder.get()
     web.run_app(init_app(root_path, lru_capacity), port=3001)
