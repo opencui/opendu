@@ -75,7 +75,7 @@ class FftVllmGenerator(Decoder):
             model=model,
             enable_prefix_caching=True,
             tensor_parallel_size=1,
-            max_model_length=16384
+            max_model_len=16384
         )
 
     def generate(
