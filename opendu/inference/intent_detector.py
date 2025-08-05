@@ -46,20 +46,16 @@ class SkillDemonstration(BaseModel):
 # The intent detector try to detect all triggerable intents from user utterance, with respect to
 # existing conversational history, summarized in expectations. However, expectations are only used
 # during the retrieval stage, not in the decision stage beyond that.
-#
-class IntentDetector(ABC):
-    @abstractmethod
-    def detect_intents(self, text, expectations=None, debug=False):
-        pass
-
 
 # Because it is potentially a multi-class problem, we use the binary classification as the
 # tradeoff between cost (performance) and flexibility(accuracy).
 # Intent dectection cast as single class, binary classification problem.
-class BcIntentDetector(IntentDetector, ABC):
+class BcIntentDetector:
     def __init__(self, retriever: ContextRetriever):
         self.retrieve = retriever
         self.generator = Decoder.get()
+        self.debug = RauConfig.get().id_debug
+
 
     @staticmethod
     def get_closest_template(owner: str, exemplars: list[Exemplar], k: int) -> list[BcSkillExample]:
@@ -91,8 +87,8 @@ class BcIntentDetector(IntentDetector, ABC):
             )
         return skill_metas
     
-    def detect_intents(self, text, expectations, candidates, debug=False):
-        print(f"parse for skill: {text} with {expectations} and {candidates}")
+    def detect_intents(self, text:str, candidates:dict[str, list[str]], expectedFrames:list[str]=[]):
+        print(f"parse for skill: {text} with {expectedFrames} and {candidates}")
         # For now, we only pick one skill
         # TODO: try to use candidates. 
         skills, exemplar_nodes = self.retrieve(text)

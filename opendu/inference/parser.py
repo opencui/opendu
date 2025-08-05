@@ -45,8 +45,8 @@ class Parser:
         self.yn_decider = YesNoInferencer(retriever)
 
     # this is used to detect the intent, or skill, of the utterance.
-    def detect_triggerables(self, utterance, expectations, candidates = {}, debug=False):
-        func_name, evidence, _ = self.skill_converter.detect_intents(utterance, expectations, debug)
+    def detect_triggerables(self, utterance:str, candidates: dict[str, list[str]], expectedFrames: list[str] = []):
+        func_name, evidence, _ = self.skill_converter.detect_intents(utterance, candidates, expectedFrames)
         # For now, we assume single intent.
         result = {
             "owner": func_name,
@@ -58,12 +58,12 @@ class Parser:
         return [result]
 
     # This is used to extract the slots from the utterance for the given frame.
-    def fill_slots(self, text, frame: str, expections: list[str], candidates:dict[str, list[str]])-> dict[str, str]:
-        return self.slot_extractor.extract_values(text, frame, expections, candidates)
+    def fill_slots(self, text, frame: str, candidates:dict[str, list[str]], expectedSlots: list[str] = [])-> dict[str, str]:
+        return self.slot_extractor.extract_values(text, frame, expectedSlots, candidates)
     
     # This is used to understand the user response to yes no question.
-    def decide(self, utterance:str, questions:YesNoQuestion) -> YesNoResult:
-        return self.yn_decider.decide(utterance, questions)
+    def decide(self, utterance:str, question: str, dialogActType: str = None, targetFrame: str = None, targetSlot: str = None) -> YesNoResult:
+        return self.yn_decider.decide(utterance, question, dialogActType, targetFrame, targetSlot)
 
 
 

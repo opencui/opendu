@@ -50,9 +50,9 @@ class YesNoInferencer(ABC):
         self.yni_prompt = PromptManager.get_builder(Task.Yni)
         self.yni_results = ["Affirmative", "Negative", "Indifferent", "Irrelevant"]
         
-    def decide(self, utterance:str, question:YesNoQuestion) -> YesNoResult:
+    def decide(self, utterance:str, question: str, dialogActType: str = None, targetFrame: str = None, targetSlot: str = None) -> YesNoResult:
         # For now, we ignore the examples, so we do not need retriever yet.
-        input_dict = {"response": utterance, "question": question.text, "examples": []}
+        input_dict = {"response": utterance, "question": question, "examples": []}
         input_prompt = self.yni_prompt(input_dict)
 
         raw_output = self.generator.generate(input_prompt, OutputExpectation(choices=self.yni_results))

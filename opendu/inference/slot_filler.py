@@ -63,14 +63,14 @@ class StructuredExtractor(SlotExtractor):
     
     # For each slot, we can use a different extraction, regardless whether it is entity or structure,
     # single value or multiple value.                                         
-    def extract_values(self, utterance:str, frame_name: str, candidates: dict, expected:list[str] = []):      
+    def extract_values(self, utterance:str, frame_name: str, candidates: dict[str, list[str]], expectedSlots:list[str] = []):      
         frame_schema = self.module.get_skill(frame_name)
         slot_infos = [self.module.slots[slot_name] for slot_name in frame_schema.slots]
         slot_types = [build_json_schema(self.module.skills, self.module.slots, slot_schema.type, slot_schema.multi_value) for slot_schema in slot_infos]
-        return self.raw_extract_values(utterance, frame_schema, slot_infos, slot_types, candidates, expected)
+        return self.raw_extract_values(utterance, frame_schema, slot_infos, slot_types, candidates, expectedSlots)
     
 
-    def raw_extract_values(self, utterance:str, frame: FrameSchema, slots: list[SlotSchema], slot_types: list[dict], candidates: dict = {}, expected: list[str] = []):
+    def raw_extract_values(self, utterance:str, frame: FrameSchema, slots: list[SlotSchema], slot_types: list[dict], candidates: dict[str, list[str]], expectedSlots: list[str] = []):
         expectations = []
         slot_prompts = []
         for index in range(len(slots)):
@@ -84,7 +84,7 @@ class StructuredExtractor(SlotExtractor):
                 "slot": slot,
                 "type_schema": slot_type,
                 "candidates": candidates,
-                "is_expected": slot.name in expected
+                "is_expected": slot.name in expectedSlots
             }))
             expectations.append(OutputExpectation(json_schema=slot_type))
 

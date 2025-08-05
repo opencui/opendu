@@ -105,7 +105,7 @@ async def understand(request: web.Request):
 
     if mode == "SKILL":
         try:
-            expectations = req.get("expectations")
+            expectations = req.get("expectedFrames")
             candidates = req.get("candidates")
             results = l_converter.detect_triggerables(utterance, expectations, candidates)
         except Exception as e:
@@ -115,10 +115,10 @@ async def understand(request: web.Request):
 
     if mode == "SLOT":
         try:
-            slots = req.get("slots")
-            frames = req.get("frames")
+            frame_name = req.get("targetFrame")
             entities = req.get("candidates")
-            results = l_converter.fill_slots(utterance, slots, entities)
+            expected_slots = req.get("expectedSlots")
+            results = l_converter.fill_slots(utterance, frame_name, entities)
             logging.info(results)
         except Exception as e:
             traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
@@ -128,10 +128,12 @@ async def understand(request: web.Request):
 
     if mode == "BINARY":
         try:
-            questions = req.get("questions")
-            dialog_acts = req.get("dialogActs")
+            question = req.get("question")
+            dialog_act_type = req.get("dialogActType")
+            target_frame = req.get("targetFrame")
+            target_slot = req.get("targetSlot")
             # So that we can use different llm.
-            resp = l_converter.inference(utterance, questions)
+            resp = l_converter.inference(utterance, question, dialog_act_type, target_frame, target_slot)
         except Exception as e:
             traceback_str = ''.join(tb.format_exception(None, e, e.__traceback__))
             return web.Response(text=traceback_str, status=500)
