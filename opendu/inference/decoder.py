@@ -69,7 +69,7 @@ class Decoder(ABC):
 
 # The caller need to set the output git diexpectation.
 class FftVllmGenerator(Decoder):
-    # qwen3 has context length of 32768, for dialog application,we should not need that long.
+    # qwen3 has context length of 32768, for dialog understanding, we should not need that long.
     def __init__(self, model: str):
         self.model = LLM(
             model=model,
