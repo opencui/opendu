@@ -19,6 +19,11 @@ from opendu.inference.parser import Parser, Decoder, load_parser
 from opendu.core.index import indexing
 from sentence_transformers import SentenceTransformer
 
+
+# turn off the vllm telemetry 
+os.environ["VLLM_DISABLE_TELEMETRY"] = "1"
+
+
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
@@ -120,9 +125,9 @@ async def understand(request: web.Request):
     if mode == "SLOT":
         try:
             frame_name = req.get("targetFrame")
-            entities = req.get("candidates")
-            expected_slots = req.get("expectedSlots")
-            results = l_converter.fill_slots(utterance, frame_name, entities)
+            candidates = req.get("candidates")
+            expectedSlots = req.get("expectedSlots")
+            results = l_converter.fill_slots(utterance, frame_name, candidates)
             logging.info(results)
         except Exception as e:
             traceback_str = "".join(tb.format_exception(None, e, e.__traceback__))
