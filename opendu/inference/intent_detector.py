@@ -55,7 +55,7 @@ class BcIntentDetector:
         self.retrieve = retriever
         self.generator = Decoder.get()
         self.debug = RauConfig.get().id_debug
-
+        self.module = retriever.module if retriever else None
 
     @staticmethod
     def get_closest_template(owner: str, exemplars: list[Exemplar], k: int) -> list[BcSkillExample]:
