@@ -19,6 +19,11 @@ from opendu.inference.parser import Parser, Decoder, load_parser
 from opendu.core.index import indexing
 from sentence_transformers import SentenceTransformer
 
+
+# turn off the vllm telemetry 
+os.environ["VLLM_DISABLE_TELEMETRY"] = "1"
+
+
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
