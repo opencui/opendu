@@ -114,7 +114,7 @@ class BcIntentDetector:
                 )
             )
         
-        skill_outputs = self.generator.generate(skill_prompts, OutputExpectation(choices=["True", "False"])).output
+        skill_outputs = self.generator.generate(skill_prompts, OutputExpectation(choices=["True", "False"]))
         # For now we assume single intent.
     
         zipped = list(zip(skills, skill_outputs))
