@@ -34,6 +34,12 @@ class TypeSchema(BaseModel):
     name: str = Field(..., description="The name of the frame", title="Name")
     description: str = Field(..., description="Description of the frame")
 
+    def __getitem__(self, item):
+        return self.__dict__[item]
+
+    def __setitem__(self, key, value):
+        self.__dict__[key] = value
+
 
 class FrameSchema(TypeSchema):
     name: str = Field(..., description="The name of the frame", title="Name")
@@ -41,13 +47,6 @@ class FrameSchema(TypeSchema):
     slots: List[str] = Field(default_factory=list, description="List of slot names in the frame")
     headSlot: Optional[str] = Field(None, description="Optional head slot")
     type: Optional[str] = Field(None, description="Optional type of the frame")
-
-    def __getitem__(self, item):
-        return self.__dict__[item]
-
-    def __setitem__(self, key, value):
-        self.__dict__[key] = value
-
 
 
 class EntityInstance(BaseModel):
