@@ -14,24 +14,7 @@ from llama_index.core.schema import TextNode
 import json
 
 
-# During the understanding, we do not have concept of multivalued, as even when the slot
-# is the single valued, user can still say multiple values.
-class SlotSchema(BaseModel):
-    name: str = Field(..., description="The name of the slot", title="Name")
-    description: str = Field(..., description="Description of the slot")
-    multi_value: bool = Field(False, description="Whether the slot can have multiple values")
-    type: Optional[str] = Field(None, description="The type of the slot")
-    label: Optional[str] = Field(None, description="Optional label for the slot")
-    examples: Set[str] = Field(set(), description="Example values for the slot.")
-
-    def __getitem__(self, item):
-        return self.__dict__[item]
-
-    def to_description_dict(self):
-        return {field: self.model_field[field].field_info.description for field in self.model_fields}
-
-
-class TypeSchema(BaseModel):
+class Schema(BaseModel):
     name: str = Field(..., description="The name of the frame", title="Name")
     description: str = Field(..., description="Description of the frame")
 
@@ -40,6 +23,19 @@ class TypeSchema(BaseModel):
 
     def __setitem__(self, key, value):
         self.__dict__[key] = value
+
+
+# During the understanding, we do not have concept of multivalued, as even when the slot
+# is the single valued, user can still say multiple values.
+class SlotSchema(Schema):
+    multi_value: bool = Field(False, description="Whether the slot can have multiple values")
+    type: Optional[str] = Field(None, description="The type of the slot")
+    label: Optional[str] = Field(None, description="Optional label for the slot")
+    examples: Set[str] = Field(set(), description="Example values for the slot.")
+
+
+class TypeSchema(Schema):
+    pass
 
 
 class FrameSchema(TypeSchema):
