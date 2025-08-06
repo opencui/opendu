@@ -40,19 +40,23 @@ def indexing(module):
     module_schema, exemplars, recognizers = load_all_from_directory(module)
     print(module_schema)
     build_nodes_from_skills(module, module_schema.skills, desc_nodes)
+    print("done with building node for schema")
     build_nodes_from_exemplar_store(module_schema, exemplars, exemplar_nodes)
+    print("done with building node for example")
     schemas[module] = module_schema
 
 
     # now we create index for both desc and exemplar for all modules.
     if len(exemplar_nodes) != 0:
-        print(f"create exemplar index for {module}")
-        create_index(output_path, "exemplar", exemplar_nodes,
-                     EmbeddingStore.for_exemplar())
+        print(f"creating exemplar index for {module}")
+        create_index(output_path, "exemplar", exemplar_nodes,EmbeddingStore.for_exemplar())
+    else:
+        print("why there is no exemplars.")
     if len(desc_nodes) != 0:
-        print(f"create desc index for {module}")
-        create_index(output_path, "desc", desc_nodes,
-                     EmbeddingStore.for_description())
+        print(f"createing desc index for {module}")
+        create_index(output_path, "desc", desc_nodes, EmbeddingStore.for_description())
+    else:
+        print("why there is no skil desc.")
 
     print(f"index for {module} is done")
 
