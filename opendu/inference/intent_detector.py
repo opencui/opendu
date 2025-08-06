@@ -121,8 +121,8 @@ class BcIntentDetector:
     
         zipped = list(zip(skills, skill_outputs))
         # Later we can run this twice, first with examples (more trustworthy), then without examples.
-        label = next((paired[0].name for paired in zipped if paired[1].outputs.text == "True"), None)
-
+        label = next((paired[0].name for paired in zipped if paired[1].outputs[0].text == "True"), None)
+        print(f"get the first label: ${label}")
         return label, list(map(node_to_exemplar, exemplar_nodes)), debug_infos
 
 def node_to_exemplar(node):
