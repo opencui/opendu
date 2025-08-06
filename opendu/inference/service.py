@@ -109,7 +109,7 @@ async def understand(request: web.Request):
             expectations = req.get("expectedFrames")
             candidates = req.get("candidates")
             results = l_converter.detect_triggerables(
-                utterance, expectations, candidates
+                utterance, candidates, expectations
             )
         except Exception as e:
             traceback_str = "".join(tb.format_exception(None, e, e.__traceback__))
