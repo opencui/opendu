@@ -6,9 +6,15 @@
 from abc import ABC, abstractmethod
 from typing import Union
 from opendu.core.config import GeneratorType, RauConfig
-from vllm import LLM, SamplingParams
 from pydantic import BaseModel, Field
 from vllm.sampling_params import GuidedDecodingParams
+
+# turn off the vllm telemetry 
+import os
+os.environ["VLLM_DISABLE_TELEMETRY"] = "1"
+
+from vllm import LLM, SamplingParams
+
 
 
 # This is expectation for the output of the generator.
