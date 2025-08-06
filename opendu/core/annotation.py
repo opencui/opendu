@@ -4,6 +4,7 @@
 # This source code is licensed under the BeThere AI license.
 # See LICENSE file in the project root for full license information.
 
+import random
 import re
 from typing import Dict, List, TypedDict, Set, Any
 from typing import Optional
@@ -42,8 +43,6 @@ class TypeSchema(BaseModel):
 
 
 class FrameSchema(TypeSchema):
-    name: str = Field(..., description="The name of the frame", title="Name")
-    description: str = Field(..., description="Description of the frame")
     slots: List[str] = Field(default_factory=list, description="List of slot names in the frame")
     headSlot: Optional[str] = Field(None, description="Optional head slot")
     type: Optional[str] = Field(None, description="Optional type of the frame")
@@ -57,10 +56,8 @@ class EntityInstance(BaseModel):
 
 
 class EntitySchema(TypeSchema):
-    name: Optional[str]= Field(None, description="language dependent name")
-    description: Optional[str] = Field(None, description="define what is this type for.")
-    enumable: bool = Field(True, description="whether this type is enumable.")
-    instances: List[EntityInstance]
+    enumable: Optional[bool] = Field(True, description="whether this type is enumable.")
+    instances: Optional[List[EntityInstance]]
 
     @computed_field
     @property
@@ -80,11 +77,15 @@ class EntitySchema(TypeSchema):
         return set(random.sample(all_expressions, sample_size))
     
 
+# EntityStore just need to be:  Dict[str, List[EntityInstance]]
+EntityStore = Dict[str, EntitySchema]
+
+
 # This name inside the FrameSchema and SlotSchema is semantic bearing.
 # So there should not be overlapping between schema names.
 # the key for skills and slots does not need to be.
 class Schema(BaseModel):
-    skills: Dict[str, TypeSchema]
+    skills: Dict[str, FrameSchema]
     slots: Dict[str, SlotSchema]
 
     def get_skill(self, frame_id: str):
@@ -117,40 +118,6 @@ class Schema(BaseModel):
                 res[slot_schema.name] = self.get_slots_examples_in_dict(slot_schema.type)
         return res
 
-
-class EntityInstance(BaseModel):
-    label: str = Field(description="the canonical form of the instance")
-    expressions: List[str] = Field(
-        description="the expressions used to identify this instance."
-    )
-
-
-class EntitySchema(BaseModel):
-    name: Optional[str]= Field(None, description="language dependent name")
-    description: Optional[str] = Field(None, description="define what is this type for.")
-    enumable: bool = Field(True, description="whether this type is enumable.")
-    instances: List[EntityInstance]
-
-    @computed_field
-    @property
-    def examples(self) -> Set[str]:
-        """Random sample of expressions from instances."""
-        if not self.instances:
-            return set()
-        
-        all_expressions = [
-            expr for instance in self.instances 
-            for expr in instance.expressions
-        ]
-        if not all_expressions:
-            return set()
-            
-        sample_size = min(5, len(all_expressions))
-        return set(random.sample(all_expressions, sample_size))
-    
-
-# EntityStore just need to be:  Dict[str, List[EntityInstance]]
-EntityStore = Dict[str, EntitySchema]
 
 #
 # Owner is not needed if exemplars are listed insider function specs.
