@@ -64,7 +64,9 @@ class BcIntentDetector:
         if len(positives) == 0 or len(negatives) == 0:
             return []
         else:
-            return random.shuffle(positives + negatives)
+            examples = positives + negatives
+            random.shuffle(examples)
+            return examples
 
     def build_skills(self, text, skills, exemplar_nodes) -> list[SkillDemonstration]:
         # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
