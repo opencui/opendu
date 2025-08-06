@@ -57,11 +57,11 @@ class EmbeddingStore:
     
     @classmethod
     def for_description(cls) -> BaseEmbedding:
-        return EmbeddingStore.get_embedding_by_task(DESC)
+        return EmbeddingStore.get_embedding_by_task(EmbeddingType.DESC)
     
     @classmethod
     def for_exemplar(cls) -> BaseEmbedding:
-        return EmbeddingStore.get_embedding_by_task(EXEMPLAR)
+        return EmbeddingStore.get_embedding_by_task(EmbeddingType.EXEMPLAR)
 
 
 # This model support many languages, since it is based on qwen 2.5/0.5b
