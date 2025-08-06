@@ -35,16 +35,18 @@ class EmbeddingStore:
         if model_name in EmbeddingStore._models:
             return EmbeddingStore._models[model_name]
         else:
-            model = SentenceTransformer(model_name, device=RauConfig.get().embedding_device, trust_remote_code=True)
+            model = SentenceTransformer(model_name, device="cpu", trust_remote_code=True)
             try:
-                EmbeddingStore._models[model_name] = model.half()
+                model = model.half().to(RauConfig.get().embedding_device)
+                EmbeddingStore._models[model_name] = model
             except RuntimeError as e:
                 if "no kernel image is available" in str(e):
                     print(f"Warning: GPU compute capability 12.0 not fully supported, using full precision")
                     EmbeddingStore._models[model_name] = model.float()  # Explicitly use float32
                 else:
                     raise
-            return model
+        
+        return EmbeddingStore._models[model_name]
 
     @classmethod
     def get_embedding_by_task(cls, kind):
