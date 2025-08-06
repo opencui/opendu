@@ -195,4 +195,10 @@ if __name__ == "__main__":
         trust_remote_code=True,
     )
     Decoder.get()
-    web.run_app(init_app(root_path, lru_capacity), port=3001)
+    app = init_app(root_path, lru_capacity)
+
+    # Let me write this to file?
+    with open("/tmp/rau_ready.flag", "w") as f:
+        f.write("ready")
+    
+    web.run_app(app, port=3001)
