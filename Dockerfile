@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:2.4.0-cuda12.4-cudnn9-devel as model-downloader
+FROM pytorch/pytorch:2.4.0-cuda12.4-cudnn9-devel AS model-downloader
 
 # Download models
 RUN pip install --no-cache-dir huggingface_hub
@@ -6,11 +6,10 @@ RUN pip install --no-cache-dir huggingface_hub
 ENV HF_HOME=/models
 RUN mkdir -p /models
 
-RUN python -c "
-from huggingface_hub import snapshot_download
-
-snapshot_download('Qwen/Qwen3-4B', local_dir='/models/Qwen3-4B', local_dir_use_symlinks=False)
-snapshot_download('Qwen/Qwen3-Embedding-0.6B', local_dir='/models/Qwen3-Embedding-0.6B', local_dir_use_symlinks=False)
+RUN python -c "\
+from huggingface_hub import snapshot_download; \
+snapshot_download('Qwen/Qwen3-4B', local_dir='/models/Qwen3-4B', local_dir_use_symlinks=False); \
+snapshot_download('Qwen/Qwen3-Embedding-0.6B', local_dir='/models/Qwen3-Embedding-0.6B', local_dir_use_symlinks=False) \
 "
 
 # Production stage  
@@ -42,14 +41,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Verify setup
-RUN python -c "
-import torch
-import os
-print(f'CUDA available: {torch.cuda.is_available()}')
-print(f'CUDA devices: {torch.cuda.device_count()}')
-if torch.cuda.is_available():
-    print(f'Device name: {torch.cuda.get_device_name(0)}')
-    print(f'Compute capability: {torch.cuda.get_device_capability(0)}')
-print('Models directory contents:', os.listdir('/data/models'))
+RUN python -c "\
+import torch; \
+import os; \
+print(f'CUDA available: {torch.cuda.is_available()}'); \
+print(f'CUDA devices: {torch.cuda.device_count()}'); \
+print(f'Device name: {torch.cuda.get_device_name(0)}' if torch.cuda.is_available() else 'No CUDA'); \
+print(f'Compute capability: {torch.cuda.get_device_capability(0)}' if torch.cuda.is_available() else 'No CUDA'); \
+print('Models directory contents:', os.listdir('/data/models')) \
 "
-
