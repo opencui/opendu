@@ -9,13 +9,7 @@ from opendu.core.config import GeneratorType, RauConfig
 from vllm import LLM, SamplingParams
 from pydantic import BaseModel, Field
 
-import os
 
-# Set these FIRST, before any other imports
-os.environ["VLLM_ATTENTION_BACKEND"] = "XFORMERS"
-os.environ["TRITON_DISABLE_LINE_INFO"] = "1"
-os.environ["VLLM_USE_TRITON_FLASH_ATTN"] = "0"
-os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
 from vllm.sampling_params import GuidedDecodingParams
 
 
