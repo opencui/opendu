@@ -36,6 +36,7 @@ GeneratorType = Enum("Generator", ["FftGenerator", "LoraGenerator"])
 
 class RauConfig:
     _instance = None
+    model_caching_path = "/data/models/"
 
     @classmethod
     def init(cls, jsonobj):
@@ -47,12 +48,27 @@ class RauConfig:
             RauConfig._instance = BcSsYniFullConfig()
         return RauConfig._instance
 
+    @classmethod
+    def get_model_path(cls, model_name):
+        return f"{RauConfig.model_caching_path}/{model_name.split('/')[-1]}"
+
+    @classmethod
+    def get_embedding_model(cls):
+        return RauConfig.get_model_path(RauConfig.get().embedding_model)
+
+    @classmethod
+    def get_generator_model(cls):
+        return RauConfig.get_model_path(RauConfig.get().base_model)
+
+
 
 # This is configueration for treating the du as 3 tasks.
 class BcSsYniFullConfig(BaseModel):
+
     embedding_device: str = DEVICE
     embedding_model: str = "Qwen/Qwen3-Embedding-0.6B"
-
+    
+    
 
     # We might not want to touch this, without rerun find_k
     desc_retrieve_topk: int = 8

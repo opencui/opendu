@@ -5,11 +5,21 @@
 #
 # This source code is licensed under the BeThere AI license.
 # See LICENSE file in the project root for full license information.
+
+import os
+os.environ['HF_HUB_OFFLINE'] = '1'  # Set this FIRST
+os.environ["VLLM_DISABLE_TELEMETRY"] = "1"
+# Set these FIRST, before any other imports
+os.environ["VLLM_ATTENTION_BACKEND"] = "XFORMERS"
+os.environ["TRITON_DISABLE_LINE_INFO"] = "1"
+os.environ["VLLM_USE_TRITON_FLASH_ATTN"] = "0"
+os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
+
+
 import getopt
 import logging
 import sys
 from enum import Enum
-import os
 from lru import LRU
 import traceback as tb
 from aiohttp import web
@@ -19,9 +29,6 @@ from opendu.inference.parser import Parser, Decoder, load_parser
 from opendu.core.index import indexing
 from sentence_transformers import SentenceTransformer
 
-
-# turn off the vllm telemetry 
-os.environ["VLLM_DISABLE_TELEMETRY"] = "1"
 
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
@@ -190,7 +197,7 @@ if __name__ == "__main__":
 
     # This load the generator LLM first.
     embedder = SentenceTransformer(
-        RauConfig.get().embedding_model,
+        RauConfig.get_embedding_model(),
         device=RauConfig.get().embedding_device,
         trust_remote_code=True,
     )
