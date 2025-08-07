@@ -82,7 +82,7 @@ class FftVllmGenerator(Decoder):
             gpu_memory_utilization=0.8, 
             enforce_eager=True,
             disable_custom_all_reduce=True,
-            max_num_seqs=256,  # Affects caching efficiency
+            max_num_seqs=16,  # Affects caching efficiency
         )
 
     def generate(
