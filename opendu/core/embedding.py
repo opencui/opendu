@@ -51,7 +51,7 @@ class EmbeddingStore:
     @classmethod
     def get_embedding_by_task(cls, kind):
         model_name = RauConfig.get().embedding_model
-        model = EmbeddingStore.get_model(RauConfig.get().embedding_model)
+        model = EmbeddingStore.get_model(RauConfig.get_embedding_model())
         if model_name.startswith("Qwen"):
             return Qwen3Embeddings(model, kind)
         else:
