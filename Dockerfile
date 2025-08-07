@@ -31,6 +31,11 @@ ENV VLLM_WORKER_MULTIPROC_METHOD=spawn
 ENV CUDA_VISIBLE_DEVICES=0
 ENV PYTHONPATH=/data
 
+# Fix MKL threading conflict
+ENV MKL_THREADING_LAYER=GNU
+ENV MKL_SERVICE_FORCE_INTEL=1
+
+
 WORKDIR /data
 
 # Install dependencies layer (rarely changes)
