@@ -3,7 +3,7 @@ FROM python:3.12 as model-downloader
 WORKDIR /tmp
 
 # Install just enough to download models
-RUN pip install huggingface_hub torch==2.2.2 --index-url https://download.pytorch.org/whl/cu121
+RUN pip install huggingface_hub torch==2.2.2 --extra-index-url https://download.pytorch.org/whl/cu123
 
 # Download Qwen3 models
 RUN python -c "from huggingface_hub import snapshot_download; \
