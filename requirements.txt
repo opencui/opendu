@@ -2,7 +2,6 @@ llama-index==0.11.19
 llama-index-core==0.11.19
 llama-index-retrievers-bm25~=0.3.0
 sentence_transformers>=2.7.0
-triton==2.1.0
 xformers
 huggingface_hub
 langchain~=0.0.315
