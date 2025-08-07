@@ -13,7 +13,7 @@ snapshot_download('Qwen/Qwen3-Embedding-0.6B', local_dir='/models/Qwen3-Embeddin
 "
 
 # Production stage  
-FROM pytorch/pytorch:2.4.0-cuda12.4-cudnn9-runtime
+FROM pytorch/pytorch:2.4.0-cuda12.4-cudnn9-devel
 
 # Copy models
 COPY --from=model-downloader /models /data/models
@@ -30,6 +30,10 @@ ENV VLLM_USE_TRITON_FLASH_ATTN=0
 ENV VLLM_WORKER_MULTIPROC_METHOD=spawn
 ENV CUDA_VISIBLE_DEVICES=0
 ENV PYTHONPATH=/data
+ENV VLLM_USE_TRITON_AWQ=0
+ENV VLLM_USE_TRITON_MARLIN=0
+ENV TRITON_DISABLE_LINE_INFO=1
+ENV VLLM_DISABLE_TRITON_AUTOTUNE=1
 
 # Fix MKL threading conflict
 ENV MKL_THREADING_LAYER=GNU
