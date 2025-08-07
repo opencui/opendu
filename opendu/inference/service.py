@@ -15,7 +15,7 @@ os.environ["TRITON_DISABLE_LINE_INFO"] = "1"
 os.environ["VLLM_USE_TRITON_FLASH_ATTN"] = "0"
 os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
 
-
+import numpy as np
 import getopt
 import logging
 import sys
