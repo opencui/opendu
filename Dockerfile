@@ -17,12 +17,12 @@ snapshot_download('Qwen/Qwen3-Embedding-0.6B', local_dir='/models/Qwen3-Embeddin
 FROM pytorch/pytorch:2.4.0-cuda12.4-cudnn9-runtime
 
 # Copy models
-COPY --from=model-downloader /models /app/models
+COPY --from=model-downloader /models /data/models
 
 # Set environment
-ENV HF_HOME=/app/models
-ENV HF_HUB_CACHE=/app/models
-ENV TRANSFORMERS_CACHE=/app/models
+ENV HF_HOME=/data/models
+ENV HF_HUB_CACHE=/data/models
+ENV TRANSFORMERS_CACHE=/data/models
 ENV HF_HUB_OFFLINE=1
 ENV VLLM_DISABLE_TELEMETRY=1
 ENV VLLM_ATTENTION_BACKEND=XFORMERS
@@ -30,9 +30,9 @@ ENV TRITON_DISABLE_LINE_INFO=1
 ENV VLLM_USE_TRITON_FLASH_ATTN=0
 ENV VLLM_WORKER_MULTIPROC_METHOD=spawn
 ENV CUDA_VISIBLE_DEVICES=0
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/data
 
-WORKDIR /app
+WORKDIR /data
 
 # Install dependencies layer (rarely changes)
 COPY requirements.txt .
@@ -50,6 +50,6 @@ print(f'CUDA devices: {torch.cuda.device_count()}')
 if torch.cuda.is_available():
     print(f'Device name: {torch.cuda.get_device_name(0)}')
     print(f'Compute capability: {torch.cuda.get_device_capability(0)}')
-print('Models directory contents:', os.listdir('/app/models'))
+print('Models directory contents:', os.listdir('/data/models'))
 "
 

@@ -59,7 +59,7 @@ class Decoder(ABC):
             RauConfig.get().generator == GeneratorType.FftGenerator
             and Decoder.generator is None
         ):
-            Decoder.generator = FftVllmGenerator(RauConfig.get().base_model)
+            Decoder.generator = FftVllmGenerator(RauConfig.get_generator_model())
         return Decoder.generator
 
     @abstractmethod

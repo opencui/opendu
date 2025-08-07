@@ -197,7 +197,7 @@ if __name__ == "__main__":
 
     # This load the generator LLM first.
     embedder = SentenceTransformer(
-        RauConfig.get().embedding_model,
+        RauConfig.get_embedding_model(),
         device=RauConfig.get().embedding_device,
         trust_remote_code=True,
     )
