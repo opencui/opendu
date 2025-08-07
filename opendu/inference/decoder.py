@@ -9,7 +9,12 @@ from opendu.core.config import GeneratorType, RauConfig
 from vllm import LLM, SamplingParams
 from pydantic import BaseModel, Field
 from vllm.sampling_params import GuidedDecodingParams
+import os
 
+# Set XFormers backend
+os.environ["VLLM_ATTENTION_BACKEND"] = "XFORMERS"
+os.environ["TRITON_DISABLE_LINE_INFO"] = "1"
+os.environ["VLLM_USE_TRITON_FLASH_ATTN"] = "0"
 
 # This is expectation for the output of the generator.
 # different implementation may need to translate this into different format.
@@ -75,8 +80,11 @@ class FftVllmGenerator(Decoder):
             model=model,
             enable_prefix_caching=True,
             tensor_parallel_size=1,
-            max_model_len=16384,
-            gpu_memory_utilization=0.8
+            max_model_len=8192,
+            gpu_memory_utilization=0.8, 
+            enforce_eager=True,
+            disable_custom_all_reduce=True,
+            max_num_seqs=256,  # Affects caching efficiency
         )
 
     def generate(
