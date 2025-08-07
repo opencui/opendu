@@ -18,3 +18,4 @@ bitsandbytes
 vllm>=0.8.5
 fastapi~=0.116.1
 evaluate
+peft
