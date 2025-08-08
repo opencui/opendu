@@ -77,6 +77,7 @@ async def index(request: web.Request):
         reload(bot, request.app)
     except Exception as e:
         traceback_str = "".join(tb.format_exception(None, e, e.__traceback__))
+        print(traceback_str)
         return web.Response(text=traceback_str, status=500)
 
     return web.Response(text="Ok")
@@ -89,6 +90,7 @@ async def load(request: web.Request):
         reload(bot, request.app)
     except Exception as e:
         traceback_str = "".join(tb.format_exception(None, e, e.__traceback__))
+        print(traceback_str)
         return web.Response(text=traceback_str, status=500)
 
     # client will only check 200.
@@ -104,6 +106,7 @@ async def understand(request: web.Request):
         reload(bot, request.app)
     except Exception as e:
         traceback_str = "".join(tb.format_exception(None, e, e.__traceback__))
+        print(traceback_str)
         return web.Response(text=traceback_str, status=500)
 
     req = await request.json()
