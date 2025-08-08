@@ -13,7 +13,7 @@ os.environ["VLLM_DISABLE_TELEMETRY"] = "1"
 os.environ["TRITON_DISABLE_LINE_INFO"] = "1"
 os.environ["VLLM_USE_TRITON_FLASH_ATTN"] = "0"
 os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
-# Set this BEFORE importing vllm
+# Set this BEFORE importing vllmENV VLLM_ATTENTION_BACKEND=xformers
 os.environ['VLLM_ATTENTION_BACKEND'] = 'TORCH_SDPA'
 os.environ['VLLM_DISABLE_TRITON_KERNEL'] = '1'
 

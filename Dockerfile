@@ -19,6 +19,7 @@ FROM pytorch/pytorch:2.4.0-cuda12.4-cudnn9-devel
 COPY --from=model-downloader /models /data/models
 
 # Set environment
+ENV VLLM_ATTENTION_BACKEND=XFORMERS
 ENV HF_HOME=/data/models
 ENV HF_HUB_CACHE=/data/models
 ENV TRANSFORMERS_CACHE=/data/models
