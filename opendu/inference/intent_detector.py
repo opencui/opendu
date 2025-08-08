@@ -115,13 +115,16 @@ class BcIntentDetector:
                     }
                 )
             )
-        
+        print(f"skill prompt: {skill_prompts}")
         skill_outputs = self.generator.generate(skill_prompts, OutputExpectation(choices=["True", "False"]))
+        
         # For now we assume single intent.
-    
+        skill_outputs = [output.outputs[0] for output in skill_outputs]
+        print(f"skill outputs: {skill_outputs}")
+
         zipped = list(zip(skills, skill_outputs))
         # Later we can run this twice, first with examples (more trustworthy), then without examples.
-        label = next((paired[0].name for paired in zipped if paired[1].outputs[0].text == "True"), None)
+        label = next((paired[0].name for paired in zipped if paired[1].text == "True"), None)
         print(f"get the first label: ${label}")
         return label, list(map(node_to_exemplar, exemplar_nodes)), debug_infos
 
