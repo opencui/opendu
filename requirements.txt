@@ -8,12 +8,12 @@ langchain~=0.0.315
 datasets~=2.14.4
 pydantic>=2.7.0
 transformers~=4.53.3
-torch>=2.7.1
+torch>=2.8.0
 PyYAML~=6.0.1
 pandas~=2.1.1
 lru-dict~=1.3.0
 rank-bm25
 Jinja2==3.1.5
 bitsandbytes
-vllm>=0.8.5
+vllm>=0.10.0
 fastapi~=0.116.1
