@@ -77,8 +77,7 @@ class FftVllmGenerator(Decoder):
         self.model = LLM(
             model=model,
             enable_prefix_caching=True,
-            tensor_parallel_size=1,    
-            attention_backend="TORCH_SDPA",  # Force it here
+            tensor_parallel_size=1, 
             max_model_len=8192,
             gpu_memory_utilization=0.8, 
             enforce_eager=True,
