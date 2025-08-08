@@ -7,6 +7,8 @@
 # See LICENSE file in the project root for full license information.
 
 import os
+
+from opendu.core.embedding import EmbeddingStore, EmbeddingType
 os.environ['HF_HUB_OFFLINE'] = '1'  # Set this FIRST
 os.environ["VLLM_DISABLE_TELEMETRY"] = "1"
 # Set these FIRST, before any other imports
@@ -200,10 +202,6 @@ if __name__ == "__main__":
             lru_capacity = int(arg)
 
     # This load the generator LLM first.
-    embedder = SentenceTransformer(
-        RauConfig.get_embedding_model(),
-        device=RauConfig.get().embedding_device,
-        trust_remote_code=True,
-    )
+    EmbeddingStore.get_embedding_by_task(EmbeddingType.DESC)
     Decoder.get()
     web.run_app(init_app(root_path, lru_capacity), port=3001)
