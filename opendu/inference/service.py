@@ -10,10 +10,13 @@ import os
 os.environ['HF_HUB_OFFLINE'] = '1'  # Set this FIRST
 os.environ["VLLM_DISABLE_TELEMETRY"] = "1"
 # Set these FIRST, before any other imports
-os.environ["VLLM_ATTENTION_BACKEND"] = "XFORMERS"
 os.environ["TRITON_DISABLE_LINE_INFO"] = "1"
 os.environ["VLLM_USE_TRITON_FLASH_ATTN"] = "0"
 os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
+# Set this BEFORE importing vllm
+os.environ['VLLM_ATTENTION_BACKEND'] = 'TORCH_SDPA'
+os.environ['VLLM_DISABLE_TRITON_KERNEL'] = '1'
+
 
 import numpy as np
 import getopt
