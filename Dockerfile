@@ -41,6 +41,10 @@ ENV VLLM_USE_TRITON_KERNEL=0
 ENV VLLM_DISABLE_FLASH_ATTN=1
 
 
+# by default, vllm client send the traffic back, this is evil. It should be opt in instead of opt out.
+ENV VLLM_NO_USAGE_STATS=1
+ENV DO_NOT_TRACK=1
+
 # Fix MKL threading conflict
 ENV MKL_THREADING_LAYER=GNU
 ENV MKL_SERVICE_FORCE_INTEL=1

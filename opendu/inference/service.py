@@ -131,9 +131,9 @@ async def understand(request: web.Request):
             )
         except Exception as e:
             traceback_str = "".join(tb.format_exception(None, e, e.__traceback__))
-            print(traceback_str)
+            print(f"skill detect something is wrong; ${traceback_str}")
             return web.Response(text=traceback_str, status=500)
-        return web.json_response(results)
+        return web.json_response(results): 
 
     if mode == "SLOT":
         try:
@@ -144,7 +144,7 @@ async def understand(request: web.Request):
             logging.info(results)
         except Exception as e:
             traceback_str = "".join(tb.format_exception(None, e, e.__traceback__))
-            print(traceback_str)
+            print(f"slot fill something is wrong; ${traceback_str}")
             return web.Response(text=traceback_str, status=500)
 
         return web.json_response(results)
@@ -161,7 +161,7 @@ async def understand(request: web.Request):
             )
         except Exception as e:
             traceback_str = "".join(tb.format_exception(None, e, e.__traceback__))
-            print(traceback_str)
+            print(f"yes/no something is wrong; ${traceback_str}")
             return web.Response(text=traceback_str, status=500)
 
         return web.json_response(resp)

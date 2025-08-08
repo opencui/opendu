@@ -46,6 +46,7 @@ class Parser:
 
     # this is used to detect the intent, or skill, of the utterance.
     def detect_triggerables(self, utterance:str, candidates: dict[str, list[str]], expectedFrames: list[str] = []):
+        
         func_name, evidence, _ = self.skill_converter.detect_intents(utterance, candidates, expectedFrames)
         # For now, we assume single intent.
         result = {
