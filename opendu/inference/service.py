@@ -133,7 +133,7 @@ async def understand(request: web.Request):
             traceback_str = "".join(tb.format_exception(None, e, e.__traceback__))
             print(f"skill detect something is wrong; ${traceback_str}")
             return web.Response(text=traceback_str, status=500)
-        return web.json_response(results): 
+        return web.json_response(results)
 
     if mode == "SLOT":
         try:
