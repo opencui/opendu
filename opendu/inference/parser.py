@@ -46,17 +46,7 @@ class Parser:
 
     # this is used to detect the intent, or skill, of the utterance.
     def detect_triggerables(self, utterance:str, candidates: dict[str, list[str]], expectedFrames: list[str] = []):
-        
-        func_name, evidence, _ = self.skill_converter.detect_intents(utterance, candidates, expectedFrames)
-        # For now, we assume single intent.
-        result = {
-            "owner": func_name,
-            "utterance": utterance,
-            "evidence": evidence
-        }
-
-        # TODO: figure out how to handle the multi intention utterance.
-        return [result]
+        return self.skill_converter.detect_intents(utterance, candidates, expectedFrames)
 
     # This is used to extract the slots from the utterance for the given frame.
     def fill_slots(self, text, frame: str, candidates:dict[str, list[str]], expectedSlots: list[str] = [])-> dict[str, str]:
