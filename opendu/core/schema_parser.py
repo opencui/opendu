@@ -6,7 +6,7 @@
 
 import json
 import os
-from opendu.core.annotation import (CamelToSnake, EntitySchema, FrameSchema, Schema, SlotSchema, get_value)
+from opendu.core.annotation import (CamelToSnake, FrameSchema, Schema, SlotSchema, get_value)
 
 
 #
@@ -83,6 +83,7 @@ def load_all_from_directory(input_path):
         recognizers = json.load(open(f"{input_path}/recognizers.json"))
     else:
         recognizers = None
+    module_schema.updateNameToBeSimpleLabelIfNeeded()    
     return module_schema, exemplars, recognizers
 
 
