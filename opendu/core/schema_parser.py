@@ -83,6 +83,7 @@ def load_all_from_directory(input_path):
         recognizers = json.load(open(f"{input_path}/recognizers.json"))
     else:
         recognizers = None
+    module_schema.updateNameToBeLabel()    
     return module_schema, exemplars, recognizers
 
 

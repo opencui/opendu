@@ -81,6 +81,8 @@ class BcIntentDetector:
 
         skill_metas = []
         for skill in skills:
+            print(f"build demo for skill: {skill.name}: {skill}")
+            print(skill)
             skill_metas.append(
                 SkillDemonstration(
                     skill=skill,
@@ -132,14 +134,13 @@ class BcIntentDetector:
         for demostration in demonstrations:
             results.append(        # For now, we assume single intent.
                 {
-                    "owner": demostration.skill.name,
+                    "owner": demostration.skill.label,
                     "evidence": [],
                     "utterance": "",
                 }
             )
         
         if results == []:
-
             results.append({
                 "utterance": text,
                 "evidence": [{"utterance": example.template, "owner": example.label} for example in exemplar_nodes]  

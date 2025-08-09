@@ -15,7 +15,8 @@ import json
 
 
 class Schema(BaseModel):
-    name: str = Field(..., description="The name of the frame", title="Name")
+    label: str = Field(..., description="The full name of the schema, only simple name")
+    name: str = Field(..., description="The name of the frame, fully qualified", title="Name")
     description: str = Field(..., description="Description of the frame")
 
     def __getitem__(self, item):
@@ -30,7 +31,6 @@ class Schema(BaseModel):
 class SlotSchema(Schema):
     multi_value: bool = Field(False, description="Whether the slot can have multiple values")
     type: Optional[str] = Field(None, description="The type of the slot")
-    label: Optional[str] = Field(None, description="Optional label for the slot")
     examples: Set[str] = Field(set(), description="Example values for the slot.")
 
 
@@ -89,6 +89,18 @@ class Schema(BaseModel):
 
     def has_skill(self, frame_id: str):
         return frame_id in self.skills
+
+    def updateNameToBeLabel(self):
+        # we need to make sure
+        for key, value in self.skills:
+            value["label"] = key
+            if value["name"] == "":
+                value["name"] = key.split(".")[-1]
+
+        for key, value in self.slots:
+            value["label"] = key
+            if value["name"] == "":
+                value["name"] = key.split(".")[-1]        
 
     def get_slots_descriptions_in_dict(self, frame_name: str) -> dict:
         res = {}
