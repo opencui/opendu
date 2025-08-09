@@ -16,7 +16,7 @@ import json
 
 class Schema(BaseModel):
     name: str = Field(..., description="The name of the schema, human readable, only simple name if not provided", title="Name")
-    label: str = Field(..., description="The label of the frame, fully qualified", title="Label")
+    label: Optional[str] = Field(None, description="The label of the frame, fully qualified", title="Label")
     description: str = Field(..., description="Description of the frame")
 
     def __getitem__(self, item):
