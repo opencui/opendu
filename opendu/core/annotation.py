@@ -90,7 +90,7 @@ class Schema(BaseModel):
     def has_skill(self, frame_id: str):
         return frame_id in self.skills
 
-    def updateNameToBeLabel(self):
+    def updateNameToBeSimpleLabelIfNeeded(self):
         # we need to make sure
         for key, value in self.skills:
             value["label"] = key
