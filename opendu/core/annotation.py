@@ -92,12 +92,12 @@ class Schema(BaseModel):
 
     def updateNameToBeSimpleLabelIfNeeded(self):
         # we need to make sure
-        for key, value in self.skills:
+        for key, value in self.skills.items():
             value["label"] = key
             if value["name"] == "":
                 value["name"] = key.split(".")[-1]
 
-        for key, value in self.slots:
+        for key, value in self.slots.items():
             value["label"] = key
             if value["name"] == "":
                 value["name"] = key.split(".")[-1]        
