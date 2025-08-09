@@ -40,6 +40,9 @@ ENV VLLM_DISABLE_TRITON_KERNEL=1
 ENV VLLM_USE_TRITON_KERNEL=0
 ENV VLLM_DISABLE_FLASH_ATTN=1
 
+# Need to take this out later.
+export VLLM_LOGGING_LEVEL=DEBUG
+
 
 # by default, vllm client send the traffic back, this is evil. It should be opt in instead of opt out.
 ENV VLLM_NO_USAGE_STATS=1
