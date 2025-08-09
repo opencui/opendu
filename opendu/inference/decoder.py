@@ -114,6 +114,8 @@ class FftVllmGenerator(Decoder):
 
             samplingParams = SamplingParams(**sampling_kwargs)
             outputs = self.model.generate(prompts, sampling_params=samplingParams)
+            print("same strategy")
+            print(outputs)
 
         else:
             # List of expectations - one per input
@@ -142,6 +144,8 @@ class FftVllmGenerator(Decoder):
                 sampling_params_list.append(SamplingParams(**sampling_kwargs))
 
             outputs = self.model.generate(prompts, sampling_params=sampling_params_list)
+            print("parallel strategy")
+            print(outputs)
 
         return self.process_return(outputs, prompts)
 
