@@ -121,12 +121,34 @@ class BcIntentDetector:
         # For now we assume single intent.
         skill_outputs = [output.outputs[0] for output in skill_outputs]
         print(f"skill outputs: {skill_outputs}")
+        print(f"skills: {skills}")
+        print(f"sizes: {len(skill_outputs)}, {len(skills)}")
 
-        zipped = list(zip(skills, skill_outputs))
+        zipped = list(zip(skill_with_exemplars, skill_outputs))
         # Later we can run this twice, first with examples (more trustworthy), then without examples.
-        label = next((paired[0].name for paired in zipped if paired[1].text == "True"), None)
-        print(f"get the first label: ${label}")
-        return label, list(map(node_to_exemplar, exemplar_nodes)), debug_infos
+        demonstrations = (paired[0] for paired in zipped if paired[1].text == "True")
+        print(demonstrations)
+        results = []
+        for demostration in demonstrations:
+            results.append(        # For now, we assume single intent.
+                {
+                    "owner": demostration.skill.name,
+                    "evidence": [],
+                    "utterance": "",
+                }
+            )
+        
+        if results == []:
+
+            results.append({
+                "utterance": text,
+                "evidence": [{"utterance": example.template, "owner": example.label} for example in exemplar_nodes]  
+            })
+
+        # TODO: figure out how to handle the multi intention utterance.
+        print(results)
+        return results
+
 
 def node_to_exemplar(node):
     meta = node.metadata
