@@ -86,7 +86,7 @@ def load_all_from_directory(input_path):
     module_schema.updateNameToBeSimpleLabelIfNeeded()
 
     pickValueExamples = exemplars["io.opencui.core.PickValue"]
-    print(f"there are ${pickValueExamples.size()} examples for io.opencui.core.PickValue")
+    print(f"there are ${len(pickValueExamples)} examples for io.opencui.core.PickValue")
     module_schema.updateSlotExamples(pickValueExamples)
     return module_schema, exemplars, recognizers
 
