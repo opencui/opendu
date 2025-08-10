@@ -133,12 +133,17 @@ class Schema(BaseModel):
 
     def updateSlotExamples(self, pickValueExamples):
         for example in pickValueExamples:
+            if "template" not in example:
+                continue
+            if "context_frame" not in example or "context_slot" not in example:
+                continue
+
             frame = example["context_frame"]
             slot = example["context_slot"]
             if frame and slot:
                 label = f"{frame}.{slot}"
                 if label in self.slots:
-                    self.slots[label].examples.add(example.template)
+                    self.slots[label].examples.add(example["template"])
 
 
     def get_slots_descriptions_in_dict(self, frame_name: str) -> dict:
