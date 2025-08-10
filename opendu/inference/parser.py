@@ -49,8 +49,8 @@ class Parser:
         return self.skill_converter.detect_intents(utterance, candidates, expectedFrames)
 
     # This is used to extract the slots from the utterance for the given frame.
-    def fill_slots(self, text, frame: str, candidates:dict[str, list[str]], expectedSlots: list[str] = [])-> dict[str, str]:
-        return self.slot_extractor.extract_values(text, frame, candidates, expectedSlots)
+    def fill_slots(self, text, frame: str, slots: list[str], candidates:dict[str, list[str]], expectedSlots: list[str] = [])-> dict[str, str]:
+        return self.slot_extractor.extract_values(text, frame, slots, candidates, expectedSlots)
     
     # This is used to understand the user response to yes no question.
     def decide(self, utterance:str, question: str, dialogActType: str = None, targetFrame: str = None, targetSlot: str = None) -> YesNoResult:

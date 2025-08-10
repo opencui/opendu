@@ -31,7 +31,7 @@ class Schema(BaseModel):
 class SlotSchema(Schema):
     multi_value: bool = Field(False, description="Whether the slot can have multiple values")
     type: Optional[str] = Field(None, description="The type of the slot")
-    examples: Set[str] = Field(set(), description="Example values for the slot.")
+    examples: Set[str] = Field(set(), description="Contextual example values for the slot.")
 
 
 class TypeSchema(Schema):
@@ -77,56 +77,6 @@ class EntitySchema(TypeSchema):
 EntityStore = Dict[str, EntitySchema]
 
 
-# This name inside the FrameSchema and SlotSchema is semantic bearing.
-# So there should not be overlapping between schema names.
-# the key for skills and slots does not need to be.
-class Schema(BaseModel):
-    skills: Dict[str, FrameSchema]
-    slots: Dict[str, SlotSchema]
-
-    def get_skill(self, frame_id: str):
-        return self.skills[frame_id]
-
-    def has_skill(self, frame_id: str):
-        return frame_id in self.skills
-
-    def updateNameToBeSimpleLabelIfNeeded(self):
-        # we need to make sure
-        for key, value in self.skills.items():
-            value["label"] = key
-            if value["name"] == "":
-                value["name"] = key.split(".")[-1]
-
-        for key, value in self.slots.items():
-            value["label"] = key
-            if value["name"] == "":
-                value["name"] = key.split(".")[-1]        
-
-    def get_slots_descriptions_in_dict(self, frame_name: str) -> dict:
-        res = {}
-        frame = self.skills[frame_name]
-        for slot in frame.slots:
-            slot_schema = self.slots[slot]
-            if slot_schema.type not in self.skills:
-                print(f"slot_schema.type: {slot_schema.type} is not a skill")
-                res[slot_schema.name] = slot_schema.description
-            else:
-                print(f"slot_schema.type: {slot_schema.type} is a skill")
-                res[slot_schema.name] = self.get_slots_descriptions_in_dict(slot_schema.type)
-        return res
-
-    def get_slots_examples_in_dict(self, frame_name: str) -> dict:
-        res = {}
-        frame = self.skills[frame_name]
-        for slot in frame.slots:
-            slot_schema = self.slots[slot]
-            if slot_schema.type not in self.skills:
-                res[slot_schema.name] = list(slot_schema.examples)[:1]
-            else:
-                res[slot_schema.name] = self.get_slots_examples_in_dict(slot_schema.type)
-        return res
-
-
 #
 # Owner is not needed if exemplars are listed insider function specs.
 # This exemplar is used for intent detection only, as the template
@@ -154,6 +104,69 @@ class Exemplar(BaseModel):
 
 # The exemplar store should simply just be a dict.
 ExemplarStore = Dict[str, list[Exemplar]]
+
+
+# This name inside the FrameSchema and SlotSchema is semantic bearing.
+# So there should not be overlapping between schema names.
+# the key for skills and slots does not need to be.
+class Schema(BaseModel):
+    skills: Dict[str, FrameSchema]
+    slots: Dict[str, SlotSchema]
+
+    def get_skill(self, frame_id: str):
+        return self.skills[frame_id]
+
+    def has_skill(self, frame_id: str):
+        return frame_id in self.skills
+
+    def updateNameToBeSimpleLabelIfNeeded(self):
+        # we need to make sure
+        for key, value in self.skills.items():
+            value["label"] = key
+            if value["name"] == "":
+                value["name"] = key.split(".")[-1]
+
+        for key, value in self.slots.items():
+            value["label"] = key
+            if value["name"] == "":
+                value["name"] = key.split(".")[-1]        
+
+    def updateSlotExamples(self, pickValueExamples):
+        for example in pickValueExamples:
+            frame = example.context_frame
+            slot = example.context_slot
+            if frame and slot:
+                label = f"{frame}.{slot}"
+                if label in self.slots:
+                    self.slots[label].examples.add(example.template)
+
+
+    def get_slots_descriptions_in_dict(self, frame_name: str) -> dict:
+        res = {}
+        frame = self.skills[frame_name]
+        for slot in frame.slots:
+            slot_schema = self.slots[slot]
+            if slot_schema.type not in self.skills:
+                print(f"slot_schema.type: {slot_schema.type} is not a skill")
+                res[slot_schema.name] = slot_schema.description
+            else:
+                print(f"slot_schema.type: {slot_schema.type} is a skill")
+                res[slot_schema.name] = self.get_slots_descriptions_in_dict(slot_schema.type)
+        return res
+
+    def get_slots_examples_in_dict(self, frame_name: str) -> dict:
+        res = {}
+        frame = self.skills[frame_name]
+        for slot in frame.slots:
+            slot_schema = self.slots[slot]
+            if slot_schema.type not in self.skills:
+                res[slot_schema.name] = list(slot_schema.examples)[:1]
+            else:
+                res[slot_schema.name] = self.get_slots_examples_in_dict(slot_schema.type)
+        return res
+
+
+
 
 
 # For now, we do not handle normalization in understanding.
