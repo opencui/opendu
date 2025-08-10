@@ -138,9 +138,10 @@ async def understand(request: web.Request):
     if mode == "SLOT":
         try:
             frame_name = req.get("targetFrame")
+            slots = req.get("slots")
             candidates = req.get("candidates")
             expectedSlots = req.get("expectedSlots")
-            results = l_converter.fill_slots(utterance, frame_name, candidates)
+            results = l_converter.fill_slots(utterance, frame_name, slots, candidates)
             logging.info(results)
         except Exception as e:
             traceback_str = "".join(tb.format_exception(None, e, e.__traceback__))
