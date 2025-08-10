@@ -133,8 +133,8 @@ class Schema(BaseModel):
 
     def updateSlotExamples(self, pickValueExamples):
         for example in pickValueExamples:
-            frame = example.context_frame
-            slot = example.context_slot
+            frame = example["context_frame"]
+            slot = example["context_slot"]
             if frame and slot:
                 label = f"{frame}.{slot}"
                 if label in self.slots:
