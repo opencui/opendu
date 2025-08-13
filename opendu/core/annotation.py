@@ -257,7 +257,7 @@ def build_nodes_from_exemplar_store(module_schema: Schema, store: Dict[str, List
             nodes.append(
                 TextNode(
                     text=text,
-                    id_=hashed_id,
+                    id_=hashed_id,context_frame
                     metadata={
                         "owner": label,
                         "template": template,  # This is the original template

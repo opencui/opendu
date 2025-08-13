@@ -68,17 +68,7 @@ class BcIntentDetector:
             random.shuffle(examples)
             return examples
 
-    def build_skills(self, text, skills, exemplar_nodes) -> list[SkillDemonstration]:
-        # first we try full prompts, if we get hit, we return. Otherwise, we try no spec prompts.
-        exemplars = [
-            Exemplar(
-                owner=node.metadata["owner"],
-                template=node.text,
-                owner_mode=node.metadata["owner_mode"]
-            )
-            for node in exemplar_nodes
-        ]
-
+    def build_skills(self, text, skills, exemplars: list[Exemplar]) -> list[SkillDemonstration]:
         skill_metas = []
         for skill in skills:
             print(f"build demo for skill: {skill.name}: {skill}")
@@ -89,7 +79,7 @@ class BcIntentDetector:
                     exemples= self.get_closest_template(skill.name, exemplars, 1)
                 )
             )
-        return skill_metas
+        return exemplars, skill_metas
     
     def detect_intents(self, text:str, candidates:dict[str, list[str]], expectedFrames:list[str]=[]):
         print(f"parse for skill: {text} with {expectedFrames} and {candidates}")
@@ -100,7 +90,8 @@ class BcIntentDetector:
 
         debug_infos = []
 
-        skill_with_exemplars = self.build_skills(text, skills, exemplar_nodes)
+        exemplars = [self.retrieve.get_exemplar_from_node(node) for node in exemplar_nodes]
+        skill_with_exemplars = self.build_skills(text, skills, exemplars)
 
         # Now we should use the expectation for improve node score, and filtering
         # the contextual template that is not match.
@@ -143,7 +134,7 @@ class BcIntentDetector:
         if results == []:
             results.append({
                 "utterance": text,
-                "evidence": [{"utterance": example.template, "owner": example.label} for example in exemplar_nodes]  
+                "evidence": exemplars
             })
 
         # TODO: figure out how to handle the multi intention utterance.

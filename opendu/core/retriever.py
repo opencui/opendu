@@ -18,7 +18,7 @@ from llama_index.core.retrievers import (BaseRetriever, VectorIndexRetriever)
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core.schema import NodeWithScore, TextNode
 
-from opendu.core.annotation import (FrameSchema, Schema, get_value)
+from opendu.core.annotation import (Exemplar, FrameSchema, Schema, get_value)
 from opendu.core.config import RauConfig
 from opendu.core import embedding
 
@@ -230,6 +230,17 @@ class ContextRetriever:
         # Need to remove the bad owner/func/skill/intent.
         skills = [self.module.get_skill(owner) for owner in owners if self.module.has_skill(owner)]
         return skills
+
+    def get_exemplar_from_node(self, exemplar_node:TextNode) -> Exemplar:
+        meta = exemplar_node.metadata
+        return Exemplar(
+            owner=meta["owner"],
+            template=exemplar_node.text,
+            owner_mode=meta["owner_mode"],
+            context_frame=meta["context_frame"],
+            context_slot=meta["context_slot"]
+        )
+
 
     def retrieve_by_desc(self, query):
         # The goal here is to find the combined descriptions and exemplars.
