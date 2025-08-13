@@ -79,7 +79,7 @@ class BcIntentDetector:
                     exemples= self.get_closest_template(skill.name, exemplars, 1)
                 )
             )
-        return exemplars, skill_metas
+        return skill_metas
     
     def detect_intents(self, text:str, candidates:dict[str, list[str]], expectedFrames:list[str]=[]):
         print(f"parse for skill: {text} with {expectedFrames} and {candidates}")
