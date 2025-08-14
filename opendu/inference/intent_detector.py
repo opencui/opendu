@@ -134,7 +134,7 @@ class BcIntentDetector:
         if results == []:
             results.append({
                 "utterance": text,
-                "evidence": exemplars
+                "evidence": [exemplar.model_dump() for exemplar in exemplars]
             })
 
         # TODO: figure out how to handle the multi intention utterance.
